@@ -69,5 +69,6 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'vote_average.desc', label: 'Top Rated' },
   { value: 'popularity.desc', label: 'Most Popular' },
   { value: 'release_date.desc', label: 'Newest First' },
+  { value: 'release_date.asc', label: 'Oldest First' },
   { value: 'vote_count.desc', label: 'Most Reviewed' },
 ];

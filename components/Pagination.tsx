@@ -1,16 +1,16 @@
 interface Props {
   page: number;
   totalPages: number;
-  subgenre?: string;
+  subgenres?: string;
   sort: string;
 }
 
-export default function Pagination({ page, totalPages, subgenre, sort }: Props) {
+export default function Pagination({ page, totalPages, subgenres, sort }: Props) {
   const capped = Math.min(totalPages, 500); // TMDb caps at page 500
 
   function buildHref(p: number) {
     const params = new URLSearchParams({ sort, page: String(p) });
-    if (subgenre) params.set('subgenre', subgenre);
+    if (subgenres) params.set('subgenres', subgenres);
     return `?${params.toString()}`;
   }
 

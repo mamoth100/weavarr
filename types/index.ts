@@ -65,5 +65,6 @@ export interface Subgenre {
 export type SortOption =
   | 'vote_average.desc'
   | 'release_date.desc'
+  | 'release_date.asc'
   | 'popularity.desc'
   | 'vote_count.desc';

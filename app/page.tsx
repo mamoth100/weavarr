@@ -7,22 +7,34 @@ import Pagination from '@/components/Pagination';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenre?: string; sort?: string; page?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const subgenre = SUBGENRES.find((s) => s.id === searchParams.subgenre);
+  // Multi-select: comma-separated subgenre IDs
+  const activeSubgenreIds = searchParams.subgenres
+    ? searchParams.subgenres.split(',').filter(Boolean)
+    : [];
+
+  const activeSubgenres = SUBGENRES.filter((s) =>
+    activeSubgenreIds.includes(s.id)
+  );
+
+  // Combine all keyword IDs from every selected subgenre
+  const keywordIds = activeSubgenres.flatMap((s) => s.keywordIds);
+
   const sort = (
     SORT_OPTIONS.some((o) => o.value === searchParams.sort)
       ? searchParams.sort
       : 'vote_average.desc'
   ) as SortOption;
+
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
 
   const data = await discoverDocumentaries({
     page,
     sortBy: sort,
-    keywordIds: subgenre?.keywordIds ?? [],
+    keywordIds,
     minVotes: 50,
   });
 
@@ -40,7 +52,7 @@ export default async function Home({ searchParams }: PageProps) {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Suspense fallback={<div className="h-20 bg-zinc-900 rounded-lg animate-pulse" />}>
           <FilterBar
-            currentSubgenre={searchParams.subgenre}
+            activeSubgenres={activeSubgenreIds}
             currentSort={sort}
           />
         </Suspense>
@@ -63,7 +75,7 @@ export default async function Home({ searchParams }: PageProps) {
             <Pagination
               page={page}
               totalPages={data.total_pages}
-              subgenre={searchParams.subgenre}
+              subgenres={searchParams.subgenres}
               sort={sort}
             />
           </>
