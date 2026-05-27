@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
-import { getTraktRatings, getTraktStats } from '@/lib/trakt';
+import { getTraktData } from '@/lib/trakt';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import type { TmdbKeyword, WatchProvider } from '@/types';
@@ -26,12 +26,14 @@ export default async function DocumentaryPage({ params }: Props) {
   const imdbId = detail.external_ids?.imdb_id ?? null;
 
   // Fetch all external data in parallel
-  const [omdb, traktRatings, traktStats, watchProviders] = await Promise.all([
+  const [omdb, traktData, watchProviders] = await Promise.all([
     imdbId ? getOmdbData(imdbId) : null,
-    imdbId ? getTraktRatings(imdbId) : null,
-    imdbId ? getTraktStats(imdbId) : null,
+    imdbId ? getTraktData(imdbId) : { ratings: null, stats: null },
     getWatchProviders(id),
   ]);
+
+  const traktRatings = traktData.ratings;
+  const traktStats = traktData.stats;
 
   const score = computeCompositeScore(
     detail.vote_average,
