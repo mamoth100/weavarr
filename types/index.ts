@@ -50,8 +50,23 @@ export interface CompositeScore {
   score: number;
   tmdbScore: number;
   imdbScore: number | null;
+  traktScore: number | null;
   rtScore: string | null;
+  metacriticScore: string | null;
   confidence: 'high' | 'medium' | 'low';
+}
+
+export interface WatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+}
+
+export interface WatchProviders {
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+  link?: string;
 }
 
 export interface Subgenre {

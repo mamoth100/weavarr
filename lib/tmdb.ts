@@ -1,4 +1,4 @@
-import type { TmdbDetailResponse, TmdbDiscoverResponse } from '@/types';
+import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders } from '@/types';
 
 const BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -69,4 +69,18 @@ export async function searchDocumentaries(
   });
   if (!res.ok) throw new Error(`TMDb search failed: ${res.status}`);
   return res.json();
+}
+
+export async function getWatchProviders(
+  id: number,
+  country = 'US'
+): Promise<WatchProviders | null> {
+  const res = await fetch(`${BASE_URL}/movie/${id}/watch/providers`, {
+    headers: authHeaders(),
+    next: { revalidate: 86400 },
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.results?.[country] ?? null;
 }

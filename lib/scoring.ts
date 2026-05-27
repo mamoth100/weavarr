@@ -1,47 +1,56 @@
 import type { CompositeScore, OmdbResponse } from '@/types';
+import type { TraktRatings } from '@/lib/trakt';
 
 export function computeCompositeScore(
   tmdbRating: number,
   tmdbVotes: number,
-  omdb: OmdbResponse | null
+  omdb: OmdbResponse | null,
+  trakt: TraktRatings | null = null
 ): CompositeScore {
   const rtScore =
     omdb?.Ratings?.find((r) => r.Source === 'Rotten Tomatoes')?.Value ?? null;
+  const metacriticScore =
+    omdb?.Ratings?.find((r) => r.Source === 'Metacritic')?.Value ?? null;
 
   const imdbRating =
     omdb?.imdbRating && omdb.imdbRating !== 'N/A'
       ? parseFloat(omdb.imdbRating)
       : null;
-
   const imdbVotes =
     omdb?.imdbVotes && omdb.imdbVotes !== 'N/A'
       ? parseInt(omdb.imdbVotes.replace(/,/g, ''), 10)
       : null;
 
-  // If no IMDb data, fall back to TMDb score alone
-  if (imdbRating === null || imdbVotes === null) {
-    const confidence =
-      tmdbVotes > 1000 ? 'high' : tmdbVotes > 100 ? 'medium' : 'low';
-    return {
-      score: Math.round(tmdbRating * 10) / 10,
-      tmdbScore: tmdbRating,
-      imdbScore: null,
-      rtScore,
-      confidence,
-    };
+  const traktScore = trakt?.rating ?? null;
+  const traktVotes = trakt?.votes ?? null;
+
+  // Weighted average across all available sources
+  let weightedSum = 0;
+  let totalWeight = 0;
+
+  if (tmdbRating > 0 && tmdbVotes > 0) {
+    weightedSum += tmdbRating * tmdbVotes;
+    totalWeight += tmdbVotes;
+  }
+  if (imdbRating !== null && imdbVotes !== null) {
+    weightedSum += imdbRating * imdbVotes;
+    totalWeight += imdbVotes;
+  }
+  if (traktScore !== null && traktVotes !== null) {
+    weightedSum += traktScore * traktVotes;
+    totalWeight += traktVotes;
   }
 
-  // Weighted average by vote count
-  const totalVotes = tmdbVotes + imdbVotes;
-  const weighted =
-    (tmdbRating * tmdbVotes + imdbRating * imdbVotes) / totalVotes;
+  const score = totalWeight > 0 ? weightedSum / totalWeight : tmdbRating;
 
   return {
-    score: Math.round(weighted * 10) / 10,
+    score: Math.round(score * 10) / 10,
     tmdbScore: tmdbRating,
     imdbScore: imdbRating,
+    traktScore,
     rtScore,
+    metacriticScore,
     confidence:
-      totalVotes > 10000 ? 'high' : totalVotes > 1000 ? 'medium' : 'low',
+      totalWeight > 10000 ? 'high' : totalWeight > 1000 ? 'medium' : 'low',
   };
 }

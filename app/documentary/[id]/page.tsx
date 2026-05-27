@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocumentaryDetail, TMDB_IMAGE_BASE } from '@/lib/tmdb';
+import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
+import { getTraktRatings, getTraktStats } from '@/lib/trakt';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
-import type { TmdbKeyword } from '@/types';
+import type { TmdbKeyword, WatchProvider } from '@/types';
 
 interface Props {
   params: { id: string };
@@ -23,8 +24,21 @@ export default async function DocumentaryPage({ params }: Props) {
   }
 
   const imdbId = detail.external_ids?.imdb_id ?? null;
-  const omdb = imdbId ? await getOmdbData(imdbId) : null;
-  const score = computeCompositeScore(detail.vote_average, detail.vote_count, omdb);
+
+  // Fetch all external data in parallel
+  const [omdb, traktRatings, traktStats, watchProviders] = await Promise.all([
+    imdbId ? getOmdbData(imdbId) : null,
+    imdbId ? getTraktRatings(imdbId) : null,
+    imdbId ? getTraktStats(imdbId) : null,
+    getWatchProviders(id),
+  ]);
+
+  const score = computeCompositeScore(
+    detail.vote_average,
+    detail.vote_count,
+    omdb,
+    traktRatings
+  );
 
   const backdropUrl = detail.backdrop_path
     ? `${TMDB_IMAGE_BASE}/w1280${detail.backdrop_path}`
@@ -36,6 +50,9 @@ export default async function DocumentaryPage({ params }: Props) {
     ? new Date(detail.release_date).getFullYear()
     : null;
   const keywords: TmdbKeyword[] = detail.keywords?.keywords ?? [];
+
+  const streamingProviders: WatchProvider[] = watchProviders?.flatrate ?? [];
+  const rentProviders: WatchProvider[] = watchProviders?.rent ?? [];
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -92,6 +109,11 @@ export default async function DocumentaryPage({ params }: Props) {
                   {omdb.Rated}
                 </span>
               )}
+              {traktStats && (
+                <span className="text-zinc-500 text-xs">
+                  👁 {traktStats.watchers.toLocaleString()} watchers on Trakt
+                </span>
+              )}
             </div>
 
             {/* Composite score card */}
@@ -105,9 +127,7 @@ export default async function DocumentaryPage({ params }: Props) {
                   {score.tmdbScore > 0 && (
                     <div>
                       TMDb: <span className="text-white">{score.tmdbScore.toFixed(1)}</span>
-                      <span className="text-zinc-600">
-                        {' '}({detail.vote_count.toLocaleString()} votes)
-                      </span>
+                      <span className="text-zinc-600"> ({detail.vote_count.toLocaleString()} votes)</span>
                     </div>
                   )}
                   {score.imdbScore !== null && (
@@ -116,9 +136,20 @@ export default async function DocumentaryPage({ params }: Props) {
                       <span className="text-zinc-600"> ({omdb?.imdbVotes} votes)</span>
                     </div>
                   )}
+                  {score.traktScore !== null && (
+                    <div>
+                      Trakt: <span className="text-white">{score.traktScore.toFixed(1)}</span>
+                      <span className="text-zinc-600"> ({traktRatings?.votes.toLocaleString()} votes)</span>
+                    </div>
+                  )}
                   {score.rtScore && (
                     <div>
                       Rotten Tomatoes: <span className="text-white">{score.rtScore}</span>
+                    </div>
+                  )}
+                  {score.metacriticScore && (
+                    <div>
+                      Metacritic: <span className="text-white">{score.metacriticScore}</span>
                     </div>
                   )}
                 </div>
@@ -135,6 +166,60 @@ export default async function DocumentaryPage({ params }: Props) {
                 {score.confidence} confidence
               </div>
             </div>
+
+            {/* Where to Watch */}
+            {(streamingProviders.length > 0 || rentProviders.length > 0) && (
+              <div className="mt-6">
+                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+                  Where to Watch
+                </h2>
+                {streamingProviders.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-zinc-600 mb-2">Stream</p>
+                    <div className="flex flex-wrap gap-2">
+                      {streamingProviders.map((p) => (
+                        <div
+                          key={p.provider_id}
+                          title={p.provider_name}
+                          className="relative w-10 h-10 rounded-lg overflow-hidden ring-1 ring-white/10"
+                        >
+                          <Image
+                            src={`${TMDB_IMAGE_BASE}/w45${p.logo_path}`}
+                            alt={p.provider_name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {rentProviders.length > 0 && (
+                  <div>
+                    <p className="text-xs text-zinc-600 mb-2">Rent / Buy</p>
+                    <div className="flex flex-wrap gap-2">
+                      {rentProviders.map((p) => (
+                        <div
+                          key={p.provider_id}
+                          title={p.provider_name}
+                          className="relative w-10 h-10 rounded-lg overflow-hidden ring-1 ring-white/10 opacity-70"
+                        >
+                          <Image
+                            src={`${TMDB_IMAGE_BASE}/w45${p.logo_path}`}
+                            alt={p.provider_name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-zinc-700 mt-2">
+                  Availability data via JustWatch · US only
+                </p>
+              </div>
+            )}
 
             {/* Overview */}
             {detail.overview && (
@@ -178,7 +263,6 @@ export default async function DocumentaryPage({ params }: Props) {
               </div>
             )}
 
-            {/* Back link */}
             <Link
               href="/"
               className="inline-block mt-8 text-sm text-zinc-500 hover:text-amber-400 transition"
