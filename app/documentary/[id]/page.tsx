@@ -113,7 +113,7 @@ export default async function DocumentaryPage({ params }: Props) {
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl inline-block ring-1 ring-white/5">
               <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
-                DocuView Score
+                DocuView Score <span className="normal-case text-zinc-600">(avg of all sources)</span>
               </div>
               <div className="flex items-center gap-4">
                 <ScoreBadge score={score.score} size="lg" />

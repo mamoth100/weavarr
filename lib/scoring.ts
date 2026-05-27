@@ -24,24 +24,17 @@ export function computeCompositeScore(
   const traktScore = trakt?.rating ?? null;
   const traktVotes = trakt?.votes ?? null;
 
-  // Weighted average across all available sources
-  let weightedSum = 0;
-  let totalWeight = 0;
+  // Equal-weight average across available sources so no single platform dominates
+  const sources: number[] = [];
 
-  if (tmdbRating > 0 && tmdbVotes > 0) {
-    weightedSum += tmdbRating * tmdbVotes;
-    totalWeight += tmdbVotes;
-  }
-  if (imdbRating !== null && imdbVotes !== null) {
-    weightedSum += imdbRating * imdbVotes;
-    totalWeight += imdbVotes;
-  }
-  if (traktScore !== null && traktVotes !== null) {
-    weightedSum += traktScore * traktVotes;
-    totalWeight += traktVotes;
-  }
+  if (tmdbRating > 0 && tmdbVotes > 0) sources.push(tmdbRating);
+  if (imdbRating !== null) sources.push(imdbRating);
+  if (traktScore !== null) sources.push(traktScore);
 
-  const score = totalWeight > 0 ? weightedSum / totalWeight : tmdbRating;
+  const score =
+    sources.length > 0
+      ? sources.reduce((a, b) => a + b, 0) / sources.length
+      : tmdbRating;
 
   return {
     score: Math.round(score * 10) / 10,
@@ -51,6 +44,6 @@ export function computeCompositeScore(
     rtScore,
     metacriticScore,
     confidence:
-      totalWeight > 10000 ? 'high' : totalWeight > 1000 ? 'medium' : 'low',
+      sources.length >= 3 ? 'high' : sources.length === 2 ? 'medium' : 'low',
   };
 }

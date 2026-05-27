@@ -33,7 +33,7 @@ export default function DocCard({ doc }: Props) {
           </div>
         )}
         <div className="absolute top-2 right-2">
-          <ScoreBadge score={doc.vote_average} votes={doc.vote_count} size="sm" />
+          <ScoreBadge score={doc.vote_average} size="sm" />
         </div>
       </div>
       <div className="mt-2 px-1">
