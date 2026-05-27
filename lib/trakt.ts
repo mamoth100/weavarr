@@ -32,7 +32,7 @@ async function resolveTraktItem(
   // Fast path: try direct movie lookup
   const direct = await fetch(`${BASE_URL}/movies/${imdbId}`, {
     headers: traktHeaders(),
-    next: { revalidate: 86400 },
+    cache: 'no-store',
   });
   if (direct.ok) {
     const data = await direct.json();
@@ -43,7 +43,7 @@ async function resolveTraktItem(
   // Fallback: search by IMDb ID (finds movies AND shows)
   const search = await fetch(`${BASE_URL}/search/imdb/${imdbId}`, {
     headers: traktHeaders(),
-    next: { revalidate: 86400 },
+    cache: 'no-store',
   });
   if (!search.ok) return null;
 
