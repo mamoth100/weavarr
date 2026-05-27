@@ -17,12 +17,21 @@ export interface TmdbKeyword {
   name: string;
 }
 
+export interface TmdbVideo {
+  key: string;
+  site: string;
+  type: string;
+  official: boolean;
+  published_at: string;
+}
+
 export interface TmdbDetailResponse extends TmdbMovie {
   genres: { id: number; name: string }[];
   keywords: { keywords: TmdbKeyword[] };
   external_ids: { imdb_id: string | null };
   runtime: number | null;
   tagline: string;
+  videos?: { results: TmdbVideo[] };
 }
 
 export interface TmdbDiscoverResponse {

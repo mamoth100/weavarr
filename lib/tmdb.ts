@@ -52,7 +52,7 @@ export async function discoverDocumentaries({
 
 export async function getDocumentaryDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await fetch(
-    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids`,
+    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error(`TMDb detail failed: ${res.status}`);

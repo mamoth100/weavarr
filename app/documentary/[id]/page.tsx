@@ -52,6 +52,11 @@ export default async function DocumentaryPage({ params }: Props) {
   const streamingProviders: WatchProvider[] = watchProviders?.flatrate ?? [];
   const rentProviders: WatchProvider[] = watchProviders?.rent ?? [];
 
+  // Pick the best trailer: official first, then any trailer, from YouTube only
+  const trailerKey = detail.videos?.results
+    .filter((v) => v.site === 'YouTube' && v.type === 'Trailer')
+    .sort((a, b) => (b.official ? 1 : 0) - (a.official ? 1 : 0))[0]?.key ?? null;
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Nav */}
@@ -109,6 +114,18 @@ export default async function DocumentaryPage({ params }: Props) {
               )}
 
             </div>
+
+            {/* Trailer link */}
+            {trailerKey && (
+              <a
+                href={`https://www.youtube.com/watch?v=${trailerKey}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
+              >
+                ▶ Watch Trailer
+              </a>
+            )}
 
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl inline-block ring-1 ring-white/5">
