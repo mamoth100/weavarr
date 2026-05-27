@@ -116,7 +116,7 @@ export default async function DocumentaryPage({ params }: Props) {
             </div>
 
             {/* Composite score card */}
-            <div className="mt-5 p-4 bg-zinc-900 rounded-xl inline-block ring-1 ring-white/5">
+            <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
               <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
                 DocuView Score <span className="normal-case text-zinc-600">(Bayesian · IMDb-anchored)</span>
               </div>
