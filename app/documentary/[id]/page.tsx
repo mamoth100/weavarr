@@ -115,18 +115,6 @@ export default async function DocumentaryPage({ params }: Props) {
 
             </div>
 
-            {/* Trailer link */}
-            {trailerKey && (
-              <a
-                href={`https://www.youtube.com/watch?v=${trailerKey}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
-              >
-                ▶ Watch Trailer
-              </a>
-            )}
-
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl inline-block ring-1 ring-white/5">
               <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
@@ -172,6 +160,18 @@ export default async function DocumentaryPage({ params }: Props) {
                 {score.confidence} confidence
               </div>
             </div>
+
+            {/* Trailer link */}
+            {trailerKey && (
+              <a
+                href={`https://www.youtube.com/watch?v=${trailerKey}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
+              >
+                ▶ Watch Trailer
+              </a>
+            )}
 
             {/* Where to Watch */}
             {(streamingProviders.length > 0 || rentProviders.length > 0) && (
