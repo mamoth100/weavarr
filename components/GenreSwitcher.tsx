@@ -1,0 +1,32 @@
+'use client';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const GENRES = [
+  { value: 'documentary', label: 'Documentaries', emoji: '🎬' },
+  { value: 'reality', label: 'Reality TV', emoji: '📺' },
+];
+
+export default function GenreSwitcher() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const current = searchParams.get('genre') ?? 'documentary';
+
+  return (
+    <div className="flex gap-1 p-1 bg-zinc-900 rounded-xl border border-zinc-800 w-fit">
+      {GENRES.map((g) => (
+        <button
+          key={g.value}
+          onClick={() => router.push(`/?genre=${g.value}`)}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            current === g.value
+              ? 'bg-amber-400 text-zinc-950'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          {g.emoji} {g.label}
+        </button>
+      ))}
+    </div>
+  );
+}

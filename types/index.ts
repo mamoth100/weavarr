@@ -86,6 +86,8 @@ export interface Subgenre {
   keywordIds: number[];
 }
 
+export type MediaType = 'movie' | 'tv';
+
 export type SortOption =
   | 'vote_average.desc'
   | 'release_date.desc'

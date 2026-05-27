@@ -5,9 +5,10 @@ interface Props {
   sort: string;
   decade?: string;
   query?: string;
+  genre?: string;
 }
 
-export default function Pagination({ page, totalPages, subgenres, sort, decade, query }: Props) {
+export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre }: Props) {
   const capped = Math.min(totalPages, 500);
 
   function buildHref(p: number) {
@@ -15,6 +16,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
     if (subgenres) params.set('subgenres', subgenres);
     if (decade) params.set('decade', decade);
     if (query) params.set('q', query);
+    if (genre && genre !== 'documentary') params.set('genre', genre);
     return `?${params.toString()}`;
   }
 

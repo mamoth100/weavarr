@@ -124,7 +124,8 @@ export default function FilterBar({
             ))}
           </div>
 
-          {/* Subgenre chips */}
+          {/* Subgenre chips — documentary only */}
+          {(searchParams.get('genre') ?? 'documentary') === 'documentary' && (
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Genre</span>
             <button
@@ -151,6 +152,7 @@ export default function FilterBar({
               </button>
             ))}
           </div>
+          )}
         </>
       )}
     </div>

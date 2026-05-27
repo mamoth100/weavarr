@@ -1,16 +1,19 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, searchDocumentaries } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, searchDocumentaries } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import DocCard from '@/components/DocCard';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
+import GenreSwitcher from '@/components/GenreSwitcher';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
+  const genre = searchParams.genre === 'reality' ? 'reality' : 'documentary';
+  const isReality = genre === 'reality';
   const query = searchParams.q?.trim() ?? '';
   const activeSubgenreIds = searchParams.subgenres
     ? searchParams.subgenres.split(',').filter(Boolean)
@@ -27,7 +30,15 @@ export default async function Home({ searchParams }: PageProps) {
   const decade = DECADES.find((d) => d.value === searchParams.decade);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
 
-  const data = query
+  const data = isReality
+    ? await discoverTv({
+        page,
+        sortBy: sort,
+        minVotes: 50,
+        dateGte: decade?.gte,
+        dateLte: decade?.lte,
+      })
+    : query
     ? await searchDocumentaries(query, page)
     : await discoverDocumentaries({
         page,
@@ -45,9 +56,15 @@ export default async function Home({ searchParams }: PageProps) {
           Docu<span className="text-amber-400">View</span>
         </h1>
         <p className="text-zinc-500 text-sm mt-0.5">
-          The documentary discovery engine
+          {isReality ? 'Reality TV discovery engine' : 'The documentary discovery engine'}
         </p>
       </header>
+
+      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
+        <Suspense>
+          <GenreSwitcher />
+        </Suspense>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Suspense fallback={<div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />}>
@@ -70,7 +87,7 @@ export default async function Home({ searchParams }: PageProps) {
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {data.results.map((doc) => (
-                <DocCard key={doc.id} doc={doc} />
+                <DocCard key={doc.id} doc={doc} mediaType={isReality ? 'tv' : 'movie'} />
               ))}
             </div>
 
@@ -81,6 +98,7 @@ export default async function Home({ searchParams }: PageProps) {
               sort={sort}
               decade={searchParams.decade}
               query={query}
+              genre={genre}
             />
           </>
         )}

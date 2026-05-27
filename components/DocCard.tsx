@@ -6,18 +6,20 @@ import type { TmdbMovie } from '@/types';
 
 interface Props {
   doc: TmdbMovie;
+  mediaType?: 'movie' | 'tv';
 }
 
-export default function DocCard({ doc }: Props) {
+export default function DocCard({ doc, mediaType = 'movie' }: Props) {
   const year = doc.release_date
     ? new Date(doc.release_date).getFullYear()
     : null;
   const posterUrl = doc.poster_path
     ? `${TMDB_IMAGE_BASE}/w342${doc.poster_path}`
     : null;
+  const href = mediaType === 'tv' ? `/tv/${doc.id}` : `/documentary/${doc.id}`;
 
   return (
-    <Link href={`/documentary/${doc.id}`} className="group">
+    <Link href={href} className="group">
       <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
         {posterUrl ? (
           <Image
