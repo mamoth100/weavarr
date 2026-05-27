@@ -7,9 +7,15 @@ import type { TmdbMovie } from '@/types';
 interface Props {
   doc: TmdbMovie;
   mediaType?: 'movie' | 'tv';
+  variant?: 'default' | 'upcoming';
 }
 
-export default function DocCard({ doc, mediaType = 'movie' }: Props) {
+function formatReleaseDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export default function DocCard({ doc, mediaType = 'movie', variant = 'default' }: Props) {
   const year = doc.release_date
     ? new Date(doc.release_date).getFullYear()
     : null;
@@ -35,14 +41,20 @@ export default function DocCard({ doc, mediaType = 'movie' }: Props) {
           </div>
         )}
         <div className="absolute top-2 right-2">
-          <ScoreBadge score={doc.vote_average} size="sm" />
+          {variant === 'upcoming' && doc.release_date ? (
+            <span className="bg-amber-400 text-zinc-950 text-xs font-semibold px-2 py-1 rounded-md">
+              {formatReleaseDate(doc.release_date)}
+            </span>
+          ) : (
+            <ScoreBadge score={doc.vote_average} size="sm" />
+          )}
         </div>
       </div>
       <div className="mt-2 px-1">
         <p className="text-sm font-medium leading-tight truncate group-hover:text-amber-400 transition-colors">
           {doc.title}
         </p>
-        {year && <p className="text-xs text-zinc-500 mt-0.5">{year}</p>}
+        {variant !== 'upcoming' && year && <p className="text-xs text-zinc-500 mt-0.5">{year}</p>}
       </div>
     </Link>
   );

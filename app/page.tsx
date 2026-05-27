@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, searchDocumentaries } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import DocCard from '@/components/DocCard';
 import FilterBar from '@/components/FilterBar';
@@ -12,8 +12,9 @@ interface PageProps {
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const genre = searchParams.genre === 'reality' ? 'reality' : 'documentary';
+  const genre = searchParams.genre === 'reality' ? 'reality' : searchParams.genre === 'upcoming' ? 'upcoming' : 'documentary';
   const isReality = genre === 'reality';
+  const isUpcoming = genre === 'upcoming';
   const query = searchParams.q?.trim() ?? '';
   const activeSubgenreIds = searchParams.subgenres
     ? searchParams.subgenres.split(',').filter(Boolean)
@@ -30,7 +31,9 @@ export default async function Home({ searchParams }: PageProps) {
   const decade = DECADES.find((d) => d.value === searchParams.decade);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
 
-  const data = isReality
+  const data = isUpcoming
+    ? await discoverUpcoming(page)
+    : isReality
     ? await discoverTv({
         page,
         sortBy: sort,
@@ -56,7 +59,7 @@ export default async function Home({ searchParams }: PageProps) {
           Docu<span className="text-amber-400">View</span>
         </h1>
         <p className="text-zinc-500 text-sm mt-0.5">
-          {isReality ? 'Reality TV discovery engine' : 'The documentary discovery engine'}
+          {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
         </p>
       </header>
 
@@ -87,7 +90,7 @@ export default async function Home({ searchParams }: PageProps) {
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {data.results.map((doc) => (
-                <DocCard key={doc.id} doc={doc} mediaType={isReality ? 'tv' : 'movie'} />
+                <DocCard key={doc.id} doc={doc} mediaType={isReality ? 'tv' : 'movie'} variant={isUpcoming ? 'upcoming' : 'default'} />
               ))}
             </div>
 

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 const GENRES = [
   { value: 'documentary', label: 'Documentaries', emoji: '🎬' },
   { value: 'reality', label: 'Reality TV', emoji: '📺' },
+  { value: 'upcoming', label: 'Coming Soon', emoji: '🔜' },
 ];
 
 export default function GenreSwitcher() {

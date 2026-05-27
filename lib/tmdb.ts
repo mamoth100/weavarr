@@ -93,6 +93,26 @@ export async function getWatchProviders(
   return data.results?.[country] ?? null;
 }
 
+export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> {
+  const today = new Date().toISOString().slice(0, 10);
+  const sixMonths = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10);
+  const params = new URLSearchParams({
+    with_genres: '99',
+    sort_by: 'primary_release_date.asc',
+    'primary_release_date.gte': today,
+    'primary_release_date.lte': sixMonths,
+    'vote_count.gte': '0',
+    page: String(page),
+    include_adult: 'false',
+  });
+  const res = await fetch(`${BASE_URL}/discover/movie?${params}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb upcoming failed: ${res.status}`);
+  return res.json();
+}
+
 export async function discoverTv({
   page = 1,
   sortBy = 'vote_average.desc',

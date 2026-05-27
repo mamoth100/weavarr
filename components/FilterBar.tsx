@@ -54,6 +54,14 @@ export default function FilterBar({
   }
 
   const isSearching = !!currentQuery;
+  const genre = searchParams.get('genre') ?? 'documentary';
+  const isUpcoming = genre === 'upcoming';
+
+  if (isUpcoming) {
+    return (
+      <p className="text-xs text-zinc-600 py-2">Sorted by release date · next 6 months · documentaries only</p>
+    );
+  }
 
   return (
     <div className="space-y-4">
