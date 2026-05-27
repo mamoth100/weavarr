@@ -3,14 +3,18 @@ interface Props {
   totalPages: number;
   subgenres?: string;
   sort: string;
+  decade?: string;
+  query?: string;
 }
 
-export default function Pagination({ page, totalPages, subgenres, sort }: Props) {
-  const capped = Math.min(totalPages, 500); // TMDb caps at page 500
+export default function Pagination({ page, totalPages, subgenres, sort, decade, query }: Props) {
+  const capped = Math.min(totalPages, 500);
 
   function buildHref(p: number) {
     const params = new URLSearchParams({ sort, page: String(p) });
     if (subgenres) params.set('subgenres', subgenres);
+    if (decade) params.set('decade', decade);
+    if (query) params.set('q', query);
     return `?${params.toString()}`;
   }
 

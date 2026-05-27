@@ -1,26 +1,21 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries } from '@/lib/tmdb';
-import { SUBGENRES, SORT_OPTIONS } from '@/lib/subgenres';
+import { discoverDocumentaries, searchDocumentaries } from '@/lib/tmdb';
+import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import DocCard from '@/components/DocCard';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  // Multi-select: comma-separated subgenre IDs
+  const query = searchParams.q?.trim() ?? '';
   const activeSubgenreIds = searchParams.subgenres
     ? searchParams.subgenres.split(',').filter(Boolean)
     : [];
-
-  const activeSubgenres = SUBGENRES.filter((s) =>
-    activeSubgenreIds.includes(s.id)
-  );
-
-  // Combine all keyword IDs from every selected subgenre
+  const activeSubgenres = SUBGENRES.filter((s) => activeSubgenreIds.includes(s.id));
   const keywordIds = activeSubgenres.flatMap((s) => s.keywordIds);
 
   const sort = (
@@ -29,14 +24,19 @@ export default async function Home({ searchParams }: PageProps) {
       : 'vote_average.desc'
   ) as SortOption;
 
+  const decade = DECADES.find((d) => d.value === searchParams.decade);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
 
-  const data = await discoverDocumentaries({
-    page,
-    sortBy: sort,
-    keywordIds,
-    minVotes: 50,
-  });
+  const data = query
+    ? await searchDocumentaries(query, page)
+    : await discoverDocumentaries({
+        page,
+        sortBy: sort,
+        keywordIds,
+        minVotes: 50,
+        dateGte: decade?.gte,
+        dateLte: decade?.lte,
+      });
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -50,16 +50,18 @@ export default async function Home({ searchParams }: PageProps) {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <Suspense fallback={<div className="h-20 bg-zinc-900 rounded-lg animate-pulse" />}>
+        <Suspense fallback={<div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />}>
           <FilterBar
             activeSubgenres={activeSubgenreIds}
             currentSort={sort}
+            currentDecade={searchParams.decade ?? ''}
+            currentQuery={query}
           />
         </Suspense>
 
         {data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">
-            No documentaries found for this filter.
+            No documentaries found.
           </div>
         ) : (
           <>
@@ -77,6 +79,8 @@ export default async function Home({ searchParams }: PageProps) {
               totalPages={data.total_pages}
               subgenres={searchParams.subgenres}
               sort={sort}
+              decade={searchParams.decade}
+              query={query}
             />
           </>
         )}
@@ -84,3 +88,4 @@ export default async function Home({ searchParams }: PageProps) {
     </main>
   );
 }
+

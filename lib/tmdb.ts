@@ -16,11 +16,15 @@ export async function discoverDocumentaries({
   sortBy = 'vote_average.desc',
   keywordIds = [],
   minVotes = 50,
+  dateGte,
+  dateLte,
 }: {
   page?: number;
   sortBy?: string;
   keywordIds?: number[];
   minVotes?: number;
+  dateGte?: string;
+  dateLte?: string;
 }): Promise<TmdbDiscoverResponse> {
   const params = new URLSearchParams({
     with_genres: '99',
@@ -34,6 +38,8 @@ export async function discoverDocumentaries({
     // | = OR logic: matches any of the keyword IDs
     params.set('with_keywords', keywordIds.join('|'));
   }
+  if (dateGte) params.set('primary_release_date.gte', dateGte);
+  if (dateLte) params.set('primary_release_date.lte', dateLte);
 
   const res = await fetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),

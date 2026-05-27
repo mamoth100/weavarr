@@ -65,10 +65,19 @@ export const SUBGENRES: Subgenre[] = [
   },
 ];
 
-export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'vote_average.desc', label: 'Top Rated' },
-  { value: 'popularity.desc', label: 'Most Popular' },
-  { value: 'release_date.desc', label: 'Newest First' },
-  { value: 'release_date.asc', label: 'Oldest First' },
-  { value: 'vote_count.desc', label: 'Most Reviewed' },
+export const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
+  { value: 'vote_average.desc', label: 'Top Rated', emoji: '⭐' },
+  { value: 'popularity.desc', label: 'Popular', emoji: '🔥' },
+  { value: 'release_date.desc', label: 'Newest', emoji: '🆕' },
+  { value: 'release_date.asc', label: 'Oldest', emoji: '📅' },
+  { value: 'vote_count.desc', label: 'Most Reviewed', emoji: '💬' },
+];
+
+export const DECADES: { label: string; value: string; gte?: string; lte?: string }[] = [
+  { label: 'All Time', value: '' },
+  { label: '2020s', value: '2020s', gte: '2020-01-01', lte: '2029-12-31' },
+  { label: '2010s', value: '2010s', gte: '2010-01-01', lte: '2019-12-31' },
+  { label: '2000s', value: '2000s', gte: '2000-01-01', lte: '2009-12-31' },
+  { label: '1990s', value: '1990s', gte: '1990-01-01', lte: '1999-12-31' },
+  { label: 'Classic', value: 'classic', gte: '1900-01-01', lte: '1989-12-31' },
 ];
