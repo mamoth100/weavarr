@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
-import { getTraktData } from '@/lib/trakt';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
+import TraktScore from '@/components/TraktScore';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
 interface Props {
@@ -25,21 +25,17 @@ export default async function DocumentaryPage({ params }: Props) {
 
   const imdbId = detail.external_ids?.imdb_id ?? null;
 
-  // Fetch all external data in parallel
-  const [omdb, traktData, watchProviders] = await Promise.all([
+  // Fetch external data in parallel (Trakt loaded client-side to avoid Cloudflare block)
+  const [omdb, watchProviders] = await Promise.all([
     imdbId ? getOmdbData(imdbId) : null,
-    imdbId ? getTraktData(imdbId) : { ratings: null, stats: null },
     getWatchProviders(id),
   ]);
-
-  const traktRatings = traktData.ratings;
-  const traktStats = traktData.stats;
 
   const score = computeCompositeScore(
     detail.vote_average,
     detail.vote_count,
     omdb,
-    traktRatings
+    null
   );
 
   const backdropUrl = detail.backdrop_path
@@ -111,11 +107,7 @@ export default async function DocumentaryPage({ params }: Props) {
                   {omdb.Rated}
                 </span>
               )}
-              {traktStats && (
-                <span className="text-zinc-500 text-xs">
-                  👁 {traktStats.watchers.toLocaleString()} watchers on Trakt
-                </span>
-              )}
+
             </div>
 
             {/* Composite score card */}
@@ -138,12 +130,7 @@ export default async function DocumentaryPage({ params }: Props) {
                       <span className="text-zinc-600"> ({omdb?.imdbVotes} votes)</span>
                     </div>
                   )}
-                  {score.traktScore !== null && (
-                    <div>
-                      Trakt: <span className="text-white">{score.traktScore.toFixed(1)}</span>
-                      <span className="text-zinc-600"> ({traktRatings?.votes.toLocaleString()} votes)</span>
-                    </div>
-                  )}
+                  {imdbId && <TraktScore imdbId={imdbId} />}
                   {score.rtScore && (
                     <div>
                       Rotten Tomatoes: <span className="text-white">{score.rtScore}</span>
