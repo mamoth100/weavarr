@@ -69,11 +69,11 @@ export async function getTraktData(imdbId: string): Promise<TraktData> {
   const [ratingsRes, statsRes] = await Promise.all([
     fetch(`${BASE_URL}/${item.type}/${item.slug}/ratings`, {
       headers: traktHeaders(),
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     }),
     fetch(`${BASE_URL}/${item.type}/${item.slug}/stats`, {
       headers: traktHeaders(),
-      next: { revalidate: 3600 },
+      cache: 'no-store',
     }),
   ]);
 
