@@ -33,7 +33,7 @@ export default async function Home({ searchParams }: PageProps) {
         page,
         sortBy: sort,
         keywordIds,
-        minVotes: 50,
+        minVotes: keywordIds.length > 0 ? 5 : 50,
         dateGte: decade?.gte,
         dateLte: decade?.lte,
       });
