@@ -126,9 +126,14 @@ export async function discoverTv({
   dateGte?: string;
   dateLte?: string;
 }): Promise<TmdbDiscoverResponse> {
+  // TV discover uses first_air_date, movies use release_date — translate
+  const tvSortBy = sortBy
+    .replace('release_date.desc', 'first_air_date.desc')
+    .replace('release_date.asc', 'first_air_date.asc');
+
   const params = new URLSearchParams({
     with_genres: '10764',
-    sort_by: sortBy,
+    sort_by: tvSortBy,
     'vote_count.gte': String(minVotes),
     page: String(page),
     include_adult: 'false',
