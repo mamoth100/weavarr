@@ -32,6 +32,7 @@ export interface TmdbDetailResponse extends TmdbMovie {
   runtime: number | null;
   tagline: string;
   videos?: { results: TmdbVideo[] };
+  status?: string;
 }
 
 export interface TmdbDiscoverResponse {

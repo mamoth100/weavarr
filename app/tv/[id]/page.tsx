@@ -105,6 +105,23 @@ export default async function TvPage({ params }: Props) {
               {detail.runtime && detail.runtime > 0 && (
                 <span>{detail.runtime} min / ep</span>
               )}
+              {detail.status && (() => {
+                const s = detail.status;
+                const color =
+                  s === 'Returning Series' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                  s === 'Ended'            ? 'bg-zinc-700/60 text-zinc-400 border-zinc-600' :
+                  s === 'Canceled'         ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                  s === 'In Production'    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                            'bg-zinc-700/60 text-zinc-400 border-zinc-600';
+                return (
+                  <span className={`px-2 py-0.5 rounded-full text-xs border ${color}`}>
+                    {s === 'Returning Series' ? '● Ongoing' :
+                     s === 'Canceled'         ? '✕ Cancelled' :
+                     s === 'In Production'    ? '⟳ In Production' :
+                     s}
+                  </span>
+                );
+              })()}
               {omdb?.Rated && omdb.Rated !== 'N/A' && (
                 <span className="px-1.5 py-0.5 border border-zinc-600 rounded text-xs">
                   {omdb.Rated}
