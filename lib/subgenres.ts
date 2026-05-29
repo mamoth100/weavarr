@@ -156,6 +156,17 @@ export const SUBGENRES: Subgenre[] = [
   },
 ];
 
+export const STREAMING_PROVIDERS: { id: number; name: string; emoji: string }[] = [
+  { id: 8,    name: 'Netflix',    emoji: '🔴' },
+  { id: 9,    name: 'Prime',      emoji: '🔵' },
+  { id: 15,   name: 'Hulu',       emoji: '🟢' },
+  { id: 1899, name: 'Max',        emoji: '🟣' },
+  { id: 337,  name: 'Disney+',    emoji: '✨' },
+  { id: 350,  name: 'Apple TV+',  emoji: '🍎' },
+  { id: 386,  name: 'Peacock',    emoji: '🦚' },
+  { id: 531,  name: 'Paramount+', emoji: '⛰️' },
+];
+
 export const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
   { value: 'vote_average.desc', label: 'Top Rated', emoji: '⭐' },
   { value: 'popularity.desc', label: 'Popular', emoji: '🔥' },

@@ -93,7 +93,7 @@ export async function getWatchProviders(
   return data.results?.[country] ?? null;
 }
 
-export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> {
+export async function discoverUpcoming(page = 1, providerIds: number[] = []): Promise<TmdbDiscoverResponse> {
   const today = new Date().toISOString().slice(0, 10);
   const sixMonths = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10);
   const params = new URLSearchParams({
@@ -105,6 +105,10 @@ export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> 
     page: String(page),
     include_adult: 'false',
   });
+  if (providerIds.length > 0) {
+    params.set('with_watch_providers', providerIds.join('|'));
+    params.set('watch_region', 'US');
+  }
   const res = await fetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
