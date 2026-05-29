@@ -8,7 +8,7 @@ import GenreSwitcher from '@/components/GenreSwitcher';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; providers?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
@@ -31,12 +31,8 @@ export default async function Home({ searchParams }: PageProps) {
   const decade = DECADES.find((d) => d.value === searchParams.decade);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
 
-  const providerIds = searchParams.providers
-    ? searchParams.providers.split(',').map(Number).filter(Boolean)
-    : [];
-
   const data = isUpcoming
-    ? await discoverUpcoming(page, providerIds)
+    ? await discoverUpcoming(page)
     : isReality
     ? await discoverTv({
         page,
@@ -106,7 +102,6 @@ export default async function Home({ searchParams }: PageProps) {
               decade={searchParams.decade}
               query={query}
               genre={genre}
-              providers={searchParams.providers}
             />
           </>
         )}

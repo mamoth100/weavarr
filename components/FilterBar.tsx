@@ -56,49 +56,10 @@ export default function FilterBar({
   const isSearching = !!currentQuery;
   const genre = searchParams.get('genre') ?? 'documentary';
   const isUpcoming = genre === 'upcoming';
-  const activeProviderIds = (searchParams.get('providers') ?? '')
-    .split(',')
-    .filter(Boolean)
-    .map(Number);
-
-  function toggleProvider(id: number) {
-    const next = activeProviderIds.includes(id)
-      ? activeProviderIds.filter((p) => p !== id)
-      : [...activeProviderIds, id];
-    navigate({ providers: next.length ? next.join(',') : undefined });
-  }
 
   if (isUpcoming) {
     return (
-      <div className="space-y-3">
-        <p className="text-xs text-zinc-600">Sorted by release date · next 6 months · documentaries only</p>
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Service</span>
-          <button
-            onClick={() => navigate({ providers: undefined })}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              activeProviderIds.length === 0
-                ? 'bg-amber-500 text-black'
-                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-            }`}
-          >
-            All
-          </button>
-          {STREAMING_PROVIDERS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => toggleProvider(p.id)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                activeProviderIds.includes(p.id)
-                  ? 'bg-amber-500 text-black'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              {p.emoji} {p.name}
-            </button>
-          ))}
-        </div>
-      </div>
+      <p className="text-xs text-zinc-600 py-2">Sorted by release date · next 6 months · documentaries only</p>
     );
   }
 
