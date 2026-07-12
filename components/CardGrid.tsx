@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import DocCard from './DocCard';
@@ -12,19 +13,34 @@ interface Props {
 }
 
 export default function CardGrid({ items, mediaType, variant = 'default' }: Props) {
-  const { isWatched, isSucks } = useWatchlist();
+  const { loaded, watchedItems, sucksItems } = useWatchlist();
   const searchParams = useSearchParams();
   const hideWatched = searchParams.get('show') !== 'all';
   const showSucks = searchParams.get('sucks') === 'show';
 
+  // Snapshot the watched/sucks sets ONCE after initial Supabase load so that
+  // marking items during this session doesn't immediately remove them from view.
+  const [snapshotWatched, setSnapshotWatched] = useState<Set<string>>(new Set());
+  const [snapshotSucks, setSnapshotSucks] = useState<Set<string>>(new Set());
+  const snapped = useRef(false);
+
+  useEffect(() => {
+    if (loaded && !snapped.current) {
+      snapped.current = true;
+      setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
+      setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
+    }
+  }, [loaded, watchedItems, sucksItems]);
+
   const filtered = items.filter((doc) => {
-    if (hideWatched && isWatched(doc.id, mediaType)) return false;
-    if (!showSucks && isSucks(doc.id, mediaType)) return false;
+    const key = `${doc.id}:${mediaType}`;
+    if (hideWatched && snapshotWatched.has(key)) return false;
+    if (!showSucks && snapshotSucks.has(key)) return false;
     return true;
   });
 
-  const hiddenWatchedCount = hideWatched ? items.filter((doc) => isWatched(doc.id, mediaType)).length : 0;
-  const hiddenSucksCount = !showSucks ? items.filter((doc) => isSucks(doc.id, mediaType)).length : 0;
+  const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${mediaType}`)).length : 0;
+  const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${mediaType}`)).length : 0;
 
   return (
     <>

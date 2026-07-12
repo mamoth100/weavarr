@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
@@ -12,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { watchedKey, type WatchlistItem } from '@/lib/watchlist';
 
 interface WatchlistContextValue {
+  loaded: boolean;
   favorites: WatchlistItem[];
   addFavorite: (item: WatchlistItem) => void;
   removeFavorite: (id: number, mediaType: string) => void;
@@ -49,6 +51,8 @@ function toRow(item: WatchlistItem) {
 }
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
+  const [loaded, setLoaded] = useState(false);
+  const loadCount = useRef(0);
   const [favorites, setFavorites] = useState<WatchlistItem[]>([]);
   const [watchedItems, setWatchedItems] = useState<WatchlistItem[]>([]);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
@@ -56,8 +60,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [sucksSet, setSucksSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    const done = () => { loadCount.current += 1; if (loadCount.current >= 3) setLoaded(true); };
     supabase.from('favorites').select('*').then(({ data }) => {
       if (data) setFavorites(data.map(rowToItem));
+      done();
     });
     supabase.from('watched').select('*').then(({ data }) => {
       if (data) {
@@ -65,6 +71,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         setWatchedItems(items);
         setWatchedSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
       }
+      done();
     });
     supabase.from('sucks').select('*').then(({ data }) => {
       if (data) {
@@ -72,6 +79,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         setSucksItems(items);
         setSucksSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
       }
+      done();
     });
   }, []);
 
@@ -159,7 +167,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
   return (
     <WatchlistContext.Provider
-      value={{ favorites, addFavorite, removeFavorite, isFavorite, watchedItems, toggleWatched, isWatched, sucksItems, addSucks, removeSucks, isSucks }}
+      value={{ loaded, favorites, addFavorite, removeFavorite, isFavorite, watchedItems, toggleWatched, isWatched, sucksItems, addSucks, removeSucks, isSucks }}
     >
       {children}
     </WatchlistContext.Provider>
