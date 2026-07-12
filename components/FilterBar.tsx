@@ -105,7 +105,8 @@ export default function FilterBar({
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Watched</span>
             <button
-              onClick={() => navigate({ show: undefined })}\n              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ show: undefined })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 searchParams.get('show') !== 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
