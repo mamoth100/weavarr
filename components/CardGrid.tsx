@@ -33,6 +33,13 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
     }
   }, [loaded, watchedItems, sucksItems]);
 
+  // Keep sucks snapshot live so items disappear immediately when thumbs-downed
+  useEffect(() => {
+    if (snapped.current) {
+      setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
+    }
+  }, [sucksItems]);
+
   const filtered = items.filter((doc) => {
     const key = `${doc.id}:${mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
