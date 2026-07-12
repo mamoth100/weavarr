@@ -134,9 +134,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
     setSucksSet((prev) => new Set(Array.from(prev).concat([watchedKey(item.id, item.mediaType)])));
     supabase.from('sucks').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' }).then();
-    // Remove from favorites when marked as sucks
+    // Remove from favorites and watched
     setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
     supabase.from('favorites').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+    setWatchedItems((prev) => prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType)));
+    setWatchedSet((prev) => { const next = new Set(Array.from(prev)); next.delete(watchedKey(item.id, item.mediaType)); return next; });
+    supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
   }, []);
 
   const removeSucks = useCallback((id: number, mediaType: string) => {
