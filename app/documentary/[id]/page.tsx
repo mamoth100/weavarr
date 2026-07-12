@@ -6,6 +6,7 @@ import { getOmdbData } from '@/lib/omdb';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
+import DetailActions from '@/components/DetailActions';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
 interface Props {
@@ -114,6 +115,14 @@ export default async function DocumentaryPage({ params }: Props) {
               )}
 
             </div>
+
+            <DetailActions
+              id={detail.id}
+              mediaType="movie"
+              title={detail.title}
+              poster_path={detail.poster_path}
+              release_date={detail.release_date ?? ''}
+            />
 
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
