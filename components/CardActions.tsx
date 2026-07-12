@@ -9,6 +9,7 @@ interface Props {
   title: string;
   poster_path: string | null;
   release_date: string;
+  original_language?: string;
 }
 
 export default function CardActions({
@@ -17,6 +18,7 @@ export default function CardActions({
   title,
   poster_path,
   release_date,
+  original_language,
 }: Props) {
   const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
     useWatchlist();
@@ -24,7 +26,7 @@ export default function CardActions({
   const favorited = isFavorite(id, mediaType);
   const watched = isWatched(id, mediaType);
   const sucks = isSucks(id, mediaType);
-  const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
+  const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, original_language, addedAt: Date.now() };
 
   function handleFavorite(e: React.MouseEvent) {
     e.preventDefault();

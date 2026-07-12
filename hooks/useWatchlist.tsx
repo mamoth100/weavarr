@@ -36,6 +36,7 @@ function rowToItem(row: Record<string, unknown>): WatchlistItem {
     title: row.title as string,
     poster_path: (row.poster_path as string | null) ?? null,
     release_date: (row.release_date as string) ?? '',
+    original_language: (row.original_language as string | undefined) ?? undefined,
     addedAt: new Date(((row.added_at ?? row.watched_at) as string)).getTime(),
   };
 }
@@ -47,6 +48,7 @@ function toRow(item: WatchlistItem) {
     title: item.title,
     poster_path: item.poster_path,
     release_date: item.release_date,
+    original_language: item.original_language ?? null,
   };
 }
 

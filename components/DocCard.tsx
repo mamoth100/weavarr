@@ -44,6 +44,7 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
         title={doc.title}
         poster_path={doc.poster_path}
         release_date={doc.release_date ?? ''}
+        original_language={doc.original_language}
       />
       <Link href={href}>
         <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">

@@ -149,6 +149,13 @@ export default function FavoritesPage() {
                           />
                         </svg>
                       </button>
+
+                      {/* Language badge — bottom-right */}
+                      {item.original_language && (
+                        <div className="absolute bottom-2 right-2 bg-zinc-900/80 text-zinc-300 text-xs px-1.5 py-0.5 rounded">
+                          {(() => { try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(item.original_language) ?? item.original_language; } catch { return item.original_language; } })()}
+                        </div>
+                      )}
                     </div>
 
                     <Link href={href}>

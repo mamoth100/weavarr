@@ -4,6 +4,7 @@ export interface WatchlistItem {
   title: string;
   poster_path: string | null;
   release_date: string;
+  original_language?: string;
   addedAt: number;
 }
 
