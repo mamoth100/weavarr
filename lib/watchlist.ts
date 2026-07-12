@@ -38,5 +38,5 @@ export function loadWatched(): Set<string> {
 }
 
 export function saveWatched(watched: Set<string>): void {
-  localStorage.setItem(WATCHED_KEY, JSON.stringify([...watched]));
+  localStorage.setItem(WATCHED_KEY, JSON.stringify(Array.from(watched)));
 }
