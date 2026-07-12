@@ -26,12 +26,12 @@ export function flyToTarget(
     opacity: 0.85;
     pointer-events: none;
     z-index: 9999;
-    transition: left 0.45s cubic-bezier(0.4,0,0.2,1),
-                top 0.45s cubic-bezier(0.4,0,0.2,1),
-                width 0.45s cubic-bezier(0.4,0,0.2,1),
-                height 0.45s cubic-bezier(0.4,0,0.2,1),
-                opacity 0.45s ease,
-                border-radius 0.45s ease;
+    transition: left 0.65s cubic-bezier(0.4,0,0.2,1),
+                top 0.65s cubic-bezier(0.4,0,0.2,1),
+                width 0.65s cubic-bezier(0.4,0,0.2,1),
+                height 0.65s cubic-bezier(0.4,0,0.2,1),
+                opacity 0.65s ease,
+                border-radius 0.65s ease;
     ${posterUrl
       ? `background-image: url(${posterUrl}); background-size: cover; background-position: center;`
       : 'background: rgba(113,113,122,0.7);'}
