@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
+import BackLink from '@/components/BackLink';
 
 export default function SucksPage() {
   const { sucksItems, removeSucks } = useWatchlist();
@@ -18,9 +19,7 @@ export default function SucksPage() {
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">Things that suck</p>
           </div>
-          <Link href="/" className="text-sm text-zinc-400 hover:text-amber-400 transition-colors">
-            ← Back to discovery
-          </Link>
+          <BackLink />
         </div>
       </header>
 
