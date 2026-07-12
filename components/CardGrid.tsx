@@ -42,6 +42,18 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${mediaType}`)).length : 0;
 
+  // Wait until Supabase has loaded before rendering so the filter is
+  // applied on the very first paint — no flash of unfiltered items.
+  if (!snapped.current && !loaded) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={i} className="aspect-[2/3] bg-zinc-800 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
       {(hiddenWatchedCount > 0 || hiddenSucksCount > 0) && (
