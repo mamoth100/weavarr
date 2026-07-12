@@ -11,6 +11,7 @@ interface Props {
   currentDecade: string;
   currentQuery: string;
   currentLang: string;
+  currentYear: string;
 }
 
 export default function FilterBar({
@@ -19,10 +20,12 @@ export default function FilterBar({
   currentDecade,
   currentQuery,
   currentLang,
+  currentYear,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(currentQuery);
+  const [yearInput, setYearInput] = useState(currentYear);
 
   function navigate(updates: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -98,6 +101,31 @@ export default function FilterBar({
         </p>
       ) : (
         <>
+          {/* Watched filter */}
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Watched</span>
+            <button
+              onClick={() => navigate({ show: undefined })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                searchParams.get('show') !== 'all'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              Hide watched
+            </button>
+            <button
+              onClick={() => navigate({ show: 'all' })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                searchParams.get('show') === 'all'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              Show all
+            </button>
+          </div>
+
           {/* Language toggle */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Language</span>
@@ -141,15 +169,15 @@ export default function FilterBar({
             ))}
           </div>
 
-          {/* Decade filter */}
+          {/* Era + specific year */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Era</span>
             {DECADES.map((d) => (
               <button
                 key={d.value}
-                onClick={() => navigate({ decade: d.value || undefined })}
+                onClick={() => navigate({ decade: d.value || undefined, year: undefined })}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  currentDecade === d.value
+                  currentDecade === d.value && !currentYear
                     ? 'bg-amber-500 text-black'
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
@@ -157,6 +185,39 @@ export default function FilterBar({
                 {d.label}
               </button>
             ))}
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={yearInput}
+                onChange={(e) => setYearInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const y = yearInput.trim();
+                    navigate({ year: y.length === 4 ? y : undefined, decade: undefined });
+                  }
+                  if (e.key === 'Escape') {
+                    setYearInput('');
+                    navigate({ year: undefined });
+                  }
+                }}
+                placeholder="Year"
+                className={`w-20 bg-zinc-800 text-white text-sm rounded-full px-3 py-1.5 border transition-colors focus:outline-none placeholder:text-zinc-600 ${
+                  currentYear
+                    ? 'border-amber-500 text-amber-400'
+                    : 'border-zinc-700 focus:border-amber-500'
+                }`}
+              />
+              {currentYear && (
+                <button
+                  onClick={() => { setYearInput(''); navigate({ year: undefined }); }}
+                  className="absolute right-2 text-zinc-500 hover:text-white transition"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Subgenre chips — documentary only */}
