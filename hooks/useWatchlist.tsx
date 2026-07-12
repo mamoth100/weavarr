@@ -48,6 +48,12 @@ function toRow(item: WatchlistItem) {
     title: item.title,
     poster_path: item.poster_path,
     release_date: item.release_date,
+  };
+}
+
+function toFavoritesRow(item: WatchlistItem) {
+  return {
+    ...toRow(item),
     original_language: item.original_language ?? null,
   };
 }
@@ -90,7 +96,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       if (prev.some((f) => f.id === item.id && f.mediaType === item.mediaType)) return prev;
       return [...prev, item];
     });
-    supabase.from('favorites').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' }).then();
+    supabase.from('favorites').upsert(toFavoritesRow(item), { onConflict: 'tmdb_id,media_type' }).then();
   }, []);
 
   const removeFavorite = useCallback((id: number, mediaType: string) => {
