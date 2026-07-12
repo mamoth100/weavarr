@@ -37,6 +37,8 @@ export default async function Home({ searchParams }: PageProps) {
   const yearParam = searchParams.year?.match(/^\d{4}$/) ? searchParams.year : null;
   const dateGte = yearParam ? `${yearParam}-01-01` : decade?.gte;
   const dateLte = yearParam ? `${yearParam}-12-31` : decade?.lte;
+  const currentYear = new Date().getFullYear().toString();
+  const minVotes = yearParam === currentYear ? 3 : 50;
 
   const data = isUpcoming
     ? await discoverUpcoming(page)
@@ -44,7 +46,7 @@ export default async function Home({ searchParams }: PageProps) {
     ? await discoverTv({
         page,
         sortBy: sort,
-        minVotes: 50,
+        minVotes,
         dateGte,
         dateLte,
         language,
@@ -55,7 +57,7 @@ export default async function Home({ searchParams }: PageProps) {
         page,
         sortBy: sort,
         keywordIds,
-        minVotes: keywordIds.length > 0 ? 5 : 50,
+        minVotes: keywordIds.length > 0 ? 5 : minVotes,
         dateGte,
         dateLte,
         language,
