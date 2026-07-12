@@ -54,6 +54,12 @@ export default function FavoritesPage() {
                 const year = item.release_date
                   ? new Date(item.release_date).getFullYear()
                   : null;
+                const isUpcoming = item.release_date
+                  ? new Date(item.release_date + 'T00:00:00') > new Date()
+                  : false;
+                const releaseDateLabel = item.release_date
+                  ? new Date(item.release_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : null;
 
                 return (
                   <div key={`${item.mediaType}-${item.id}`} className="group">
@@ -73,6 +79,13 @@ export default function FavoritesPage() {
                           </div>
                         )}
                       </Link>
+
+                      {/* Upcoming release date badge — top-right */}
+                      {isUpcoming && releaseDateLabel && (
+                        <div className="absolute top-2 right-2 bg-amber-400 text-zinc-950 text-xs font-semibold px-2 py-1 rounded-md">
+                          {releaseDateLabel}
+                        </div>
+                      )}
 
                       {/* Watched toggle */}
                       <button
