@@ -1,14 +1,29 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { WatchlistProvider } from '@/hooks/useWatchlist';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const viewport: Viewport = {
+  themeColor: '#09090b',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: 'DocuView — Documentary Discovery',
-  description:
-    'Discover, sort, and filter the best documentaries across every genre.',
+  description: 'Discover, sort, and filter the best documentaries across every genre.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'DocuView',
+  },
+  icons: {
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({
