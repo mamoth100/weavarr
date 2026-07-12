@@ -43,25 +43,21 @@ export default async function Home({ searchParams }: PageProps) {
   const data = isUpcoming
     ? await discoverUpcoming(page)
     : isReality
-    ? await discoverTv({
-        page,
-        sortBy: sort,
-        minVotes,
-        dateGte,
-        dateLte,
-        language,
-      })
+    ? await (async () => {
+        const p1 = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language });
+        if (p1.total_pages <= page) return p1;
+        const p2 = await discoverTv({ page: page + 1, sortBy: sort, minVotes, dateGte, dateLte, language });
+        return { ...p1, results: [...p1.results, ...p2.results] };
+      })()
     : query
     ? await searchDocumentaries(query, page)
-    : await discoverDocumentaries({
-        page,
-        sortBy: sort,
-        keywordIds,
-        minVotes: keywordIds.length > 0 ? 5 : minVotes,
-        dateGte,
-        dateLte,
-        language,
-      });
+    : await (async () => {
+        const args = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
+        const p1 = await discoverDocumentaries(args);
+        if (p1.total_pages <= page) return p1;
+        const p2 = await discoverDocumentaries({ ...args, page: page + 1 });
+        return { ...p1, results: [...p1.results, ...p2.results] };
+      })();
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">

@@ -106,17 +106,19 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     (item: WatchlistItem) => {
       const key = watchedKey(item.id, item.mediaType);
       if (watchedSet.has(key)) {
-        setWatchedItems((prev) =>
-          prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType))
-        );
-        setWatchedSet((prev) => {
-          const next = new Set(Array.from(prev));
-          next.delete(key);
+        setWatchedItems((prev) => {
+          const next = prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType));
+          try { localStorage.setItem('dv_watched_keys', JSON.stringify(next.map((i) => watchedKey(i.id, i.mediaType)))); } catch {}
           return next;
         });
+        setWatchedSet((prev) => { const next = new Set(Array.from(prev)); next.delete(key); return next; });
         supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
       } else {
-        setWatchedItems((prev) => [...prev, item]);
+        setWatchedItems((prev) => {
+          const next = [...prev, item];
+          try { localStorage.setItem('dv_watched_keys', JSON.stringify(next.map((i) => watchedKey(i.id, i.mediaType)))); } catch {}
+          return next;
+        });
         setWatchedSet((prev) => new Set(Array.from(prev).concat([key])));
         supabase.from('watched').upsert(
           { ...toRow(item), watched_at: new Date().toISOString() },

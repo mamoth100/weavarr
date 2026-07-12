@@ -37,7 +37,7 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     return true;
-  });
+  }).slice(0, 20);
 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${mediaType}`)).length : 0;
