@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import type { WatchlistItem } from '@/lib/watchlist';
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function DetailActions({ id, mediaType, title, poster_path, release_date }: Props) {
+  const router = useRouter();
   const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
     useWatchlist();
 
@@ -64,7 +66,9 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
 
       {/* Sucks */}
       <button
-        onClick={() => sucks ? removeSucks(id, mediaType) : addSucks(item)}
+        onClick={() => {
+          if (sucks) { removeSucks(id, mediaType); } else { addSucks(item); router.back(); }
+        }}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
           ${sucks
             ? 'bg-red-600 text-white hover:bg-red-500'
