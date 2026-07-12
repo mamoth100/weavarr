@@ -67,12 +67,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       if (prev.some((f) => f.id === item.id && f.mediaType === item.mediaType)) return prev;
       return [...prev, item];
     });
-    supabase.from('favorites').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' });
+    supabase.from('favorites').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' }).then();
   }, []);
 
   const removeFavorite = useCallback((id: number, mediaType: string) => {
     setFavorites((prev) => prev.filter((f) => !(f.id === id && f.mediaType === mediaType)));
-    supabase.from('favorites').delete().eq('tmdb_id', id).eq('media_type', mediaType);
+    supabase.from('favorites').delete().eq('tmdb_id', id).eq('media_type', mediaType).then();
   }, []);
 
   const isFavorite = useCallback(
@@ -93,14 +93,14 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           next.delete(key);
           return next;
         });
-        supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType);
+        supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
       } else {
         setWatchedItems((prev) => [...prev, item]);
         setWatchedSet((prev) => new Set(Array.from(prev).concat([key])));
         supabase.from('watched').upsert(
           { ...toRow(item), watched_at: new Date().toISOString() },
           { onConflict: 'tmdb_id,media_type' }
-        );
+        ).then();
       }
     },
     [watchedSet]
