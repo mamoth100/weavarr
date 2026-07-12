@@ -15,8 +15,9 @@ interface Props {
 export default function CardGrid({ items, mediaType, variant = 'default' }: Props) {
   const { loaded, watchedItems, sucksItems } = useWatchlist();
   const searchParams = useSearchParams();
-  const hideWatched = searchParams.get('show') !== 'all';
-  const showSucks = searchParams.get('sucks') === 'show';
+  const isSearching = !!searchParams.get('q');
+  const hideWatched = !isSearching && searchParams.get('show') !== 'all';
+  const showSucks = isSearching || searchParams.get('sucks') === 'show';
 
   // Snapshot the watched/sucks sets ONCE after initial Supabase load so that
   // marking items during this session doesn't immediately remove them from view.
