@@ -101,6 +101,9 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           { ...toRow(item), watched_at: new Date().toISOString() },
           { onConflict: 'tmdb_id,media_type' }
         ).then();
+        // Remove from favorites when marked watched
+        setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
+        supabase.from('favorites').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
       }
     },
     [watchedSet]
