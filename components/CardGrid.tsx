@@ -40,6 +40,13 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
     }
   }, [sucksItems]);
 
+  // Keep watched snapshot live so items disappear immediately when marked watched
+  useEffect(() => {
+    if (snapped.current) {
+      setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
+    }
+  }, [watchedItems]);
+
   const filtered = items.filter((doc) => {
     const key = `${doc.id}:${mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
