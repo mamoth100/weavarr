@@ -11,6 +11,7 @@ export interface TmdbMovie {
   genres?: { id: number; name: string }[];
   popularity: number;
   original_language?: string;
+  spoken_language?: string; // enriched server-side from detail endpoint
 }
 
 export interface TmdbKeyword {

@@ -12,6 +12,27 @@ function authHeaders() {
 
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
+/** Fetch the primary spoken language for a single movie/TV item. Cached 24h. */
+async function fetchSpokenLanguage(id: number, mediaType: 'movie' | 'tv'): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/${mediaType}/${id}?fields=spoken_languages`, {
+      headers: authHeaders(),
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.spoken_languages as { english_name: string }[] | undefined)?.[0]?.english_name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Enrich a list of TmdbMovie results with accurate spoken_language. Runs in parallel. */
+export async function enrichWithLanguage<T extends { id: number; spoken_language?: string }>(items: T[], mediaType: 'movie' | 'tv'): Promise<T[]> {
+  const languages = await Promise.all(items.map((item) => fetchSpokenLanguage(item.id, mediaType)));
+  return items.map((item, i) => ({ ...item, spoken_language: languages[i] ?? undefined }));
+}
+
 export async function discoverDocumentaries({
   page = 1,
   sortBy = 'vote_average.desc',

@@ -70,9 +70,9 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               <ScoreBadge score={doc.vote_average} size="sm" />
             )}
           </div>
-          {doc.original_language && (
+          {(doc.spoken_language ?? doc.original_language) && (
             <div className="absolute bottom-2 right-2 bg-zinc-900/80 text-zinc-300 text-xs px-1.5 py-0.5 rounded">
-              {getLanguageName(doc.original_language)}
+              {doc.spoken_language ?? getLanguageName(doc.original_language!)}
             </div>
           )}
         </div>

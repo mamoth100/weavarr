@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries, enrichWithLanguage } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
@@ -58,6 +58,9 @@ export default async function Home({ searchParams }: PageProps) {
         const p2 = await discoverDocumentaries({ ...args, page: page + 1 });
         return { ...p1, results: [...p1.results, ...p2.results] };
       })();
+
+  const mediaType = isReality ? 'tv' : 'movie';
+  const enriched = isUpcoming ? data : { ...data, results: await enrichWithLanguage(data.results, mediaType) };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -135,8 +138,8 @@ export default async function Home({ searchParams }: PageProps) {
             </p>
             <Suspense fallback={<div className="h-64 bg-zinc-900 rounded-lg animate-pulse" />}>
               <CardGrid
-                items={data.results}
-                mediaType={isReality ? 'tv' : 'movie'}
+                items={enriched.results}
+                mediaType={mediaType}
                 variant={isUpcoming ? 'upcoming' : 'default'}
               />
             </Suspense>
