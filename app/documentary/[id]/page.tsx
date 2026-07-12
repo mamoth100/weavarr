@@ -84,6 +84,9 @@ export default async function DocumentaryPage({ params }: Props) {
       <div
         className={`max-w-5xl mx-auto px-4 py-8 ${backdropUrl ? '-mt-28 relative z-10' : ''}`}
       >
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors mb-6">
+          ← Back to Browse
+        </Link>
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster */}
           {posterUrl && (
