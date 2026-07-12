@@ -55,12 +55,25 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <header className="border-b border-zinc-800 px-6 py-5">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Docu<span className="text-amber-400">View</span>
-        </h1>
-        <p className="text-zinc-500 text-sm mt-0.5">
-          {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Docu<span className="text-amber-400">View</span>
+            </h1>
+            <p className="text-zinc-500 text-sm mt-0.5">
+              {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
+            </p>
+          </div>
+          <a
+            href="/favorites"
+            className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors mt-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+            Favorites
+          </a>
+        </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">

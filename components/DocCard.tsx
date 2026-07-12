@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import ScoreBadge from './ScoreBadge';
+import CardActions from './CardActions';
 import type { TmdbMovie } from '@/types';
 
 interface Props {
@@ -27,6 +28,13 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
   return (
     <Link href={href} className="group">
       <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
+        <CardActions
+          id={doc.id}
+          mediaType={mediaType}
+          title={doc.title}
+          poster_path={doc.poster_path}
+          release_date={doc.release_date ?? ''}
+        />
         {posterUrl ? (
           <Image
             src={posterUrl}
