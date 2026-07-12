@@ -73,6 +73,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
           <div className="flex items-center gap-4 mt-1">
               <a
+                id="nav-favorites"
                 href="/favorites"
                 className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
               >
@@ -82,6 +83,7 @@ export default async function Home({ searchParams }: PageProps) {
                 Favorites
               </a>
               <a
+                id="nav-watched"
                 href="/watched"
                 className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
               >
@@ -91,6 +93,7 @@ export default async function Home({ searchParams }: PageProps) {
                 Watched
               </a>
               <a
+                id="nav-sucks"
                 href="/sucks"
                 className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-red-400 transition-colors"
               >

@@ -1,7 +1,10 @@
 'use client';
 
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { flyToTarget } from '@/lib/flyAnimation';
 import type { WatchlistItem } from '@/lib/watchlist';
+
+const TMDB_SMALL = 'https://image.tmdb.org/t/p/w92';
 
 interface Props {
   id: number;
@@ -34,6 +37,7 @@ export default function CardActions({
     if (favorited) {
       removeFavorite(id, mediaType);
     } else {
+      flyToTarget(e.currentTarget as HTMLElement, 'nav-favorites', poster_path ? `${TMDB_SMALL}${poster_path}` : null);
       addFavorite(item);
     }
   }
@@ -41,14 +45,21 @@ export default function CardActions({
   function handleWatched(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!isWatched(id, mediaType)) {
+      flyToTarget(e.currentTarget as HTMLElement, 'nav-watched', poster_path ? `${TMDB_SMALL}${poster_path}` : null);
+    }
     toggleWatched(item);
   }
 
   function handleSucks(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (sucks) removeSucks(id, mediaType);
-    else addSucks(item);
+    if (sucks) {
+      removeSucks(id, mediaType);
+    } else {
+      flyToTarget(e.currentTarget as HTMLElement, 'nav-sucks', poster_path ? `${TMDB_SMALL}${poster_path}` : null);
+      addSucks(item);
+    }
   }
 
   return (
