@@ -19,6 +19,10 @@ interface WatchlistContextValue {
   watchedItems: WatchlistItem[];
   toggleWatched: (item: WatchlistItem) => void;
   isWatched: (id: number, mediaType: string) => boolean;
+  sucksItems: WatchlistItem[];
+  addSucks: (item: WatchlistItem) => void;
+  removeSucks: (id: number, mediaType: string) => void;
+  isSucks: (id: number, mediaType: string) => boolean;
 }
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
@@ -48,6 +52,8 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<WatchlistItem[]>([]);
   const [watchedItems, setWatchedItems] = useState<WatchlistItem[]>([]);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
+  const [sucksItems, setSucksItems] = useState<WatchlistItem[]>([]);
+  const [sucksSet, setSucksSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.from('favorites').select('*').then(({ data }) => {
@@ -58,6 +64,13 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         const items = data.map(rowToItem);
         setWatchedItems(items);
         setWatchedSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
+      }
+    });
+    supabase.from('sucks').select('*').then(({ data }) => {
+      if (data) {
+        const items = data.map(rowToItem);
+        setSucksItems(items);
+        setSucksSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
       }
     });
   }, []);
@@ -114,9 +127,36 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     [watchedSet]
   );
 
+  const addSucks = useCallback((item: WatchlistItem) => {
+    setSucksItems((prev) => {
+      if (prev.some((s) => s.id === item.id && s.mediaType === item.mediaType)) return prev;
+      return [...prev, item];
+    });
+    setSucksSet((prev) => new Set(Array.from(prev).concat([watchedKey(item.id, item.mediaType)])));
+    supabase.from('sucks').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' }).then();
+    // Remove from favorites when marked as sucks
+    setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
+    supabase.from('favorites').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+  }, []);
+
+  const removeSucks = useCallback((id: number, mediaType: string) => {
+    setSucksItems((prev) => prev.filter((s) => !(s.id === id && s.mediaType === mediaType)));
+    setSucksSet((prev) => {
+      const next = new Set(Array.from(prev));
+      next.delete(watchedKey(id, mediaType));
+      return next;
+    });
+    supabase.from('sucks').delete().eq('tmdb_id', id).eq('media_type', mediaType).then();
+  }, []);
+
+  const isSucks = useCallback(
+    (id: number, mediaType: string) => sucksSet.has(watchedKey(id, mediaType)),
+    [sucksSet]
+  );
+
   return (
     <WatchlistContext.Provider
-      value={{ favorites, addFavorite, removeFavorite, isFavorite, watchedItems, toggleWatched, isWatched }}
+      value={{ favorites, addFavorite, removeFavorite, isFavorite, watchedItems, toggleWatched, isWatched, sucksItems, addSucks, removeSucks, isSucks }}
     >
       {children}
     </WatchlistContext.Provider>

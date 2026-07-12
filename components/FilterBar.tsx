@@ -126,6 +126,31 @@ export default function FilterBar({
             </button>
           </div>
 
+          {/* Sucks filter */}
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Sucks</span>
+            <button
+              onClick={() => navigate({ sucks: undefined })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                searchParams.get('sucks') !== 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              Hide sucks
+            </button>
+            <button
+              onClick={() => navigate({ sucks: 'show' })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                searchParams.get('sucks') === 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              Show sucks
+            </button>
+          </div>
+
           {/* Language toggle */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Language</span>

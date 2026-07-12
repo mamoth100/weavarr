@@ -12,11 +12,12 @@ interface Props {
 }
 
 export default function DetailActions({ id, mediaType, title, poster_path, release_date }: Props) {
-  const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched } =
+  const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
     useWatchlist();
 
   const favorited = isFavorite(id, mediaType);
   const watched = isWatched(id, mediaType);
+  const sucks = isSucks(id, mediaType);
 
   const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
 
@@ -32,18 +33,8 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
           }`}
         aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       >
-        <svg
-          className="w-4 h-4"
-          fill={favorited ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-          />
+        <svg className="w-4 h-4" fill={favorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
         </svg>
         {favorited ? 'Favorited' : 'Favorite'}
       </button>
@@ -58,13 +49,7 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
           }`}
         aria-label={watched ? 'Mark as unwatched' : 'Mark as watched'}
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={watched ? '2.5' : '2'}
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={watched ? '2.5' : '2'} viewBox="0 0 24 24">
           {watched ? (
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           ) : (
@@ -75,6 +60,22 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
           )}
         </svg>
         {watched ? 'Watched' : 'Mark watched'}
+      </button>
+
+      {/* Sucks */}
+      <button
+        onClick={() => sucks ? removeSucks(id, mediaType) : addSucks(item)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+          ${sucks
+            ? 'bg-red-600 text-white hover:bg-red-500'
+            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+          }`}
+        aria-label={sucks ? 'Remove from sucks' : 'Mark as sucks'}
+      >
+        <svg className="w-4 h-4" fill={sucks ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15h2.25m8.024-9.75c.011.05.028.1.052.148.591 1.2.924 2.55.924 3.977a8.96 8.96 0 01-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.105 1.25-1.987 1.25H14.5m0 0l-4.072 1.957a1.5 1.5 0 01-2.181-1.341V16.5M7.5 15V9.75a.75.75 0 01.75-.75h1.5" />
+        </svg>
+        {sucks ? 'Marked sucks' : 'Sucks'}
       </button>
     </div>
   );
