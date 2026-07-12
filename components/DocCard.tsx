@@ -16,6 +16,14 @@ function formatReleaseDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function getLanguageName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
 export default function DocCard({ doc, mediaType = 'movie', variant = 'default' }: Props) {
   const year = doc.release_date
     ? new Date(doc.release_date).getFullYear()
@@ -57,6 +65,11 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
             <ScoreBadge score={doc.vote_average} size="sm" />
           )}
         </div>
+        {doc.original_language && (
+          <div className="absolute bottom-2 right-2 bg-zinc-900/80 text-zinc-300 text-xs px-1.5 py-0.5 rounded">
+            {getLanguageName(doc.original_language)}
+          </div>
+        )}
       </div>
       <div className="mt-2 px-1">
         <p className="text-sm font-medium leading-tight truncate group-hover:text-amber-400 transition-colors">
