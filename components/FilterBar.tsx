@@ -107,22 +107,22 @@ export default function FilterBar({
             <button
               onClick={() => navigate({ show: undefined })}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                searchParams.get('show') !== 'all'
-                  ? 'bg-amber-500 text-black'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              Hide watched
-            </button>
-            <button
-              onClick={() => navigate({ show: 'all' })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                searchParams.get('show') === 'all'
+                searchParams.get('show') !== 'hide'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
             >
               Show all
+            </button>
+            <button
+              onClick={() => navigate({ show: 'hide' })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                searchParams.get('show') === 'hide'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              Hide watched
             </button>
           </div>
 

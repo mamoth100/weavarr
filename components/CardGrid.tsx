@@ -14,7 +14,7 @@ interface Props {
 export default function CardGrid({ items, mediaType, variant = 'default' }: Props) {
   const { isWatched } = useWatchlist();
   const searchParams = useSearchParams();
-  const showAll = searchParams.get('show') === 'all';
+  const showAll = searchParams.get('show') !== 'hide';
 
   const filtered = showAll
     ? items
