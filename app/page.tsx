@@ -64,15 +64,26 @@ export default async function Home({ searchParams }: PageProps) {
               {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
             </p>
           </div>
-          <a
-            href="/favorites"
-            className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors mt-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-            </svg>
-            Favorites
-          </a>
+          <div className="flex items-center gap-4 mt-1">
+            <a
+              href="/favorites"
+              className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+              Favorites
+            </a>
+            <a
+              href="/watched"
+              className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Watched
+            </a>
+          </div>
         </div>
       </header>
 

@@ -27,16 +27,15 @@ export function saveFavorites(items: WatchlistItem[]): void {
   localStorage.setItem(FAV_KEY, JSON.stringify(items));
 }
 
-export function loadWatched(): Set<string> {
+export function loadWatched(): WatchlistItem[] {
   try {
     const raw = localStorage.getItem(WATCHED_KEY);
-    const arr: string[] = raw ? JSON.parse(raw) : [];
-    return new Set(arr);
+    return raw ? (JSON.parse(raw) as WatchlistItem[]) : [];
   } catch {
-    return new Set();
+    return [];
   }
 }
 
-export function saveWatched(watched: Set<string>): void {
-  localStorage.setItem(WATCHED_KEY, JSON.stringify(Array.from(watched)));
+export function saveWatched(items: WatchlistItem[]): void {
+  localStorage.setItem(WATCHED_KEY, JSON.stringify(items));
 }

@@ -22,7 +22,8 @@ interface WatchlistContextValue {
   addFavorite: (item: WatchlistItem) => void;
   removeFavorite: (id: number, mediaType: string) => void;
   isFavorite: (id: number, mediaType: string) => boolean;
-  toggleWatched: (id: number, mediaType: string) => void;
+  watchedItems: WatchlistItem[];
+  toggleWatched: (item: WatchlistItem) => void;
   isWatched: (id: number, mediaType: string) => boolean;
 }
 
@@ -30,11 +31,16 @@ const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<WatchlistItem[]>([]);
-  const [watched, setWatched] = useState<Set<string>>(new Set());
+  const [watchedItems, setWatchedItems] = useState<WatchlistItem[]>([]);
+  // Fast lookup set derived from watchedItems
+  const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setFavorites(loadFavorites());
-    setWatched(loadWatched());
+    const favs = loadFavorites();
+    const items = loadWatched();
+    setFavorites(favs);
+    setWatchedItems(items);
+    setWatchedSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
   }, []);
 
   const addFavorite = useCallback((item: WatchlistItem) => {
@@ -63,21 +69,25 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     [favorites]
   );
 
-  const toggleWatched = useCallback((id: number, mediaType: string) => {
-    const key = watchedKey(id, mediaType);
-    setWatched((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+  const toggleWatched = useCallback((item: WatchlistItem) => {
+    const key = watchedKey(item.id, item.mediaType);
+    setWatchedItems((prev) => {
+      const exists = prev.some(
+        (w) => w.id === item.id && w.mediaType === item.mediaType
+      );
+      const next = exists
+        ? prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType))
+        : [...prev, { ...item, addedAt: item.addedAt || Date.now() }];
       saveWatched(next);
+      setWatchedSet(new Set(next.map((i) => watchedKey(i.id, i.mediaType))));
       return next;
     });
   }, []);
 
   const isWatched = useCallback(
     (id: number, mediaType: string) =>
-      watched.has(watchedKey(id, mediaType)),
-    [watched]
+      watchedSet.has(watchedKey(id, mediaType)),
+    [watchedSet]
   );
 
   return (
@@ -87,6 +97,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         addFavorite,
         removeFavorite,
         isFavorite,
+        watchedItems,
         toggleWatched,
         isWatched,
       }}

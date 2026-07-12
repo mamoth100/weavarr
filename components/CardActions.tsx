@@ -45,7 +45,7 @@ export default function CardActions({
   function handleWatched(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    toggleWatched(id, mediaType);
+    toggleWatched({ id, mediaType, title, poster_path, release_date, addedAt: Date.now() });
   }
 
   return (

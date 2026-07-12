@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
 
-export default function FavoritesPage() {
-  const { favorites, removeFavorite, isWatched, toggleWatched } =
-    useWatchlist();
+export default function WatchedPage() {
+  const { watchedItems, toggleWatched } = useWatchlist();
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -17,7 +16,7 @@ export default function FavoritesPage() {
             <h1 className="text-2xl font-bold tracking-tight">
               Docu<span className="text-amber-400">View</span>
             </h1>
-            <p className="text-zinc-500 text-sm mt-0.5">Your favorites</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Everything you&apos;ve watched</p>
           </div>
           <Link
             href="/"
@@ -29,21 +28,20 @@ export default function FavoritesPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {favorites.length === 0 ? (
+        {watchedItems.length === 0 ? (
           <div className="text-center py-24">
-            <p className="text-zinc-500 text-lg">No favorites yet.</p>
+            <p className="text-zinc-500 text-lg">Nothing marked as watched yet.</p>
             <p className="text-zinc-600 text-sm mt-2">
-              Hover over any card and tap the heart to save it here.
+              Hover over any card and tap &ldquo;Mark watched&rdquo; to track what you&apos;ve seen.
             </p>
           </div>
         ) : (
           <>
             <p className="text-xs text-zinc-600 mb-4">
-              {favorites.length} saved
+              {watchedItems.length} watched
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {favorites.map((item) => {
-                const watched = isWatched(item.id, item.mediaType);
+              {watchedItems.map((item) => {
                 const href =
                   item.mediaType === 'tv'
                     ? `/tv/${item.id}`
@@ -74,66 +72,29 @@ export default function FavoritesPage() {
                         )}
                       </Link>
 
-                      {/* Watched toggle */}
+                      {/* Always-visible watched badge */}
+                      <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-green-600/90 text-white text-xs font-semibold">
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4.5 12.75l6 6 9-13.5"
+                          />
+                        </svg>
+                        Watched
+                      </div>
+
+                      {/* Remove from watched — top-right on hover */}
                       <button
                         onClick={() => toggleWatched(item)}
-                        className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all duration-200
-                          ${
-                            watched
-                              ? 'bg-green-600/90 text-white opacity-100'
-                              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100'
-                          }`}
-                        aria-label={
-                          watched ? 'Mark as unwatched' : 'Mark as watched'
-                        }
-                      >
-                        {watched ? (
-                          <>
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M4.5 12.75l6 6 9-13.5"
-                              />
-                            </svg>
-                            Watched
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            Mark watched
-                          </>
-                        )}
-                      </button>
-
-                      {/* Remove button — top-right on hover */}
-                      <button
-                        onClick={() => removeFavorite(item.id, item.mediaType)}
                         className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                        aria-label="Remove from favorites"
+                        aria-label="Remove from watched"
                       >
                         <svg
                           className="w-3.5 h-3.5"
