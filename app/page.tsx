@@ -5,7 +5,6 @@ import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
 import GenreSwitcher from '@/components/GenreSwitcher';
-import AuthButton from '@/components/AuthButton';
 import type { SortOption } from '@/types';
 
 interface PageProps {
@@ -74,9 +73,7 @@ export default async function Home({ searchParams }: PageProps) {
               {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2 mt-1">
-            <AuthButton />
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mt-1">
               <a
                 href="/favorites"
                 className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
@@ -96,7 +93,6 @@ export default async function Home({ searchParams }: PageProps) {
                 Watched
               </a>
             </div>
-          </div>
         </div>
       </header>
 
