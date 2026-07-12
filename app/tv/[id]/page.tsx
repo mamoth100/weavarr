@@ -7,6 +7,7 @@ import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
 import DetailActions from '@/components/DetailActions';
+import BackLink from '@/components/BackLink';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
 interface Props {
@@ -82,9 +83,7 @@ export default async function TvPage({ params }: Props) {
       <div
         className={`max-w-5xl mx-auto px-4 py-8 ${backdropUrl ? '-mt-28 relative z-10' : ''}`}
       >
-        <Link href="/?genre=reality" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors mb-6">
-          ← Back to Browse
-        </Link>
+        <BackLink />
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster */}
           {posterUrl && (
