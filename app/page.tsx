@@ -8,7 +8,7 @@ import GenreSwitcher from '@/components/GenreSwitcher';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; lang?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
@@ -30,6 +30,8 @@ export default async function Home({ searchParams }: PageProps) {
 
   const decade = DECADES.find((d) => d.value === searchParams.decade);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10));
+  // 'en' by default; 'all' means no language filter
+  const language = searchParams.lang === 'all' ? '' : 'en';
 
   const data = isUpcoming
     ? await discoverUpcoming(page)
@@ -40,6 +42,7 @@ export default async function Home({ searchParams }: PageProps) {
         minVotes: 50,
         dateGte: decade?.gte,
         dateLte: decade?.lte,
+        language,
       })
     : query
     ? await searchDocumentaries(query, page)
@@ -50,6 +53,7 @@ export default async function Home({ searchParams }: PageProps) {
         minVotes: keywordIds.length > 0 ? 5 : 50,
         dateGte: decade?.gte,
         dateLte: decade?.lte,
+        language,
       });
 
   return (
@@ -100,6 +104,7 @@ export default async function Home({ searchParams }: PageProps) {
             currentSort={sort}
             currentDecade={searchParams.decade ?? ''}
             currentQuery={query}
+            currentLang={searchParams.lang ?? 'en'}
           />
         </Suspense>
 

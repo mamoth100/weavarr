@@ -19,6 +19,7 @@ export async function discoverDocumentaries({
   minVotes = 50,
   dateGte,
   dateLte,
+  language = 'en',
 }: {
   page?: number;
   sortBy?: string;
@@ -26,6 +27,7 @@ export async function discoverDocumentaries({
   minVotes?: number;
   dateGte?: string;
   dateLte?: string;
+  language?: string;
 }): Promise<TmdbDiscoverResponse> {
   const params = new URLSearchParams({
     with_genres: '99',
@@ -35,6 +37,7 @@ export async function discoverDocumentaries({
     include_adult: 'false',
   });
 
+  if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) {
     // | = OR logic: matches any of the keyword IDs
     params.set('with_keywords', keywordIds.join('|'));
@@ -119,12 +122,14 @@ export async function discoverTv({
   minVotes = 50,
   dateGte,
   dateLte,
+  language = 'en',
 }: {
   page?: number;
   sortBy?: string;
   minVotes?: number;
   dateGte?: string;
   dateLte?: string;
+  language?: string;
 }): Promise<TmdbDiscoverResponse> {
   // TV discover uses first_air_date, movies use release_date — translate
   const tvSortBy = sortBy
@@ -139,6 +144,7 @@ export async function discoverTv({
     include_adult: 'false',
   });
 
+  if (language) params.set('with_original_language', language);
   if (dateGte) params.set('first_air_date.gte', dateGte);
   if (dateLte) params.set('first_air_date.lte', dateLte);
 

@@ -10,6 +10,7 @@ interface Props {
   currentSort: SortOption;
   currentDecade: string;
   currentQuery: string;
+  currentLang: string;
 }
 
 export default function FilterBar({
@@ -17,6 +18,7 @@ export default function FilterBar({
   currentSort,
   currentDecade,
   currentQuery,
+  currentLang,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -96,6 +98,31 @@ export default function FilterBar({
         </p>
       ) : (
         <>
+          {/* Language toggle */}
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Language</span>
+            <button
+              onClick={() => navigate({ lang: undefined })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                currentLang !== 'all'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              🇬🇧 English only
+            </button>
+            <button
+              onClick={() => navigate({ lang: 'all' })}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                currentLang === 'all'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              🌍 All languages
+            </button>
+          </div>
+
           {/* Sort pills */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Sort</span>
