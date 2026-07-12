@@ -101,7 +101,7 @@ export default function FilterBar({
         </p>
       ) : (
         <>
-          {/* Watched filter */}
+          {/* Watched + Sucks + Language — all on one line */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Watched</span>
             <button
@@ -124,11 +124,8 @@ export default function FilterBar({
             >
               Show all
             </button>
-          </div>
 
-          {/* Sucks filter */}
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Sucks</span>
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Sucks</span>
             <button
               onClick={() => navigate({ sucks: undefined })}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
@@ -149,11 +146,8 @@ export default function FilterBar({
             >
               Show sucks
             </button>
-          </div>
 
-          {/* Language toggle */}
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Language</span>
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Language</span>
             <button
               onClick={() => navigate({ lang: undefined })}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
