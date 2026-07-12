@@ -10,6 +10,7 @@ export interface TmdbMovie {
   genre_ids?: number[];
   genres?: { id: number; name: string }[];
   popularity: number;
+  original_language?: string;
 }
 
 export interface TmdbKeyword {
@@ -33,6 +34,7 @@ export interface TmdbDetailResponse extends TmdbMovie {
   tagline: string;
   videos?: { results: TmdbVideo[] };
   status?: string;
+  spoken_languages?: { iso_639_1: string; english_name: string }[];
 }
 
 export interface TmdbDiscoverResponse {

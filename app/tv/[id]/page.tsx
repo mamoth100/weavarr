@@ -128,6 +128,11 @@ export default async function TvPage({ params }: Props) {
                   {omdb.Rated}
                 </span>
               )}
+              {(detail.spoken_languages?.[0]?.english_name || detail.original_language) && (
+                <span className="px-1.5 py-0.5 border border-zinc-600 rounded text-xs">
+                  {detail.spoken_languages?.[0]?.english_name ?? detail.original_language}
+                </span>
+              )}
             </div>
 
             <DetailActions
