@@ -76,10 +76,10 @@ export default async function Home({ searchParams }: PageProps) {
         const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
         const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
         const asc = sort.endsWith('.asc');
-        const field = sort.split('.')[0];
+        const field = sort.split('.')[0] as keyof typeof movieResults[0];
         const merged = [...movieResults, ...tvResults].sort((a, b) => {
-          const av = (a as Record<string, unknown>)[field] ?? '';
-          const bv = (b as Record<string, unknown>)[field] ?? '';
+          const av = (a[field] as string | number | undefined) ?? '';
+          const bv = (b[field] as string | number | undefined) ?? '';
           if (av < bv) return asc ? -1 : 1;
           if (av > bv) return asc ? 1 : -1;
           return 0;
