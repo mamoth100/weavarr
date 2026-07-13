@@ -179,6 +179,7 @@ export default function FilterBar({
                 {opt.emoji} {opt.label}
               </button>
             ))}
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Include</span>
             <button
               onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks')}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-sucks')} ${
