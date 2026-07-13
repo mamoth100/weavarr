@@ -63,8 +63,9 @@ export default async function Home({ searchParams }: PageProps) {
         };
       })()
     : await (async () => {
-        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
-        const tvArgs = { page, sortBy: sort, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language, genre: 99, keywordIds };
+        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? Math.min(5, minVotes) : minVotes, dateGte, dateLte, language };
+        const tvMinVotes = yearParam === currentYear ? 0 : (keywordIds.length > 0 ? 5 : minVotes);
+        const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: 99, keywordIds };
         const [p1, tvP1] = await Promise.all([
           discoverDocumentaries(movieArgs),
           discoverTv(tvArgs),
