@@ -164,6 +164,35 @@ export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> 
   return res.json();
 }
 
+export async function discoverUpcomingTv(page = 1): Promise<TmdbDiscoverResponse> {
+  const today = new Date().toISOString().slice(0, 10);
+  const sixMonths = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10);
+  const params = new URLSearchParams({
+    with_genres: '99',
+    sort_by: 'first_air_date.asc',
+    'first_air_date.gte': today,
+    'first_air_date.lte': sixMonths,
+    'vote_count.gte': '0',
+    page: String(page),
+    include_adult: 'false',
+  });
+  const res = await fetch(`${BASE_URL}/discover/tv?${params}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb upcoming TV failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    ...data,
+    results: data.results.map((show: Record<string, unknown>) => ({
+      ...show,
+      title: (show.name as string) ?? show.title,
+      release_date: (show.first_air_date as string) ?? show.release_date ?? '',
+      mediaType: 'tv' as const,
+    })),
+  };
+}
+
 export async function discoverTv({
   page = 1,
   sortBy = 'vote_average.desc',

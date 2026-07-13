@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries, searchTv, enrichWithLanguage } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, discoverUpcoming, discoverUpcomingTv, searchDocumentaries, searchTv, enrichWithLanguage } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
@@ -41,7 +41,18 @@ export default async function Home({ searchParams }: PageProps) {
   const minVotes = yearParam === currentYear ? 3 : 50;
 
   const data = isUpcoming
-    ? await discoverUpcoming(page)
+    ? await (async () => {
+        const [movieData, tvData] = await Promise.all([
+          discoverUpcoming(page),
+          discoverUpcomingTv(page),
+        ]);
+        return {
+          ...movieData,
+          results: [...movieData.results, ...tvData.results],
+          total_results: movieData.total_results + tvData.total_results,
+          total_pages: Math.max(movieData.total_pages, tvData.total_pages),
+        };
+      })()
     : isReality
     ? await (async () => {
         const p1 = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language });
@@ -87,7 +98,9 @@ export default async function Home({ searchParams }: PageProps) {
       })();
 
   const mediaType = isReality ? 'tv' : 'movie';
-  const enriched = isUpcoming ? data : { ...data, results: await enrichWithLanguage(data.results, mediaType) };
+  const enriched = isUpcoming
+    ? { ...data, results: await enrichWithLanguage(data.results, 'movie') }
+    : { ...data, results: await enrichWithLanguage(data.results, mediaType) };
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
