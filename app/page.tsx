@@ -46,9 +46,12 @@ export default async function Home({ searchParams }: PageProps) {
           discoverUpcoming(page),
           discoverUpcomingTv(page),
         ]);
+        const merged = [...movieData.results, ...tvData.results].sort(
+          (a, b) => (a.release_date ?? '').localeCompare(b.release_date ?? '')
+        );
         return {
           ...movieData,
-          results: [...movieData.results, ...tvData.results],
+          results: merged,
           total_results: movieData.total_results + tvData.total_results,
           total_pages: Math.max(movieData.total_pages, tvData.total_pages),
         };
