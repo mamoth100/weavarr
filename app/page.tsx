@@ -75,15 +75,8 @@ export default async function Home({ searchParams }: PageProps) {
         ]);
         const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
         const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
-        const asc = sort.endsWith('.asc');
-        const field = sort.split('.')[0];
-        const merged = [...movieResults, ...tvResults].sort((a, b) => {
-          const av = ((a as unknown) as Record<string, unknown>)[field] ?? '';
-          const bv = ((b as unknown) as Record<string, unknown>)[field] ?? '';
-          if (av < bv) return asc ? -1 : 1;
-          if (av > bv) return asc ? 1 : -1;
-          return 0;
-        });
+        // Movies first (already sorted by TMDb), TV appended after — guarantees movies always appear
+        const merged = [...movieResults, ...tvResults];
         return {
           ...p1,
           results: merged,
