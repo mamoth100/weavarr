@@ -179,37 +179,26 @@ export default function FilterBar({
                 {opt.emoji} {opt.label}
               </button>
             ))}
-            {/* Sucks + Favorites icon toggles — right side */}
-            <div className="ml-auto flex gap-2">
-              <button
-                onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks')}
-                title={searchParams.get('sucks') === 'show' ? 'Hide sucks' : 'Show sucks'}
-                className={`p-2 rounded-full transition-all duration-200 ${pendingClass('icon-sucks')} ${
-                  searchParams.get('sucks') === 'show'
-                    ? 'bg-red-600/90 text-white'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                }`}
-                aria-label="Toggle sucks visibility"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15h2.25m8.024-9.75c.011.05.028.1.052.148.591 1.2.924 2.55.924 3.977a8.96 8.96 0 01-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.105 1.25-1.987 1.25H14.5m0 0l-4.072 1.957a1.5 1.5 0 01-2.181-1.341V16.5M7.5 15V9.75a.75.75 0 01.75-.75h1.5" />
-                </svg>
-              </button>
-              <button
-                onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav')}
-                title={searchParams.get('fav') === 'show' ? 'Hide favorites' : 'Show favorites'}
-                className={`p-2 rounded-full transition-all duration-200 ${pendingClass('icon-fav')} ${
-                  searchParams.get('fav') === 'show'
-                    ? 'bg-amber-400 text-zinc-950'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                }`}
-                aria-label="Toggle favorites visibility"
-              >
-                <svg className="w-4 h-4" fill={searchParams.get('fav') === 'show' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                </svg>
-              </button>
-            </div>
+            <button
+              onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-sucks')} ${
+                searchParams.get('sucks') === 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              👎 Sucks
+            </button>
+            <button
+              onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-fav')} ${
+                searchParams.get('fav') === 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              ❤️ Favorites
+            </button>
           </div>
 
           {/* Era + specific year */}
