@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { SUBGENRES, SORT_OPTIONS, DECADES, STREAMING_PROVIDERS } from '@/lib/subgenres';
 import type { SortOption } from '@/types';
 
@@ -26,8 +26,14 @@ export default function FilterBar({
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(currentQuery);
   const [yearInput, setYearInput] = useState(currentYear);
+  const [isPending, startTransition] = useTransition();
+  const [pendingFilter, setPendingFilter] = useState<string | null>(null);
 
-  function navigate(updates: Record<string, string | undefined>) {
+  useEffect(() => {
+    if (!isPending) setPendingFilter(null);
+  }, [isPending]);
+
+  function navigate(updates: Record<string, string | undefined>, filterId?: string) {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, val]) => {
       if (val === undefined || val === '') {
@@ -37,7 +43,16 @@ export default function FilterBar({
       }
     });
     params.delete('page');
-    router.push(`?${params.toString()}`);
+    if (filterId) setPendingFilter(filterId);
+    startTransition(() => {
+      router.push(`?${params.toString()}`);
+    });
+  }
+
+  function pendingClass(filterId: string) {
+    return pendingFilter === filterId
+      ? 'ring-2 ring-amber-400 animate-pulse'
+      : '';
   }
 
   function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -55,7 +70,7 @@ export default function FilterBar({
     const next = activeSubgenres.includes(id)
       ? activeSubgenres.filter((s) => s !== id)
       : [...activeSubgenres, id];
-    navigate({ subgenres: next.length ? next.join(',') : undefined });
+    navigate({ subgenres: next.length ? next.join(',') : undefined }, `subgenre-${id}`);
   }
 
   const isSearching = !!currentQuery;
@@ -105,8 +120,8 @@ export default function FilterBar({
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Watched</span>
             <button
-              onClick={() => navigate({ show: undefined })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ show: undefined }, 'show-hide')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('show-hide')} ${
                 searchParams.get('show') !== 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -115,8 +130,8 @@ export default function FilterBar({
               Hide watched
             </button>
             <button
-              onClick={() => navigate({ show: 'all' })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ show: 'all' }, 'show-all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('show-all')} ${
                 searchParams.get('show') === 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -127,8 +142,8 @@ export default function FilterBar({
 
             <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Sucks</span>
             <button
-              onClick={() => navigate({ sucks: undefined })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ sucks: undefined }, 'sucks-hide')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('sucks-hide')} ${
                 searchParams.get('sucks') !== 'show'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -137,8 +152,8 @@ export default function FilterBar({
               Hide sucks
             </button>
             <button
-              onClick={() => navigate({ sucks: 'show' })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ sucks: 'show' }, 'sucks-show')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('sucks-show')} ${
                 searchParams.get('sucks') === 'show'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -149,8 +164,8 @@ export default function FilterBar({
 
             <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Language</span>
             <button
-              onClick={() => navigate({ lang: undefined })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ lang: undefined }, 'lang-en')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('lang-en')} ${
                 currentLang !== 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -159,8 +174,8 @@ export default function FilterBar({
               🇬🇧 English only
             </button>
             <button
-              onClick={() => navigate({ lang: 'all' })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ lang: 'all' }, 'lang-all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('lang-all')} ${
                 currentLang === 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -176,8 +191,8 @@ export default function FilterBar({
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => navigate({ sort: opt.value })}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                onClick={() => navigate({ sort: opt.value }, `sort-${opt.value}`)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`sort-${opt.value}`)} ${
                   currentSort === opt.value
                     ? 'bg-amber-500 text-black'
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -194,8 +209,8 @@ export default function FilterBar({
             {DECADES.map((d) => (
               <button
                 key={d.value}
-                onClick={() => navigate({ decade: d.value || undefined, year: undefined })}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                onClick={() => navigate({ decade: d.value || undefined, year: undefined }, `decade-${d.value || 'all'}`)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`decade-${d.value || 'all'}`)} ${
                   currentDecade === d.value && !currentYear
                     ? 'bg-amber-500 text-black'
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -244,8 +259,8 @@ export default function FilterBar({
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Genre</span>
             <button
-              onClick={() => navigate({ subgenres: undefined })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              onClick={() => navigate({ subgenres: undefined }, 'subgenre-all')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('subgenre-all')} ${
                 activeSubgenres.length === 0
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -257,7 +272,7 @@ export default function FilterBar({
               <button
                 key={sg.id}
                 onClick={() => toggleSubgenre(sg.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`subgenre-${sg.id}`)} ${
                   activeSubgenres.includes(sg.id)
                     ? 'bg-amber-500 text-black'
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
