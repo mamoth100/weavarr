@@ -28,8 +28,8 @@ async function fetchSpokenLanguage(id: number, mediaType: 'movie' | 'tv'): Promi
 }
 
 /** Enrich a list of TmdbMovie results with accurate spoken_language. Runs in parallel. */
-export async function enrichWithLanguage<T extends { id: number; spoken_language?: string }>(items: T[], mediaType: 'movie' | 'tv'): Promise<T[]> {
-  const languages = await Promise.all(items.map((item) => fetchSpokenLanguage(item.id, mediaType)));
+export async function enrichWithLanguage<T extends { id: number; spoken_language?: string; mediaType?: 'movie' | 'tv' }>(items: T[], defaultMediaType: 'movie' | 'tv'): Promise<T[]> {
+  const languages = await Promise.all(items.map((item) => fetchSpokenLanguage(item.id, item.mediaType ?? defaultMediaType)));
   return items.map((item, i) => ({ ...item, spoken_language: languages[i] ?? undefined }));
 }
 
@@ -102,6 +102,33 @@ export async function searchDocumentaries(
   return res.json();
 }
 
+export async function searchTv(
+  query: string,
+  page = 1
+): Promise<TmdbDiscoverResponse> {
+  const params = new URLSearchParams({
+    query,
+    page: String(page),
+    include_adult: 'false',
+  });
+
+  const res = await fetch(`${BASE_URL}/search/tv?${params}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb TV search failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    ...data,
+    results: data.results.map((show: Record<string, unknown>) => ({
+      ...show,
+      title: (show.name as string) ?? show.title,
+      release_date: (show.first_air_date as string) ?? show.release_date ?? '',
+      mediaType: 'tv' as const,
+    })),
+  };
+}
+
 export async function getWatchProviders(
   id: number,
   mediaType: MediaType = 'movie',
@@ -144,6 +171,7 @@ export async function discoverTv({
   dateGte,
   dateLte,
   language = 'en',
+  genre = 10764,
 }: {
   page?: number;
   sortBy?: string;
@@ -151,6 +179,7 @@ export async function discoverTv({
   dateGte?: string;
   dateLte?: string;
   language?: string;
+  genre?: number;
 }): Promise<TmdbDiscoverResponse> {
   // TV discover uses first_air_date, movies use release_date — translate
   const tvSortBy = sortBy
@@ -158,7 +187,7 @@ export async function discoverTv({
     .replace('release_date.asc', 'first_air_date.asc');
 
   const params = new URLSearchParams({
-    with_genres: '10764',
+    with_genres: String(genre),
     sort_by: tvSortBy,
     'vote_count.gte': String(minVotes),
     page: String(page),
@@ -182,6 +211,7 @@ export async function discoverTv({
       ...show,
       title: (show.name as string) ?? show.title,
       release_date: (show.first_air_date as string) ?? show.release_date ?? '',
+      mediaType: 'tv' as const,
     })),
   };
 }

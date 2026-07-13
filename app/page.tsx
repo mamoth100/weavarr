@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries, enrichWithLanguage } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, discoverUpcoming, searchDocumentaries, searchTv, enrichWithLanguage } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
@@ -50,13 +50,46 @@ export default async function Home({ searchParams }: PageProps) {
         return { ...p1, results: [...p1.results, ...p2.results] };
       })()
     : query
-    ? await searchDocumentaries(query, page)
+    ? await (async () => {
+        const [movieData, tvData] = await Promise.all([
+          searchDocumentaries(query, page),
+          searchTv(query, page),
+        ]);
+        return {
+          ...movieData,
+          results: [...movieData.results, ...tvData.results],
+          total_results: movieData.total_results + tvData.total_results,
+          total_pages: Math.max(movieData.total_pages, tvData.total_pages),
+        };
+      })()
     : await (async () => {
-        const args = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
-        const p1 = await discoverDocumentaries(args);
-        if (p1.total_pages <= page) return p1;
-        const p2 = await discoverDocumentaries({ ...args, page: page + 1 });
-        return { ...p1, results: [...p1.results, ...p2.results] };
+        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
+        const tvArgs = { page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: 99 };
+        const [p1, tvP1] = await Promise.all([
+          discoverDocumentaries(movieArgs),
+          discoverTv(tvArgs),
+        ]);
+        const [p2, tvP2] = await Promise.all([
+          p1.total_pages > page ? discoverDocumentaries({ ...movieArgs, page: page + 1 }) : null,
+          tvP1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : null,
+        ]);
+        const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
+        const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
+        const asc = sort.endsWith('.asc');
+        const field = sort.split('.')[0];
+        const merged = [...movieResults, ...tvResults].sort((a, b) => {
+          const av = (a as Record<string, unknown>)[field] ?? '';
+          const bv = (b as Record<string, unknown>)[field] ?? '';
+          if (av < bv) return asc ? -1 : 1;
+          if (av > bv) return asc ? 1 : -1;
+          return 0;
+        });
+        return {
+          ...p1,
+          results: merged,
+          total_results: p1.total_results + tvP1.total_results,
+          total_pages: Math.max(p1.total_pages, tvP1.total_pages),
+        };
       })();
 
   const mediaType = isReality ? 'tv' : 'movie';

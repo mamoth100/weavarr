@@ -48,14 +48,14 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
   }, [watchedItems]);
 
   const filtered = items.filter((doc) => {
-    const key = `${doc.id}:${mediaType}`;
+    const key = `${doc.id}:${doc.mediaType ?? mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     return true;
   }).slice(0, 20);
 
-  const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${mediaType}`)).length : 0;
-  const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${mediaType}`)).length : 0;
+  const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
+  const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
 
   // Wait until Supabase has loaded before rendering so the filter is
   // applied on the very first paint — no flash of unfiltered items.
@@ -81,7 +81,7 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map((doc) => (
-          <DocCard key={doc.id} doc={doc} mediaType={mediaType} variant={variant} />
+          <DocCard key={`${doc.id}:${doc.mediaType ?? mediaType}`} doc={doc} mediaType={doc.mediaType ?? mediaType} variant={variant} />
         ))}
       </div>
     </>

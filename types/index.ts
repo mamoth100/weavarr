@@ -12,6 +12,7 @@ export interface TmdbMovie {
   popularity: number;
   original_language?: string;
   spoken_language?: string; // enriched server-side from detail endpoint
+  mediaType?: 'movie' | 'tv';
 }
 
 export interface TmdbKeyword {
