@@ -116,28 +116,38 @@ export default function FilterBar({
         </p>
       ) : (
         <>
-          {/* Watched + Sucks + Language — all on one line */}
+          {/* Include + Language — all on one line */}
           <div className="flex gap-2 flex-wrap items-center">
-            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Watched</span>
+            <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Include</span>
             <button
-              onClick={() => navigate({ show: undefined }, 'show-hide')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('show-hide')} ${
-                searchParams.get('show') !== 'all'
-                  ? 'bg-amber-500 text-black'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              Hide watched
-            </button>
-            <button
-              onClick={() => navigate({ show: 'all' }, 'show-all')}
+              onClick={() => navigate({ show: searchParams.get('show') === 'all' ? undefined : 'all' }, 'show-all')}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('show-all')} ${
                 searchParams.get('show') === 'all'
                   ? 'bg-amber-500 text-black'
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
             >
-              Show all
+              ✓ Watched
+            </button>
+            <button
+              onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks-row1')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-sucks-row1')} ${
+                searchParams.get('sucks') === 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              👎 Sucks
+            </button>
+            <button
+              onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav-row1')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-fav-row1')} ${
+                searchParams.get('fav') === 'show'
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              ❤️ Favorites
             </button>
 
             <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Language</span>
@@ -163,7 +173,7 @@ export default function FilterBar({
             </button>
           </div>
 
-          {/* Sort pills + sucks/favorites toggles */}
+          {/* Sort pills */}
           <div className="flex gap-2 flex-wrap items-center">
             <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1">Sort</span>
             {SORT_OPTIONS.map((opt) => (
@@ -179,27 +189,6 @@ export default function FilterBar({
                 {opt.emoji} {opt.label}
               </button>
             ))}
-            <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1">Include</span>
-            <button
-              onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-sucks')} ${
-                searchParams.get('sucks') === 'show'
-                  ? 'bg-amber-500 text-black'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              👎 Sucks
-            </button>
-            <button
-              onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('icon-fav')} ${
-                searchParams.get('fav') === 'show'
-                  ? 'bg-amber-500 text-black'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-              }`}
-            >
-              ❤️ Favorites
-            </button>
           </div>
 
           {/* Era + specific year */}
