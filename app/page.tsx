@@ -64,17 +64,17 @@ export default async function Home({ searchParams }: PageProps) {
       })()
     : await (async () => {
         const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
-        const tvArgs = { page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: 99, keywordIds };
+        const tvArgs = { page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: 99 };
         const [p1, tvP1] = await Promise.all([
           discoverDocumentaries(movieArgs),
           discoverTv(tvArgs),
         ]);
-        const [p2, tvP2] = await Promise.all([
+        const [p2] = await Promise.all([
           p1.total_pages > page ? discoverDocumentaries({ ...movieArgs, page: page + 1 }) : null,
-          tvP1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : null,
         ]);
         const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
-        const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
+        // Cap TV at 10 so it never crowds out movies
+        const tvResults = tvP1.results.slice(0, 10);
         const asc = sort.endsWith('.asc');
         const field = sort.split('.')[0];
         const merged = [...movieResults, ...tvResults].sort((a, b) => {
