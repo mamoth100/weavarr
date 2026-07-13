@@ -63,19 +63,30 @@ export default async function Home({ searchParams }: PageProps) {
         };
       })()
     : await (async () => {
-        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? Math.min(5, minVotes) : minVotes, dateGte, dateLte, language };
+        // Movie documentary discover — original logic preserved exactly
+        const args = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
+        const p1 = await discoverDocumentaries(args);
+        let movieResults = p1.results;
+        if (p1.total_pages > page) {
+          const p2 = await discoverDocumentaries({ ...args, page: page + 1 });
+          movieResults = [...movieResults, ...p2.results];
+        }
+
+        // TV documentary series — added separately so movie path can't fail
         const tvMinVotes = yearParam === currentYear ? 0 : (keywordIds.length > 0 ? 5 : minVotes);
         const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: 99, keywordIds };
-        const [p1, tvP1] = await Promise.all([
-          discoverDocumentaries(movieArgs),
-          discoverTv(tvArgs),
-        ]);
-        const [p2, tvP2] = await Promise.all([
-          p1.total_pages > page ? discoverDocumentaries({ ...movieArgs, page: page + 1 }) : null,
-          tvP1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : null,
-        ]);
-        const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
-        const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
+        let tvResults: typeof p1.results = [];
+        try {
+          const tvP1 = await discoverTv(tvArgs);
+          tvResults = tvP1.results;
+          if (tvP1.total_pages > page) {
+            const tvP2 = await discoverTv({ ...tvArgs, page: page + 1 });
+            tvResults = [...tvResults, ...tvP2.results];
+          }
+        } catch {
+          // TV fetch failing should never break the movie results
+        }
+
         const asc = sort.endsWith('.asc');
         const field = sort.split('.')[0] as keyof typeof movieResults[0];
         const merged = [...movieResults, ...tvResults].sort((a, b) => {
@@ -85,12 +96,7 @@ export default async function Home({ searchParams }: PageProps) {
           if (av > bv) return asc ? 1 : -1;
           return 0;
         });
-        return {
-          ...p1,
-          results: merged,
-          total_results: p1.total_results + tvP1.total_results,
-          total_pages: Math.max(p1.total_pages, tvP1.total_pages),
-        };
+        return { ...p1, results: merged };
       })();
 
   const mediaType = isReality ? 'tv' : 'movie';
