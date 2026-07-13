@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, discoverUpcoming, discoverUpcomingTv, searchDocumentaries, searchTv, enrichWithLanguage } from '@/lib/tmdb';
+import { discoverDocumentaries, discoverTv, discoverUpcoming, discoverUpcomingTv, searchDocumentaries, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
@@ -101,9 +101,7 @@ export default async function Home({ searchParams }: PageProps) {
       })();
 
   const mediaType = isReality ? 'tv' : 'movie';
-  const enriched = isUpcoming
-    ? { ...data, results: await enrichWithLanguage(data.results, 'movie') }
-    : { ...data, results: await enrichWithLanguage(data.results, mediaType) };
+  const enriched = data;
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
