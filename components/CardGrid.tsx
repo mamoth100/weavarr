@@ -13,16 +13,18 @@ interface Props {
 }
 
 export default function CardGrid({ items, mediaType, variant = 'default' }: Props) {
-  const { loaded, watchedItems, sucksItems } = useWatchlist();
+  const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
   const hideWatched = !isSearching && searchParams.get('show') !== 'all';
   const showSucks = isSearching || searchParams.get('sucks') === 'show';
+  const showFav = isSearching || searchParams.get('fav') === 'show';
 
   // Snapshot the watched/sucks sets ONCE after initial Supabase load so that
   // marking items during this session doesn't immediately remove them from view.
   const [snapshotWatched, setSnapshotWatched] = useState<Set<string>>(new Set());
   const [snapshotSucks, setSnapshotSucks] = useState<Set<string>>(new Set());
+  const [snapshotFavorites, setSnapshotFavorites] = useState<Set<string>>(new Set());
   const snapped = useRef(false);
 
   useEffect(() => {
@@ -30,8 +32,9 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
       snapped.current = true;
       setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
       setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
+      setSnapshotFavorites(new Set(favorites.map((i) => `${i.id}:${i.mediaType}`)));
     }
-  }, [loaded, watchedItems, sucksItems]);
+  }, [loaded, watchedItems, sucksItems, favorites]);
 
   // Keep sucks snapshot live so items disappear immediately when thumbs-downed
   useEffect(() => {
@@ -47,15 +50,24 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
     }
   }, [watchedItems]);
 
+  // Keep favorites snapshot live
+  useEffect(() => {
+    if (snapped.current) {
+      setSnapshotFavorites(new Set(favorites.map((i) => `${i.id}:${i.mediaType}`)));
+    }
+  }, [favorites]);
+
   const filtered = items.filter((doc) => {
     const key = `${doc.id}:${doc.mediaType ?? mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
+    if (!showFav && snapshotFavorites.has(key)) return false;
     return true;
   }).slice(0, 20);
 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
+  const hiddenFavCount = !showFav ? items.filter((d) => snapshotFavorites.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
 
   // Wait until Supabase has loaded before rendering so the filter is
   // applied on the very first paint — no flash of unfiltered items.
@@ -71,11 +83,12 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
 
   return (
     <>
-      {(hiddenWatchedCount > 0 || hiddenSucksCount > 0) && (
+      {(hiddenWatchedCount > 0 || hiddenSucksCount > 0 || hiddenFavCount > 0) && (
         <p className="text-xs text-zinc-600 mb-2">
           {[
             hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
             hiddenSucksCount > 0 && `${hiddenSucksCount} sucks hidden`,
+            hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
           ].filter(Boolean).join(' · ')}
         </p>
       )}

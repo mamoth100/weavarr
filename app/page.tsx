@@ -8,7 +8,7 @@ import GenreSwitcher from '@/components/GenreSwitcher';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; lang?: string; year?: string; show?: string; sucks?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; lang?: string; year?: string; show?: string; sucks?: string; fav?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
@@ -199,6 +199,7 @@ export default async function Home({ searchParams }: PageProps) {
               year={searchParams.year}
               show={searchParams.show}
               sucks={searchParams.sucks}
+              fav={searchParams.fav}
             />
           </>
         )}

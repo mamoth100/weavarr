@@ -10,9 +10,10 @@ interface Props {
   year?: string;
   show?: string;
   sucks?: string;
+  fav?: string;
 }
 
-export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, lang, year, show, sucks }: Props) {
+export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, lang, year, show, sucks, fav }: Props) {
   const capped = Math.min(totalPages, 500);
 
   function buildHref(p: number) {
@@ -25,6 +26,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
     if (year) params.set('year', year);
     if (show) params.set('show', show);
     if (sucks) params.set('sucks', sucks);
+    if (fav) params.set('fav', fav);
     return `?${params.toString()}`;
   }
 
