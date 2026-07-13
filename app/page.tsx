@@ -63,50 +63,32 @@ export default async function Home({ searchParams }: PageProps) {
         };
       })()
     : await (async () => {
-        // Movie documentary discover — original logic preserved exactly
-        const args = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
-        const tvMinVotes = yearParam === currentYear ? 0 : (keywordIds.length > 0 ? 5 : minVotes);
-        const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: 99, keywordIds };
-
-        // Fetch first pages of movies and TV in parallel
-        const [p1, tvP1] = await Promise.allSettled([
-          discoverDocumentaries(args),
+        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
+        const tvArgs = { page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: 99 };
+        const [p1, tvP1] = await Promise.all([
+          discoverDocumentaries(movieArgs),
           discoverTv(tvArgs),
         ]);
-
-        const movieP1 = p1.status === 'fulfilled' ? p1.value : { results: [], total_pages: 0, total_results: 0, page: 1 };
-        const tvPage1 = tvP1.status === 'fulfilled' ? tvP1.value : { results: [], total_pages: 0, total_results: 0, page: 1 };
-
-        // Fetch second pages in parallel if needed
-        const [p2, tvP2] = await Promise.allSettled([
-          movieP1.total_pages > page ? discoverDocumentaries({ ...args, page: page + 1 }) : Promise.resolve(null),
-          tvPage1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : Promise.resolve(null),
+        const [p2, tvP2] = await Promise.all([
+          p1.total_pages > page ? discoverDocumentaries({ ...movieArgs, page: page + 1 }) : null,
+          tvP1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : null,
         ]);
-
-        const movieResults = [
-          ...movieP1.results,
-          ...(p2.status === 'fulfilled' && p2.value ? p2.value.results : []),
-        ];
-        const tvResults = [
-          ...tvPage1.results,
-          ...(tvP2.status === 'fulfilled' && tvP2.value ? tvP2.value.results : []),
-        ];
-
+        const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
+        const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
         const asc = sort.endsWith('.asc');
-        const field = sort.split('.')[0] as keyof typeof movieResults[0];
+        const field = sort.split('.')[0];
         const merged = [...movieResults, ...tvResults].sort((a, b) => {
-          const av = (a[field] as string | number | undefined) ?? '';
-          const bv = (b[field] as string | number | undefined) ?? '';
+          const av = (a as Record<string, unknown>)[field] ?? '';
+          const bv = (b as Record<string, unknown>)[field] ?? '';
           if (av < bv) return asc ? -1 : 1;
           if (av > bv) return asc ? 1 : -1;
           return 0;
         });
-
         return {
-          ...movieP1,
+          ...p1,
           results: merged,
-          total_results: movieP1.total_results + tvPage1.total_results,
-          total_pages: Math.max(movieP1.total_pages, tvPage1.total_pages),
+          total_results: p1.total_results + tvP1.total_results,
+          total_pages: Math.max(p1.total_pages, tvP1.total_pages),
         };
       })();
 

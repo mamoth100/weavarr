@@ -172,7 +172,6 @@ export async function discoverTv({
   dateLte,
   language = 'en',
   genre = 10764,
-  keywordIds = [],
 }: {
   page?: number;
   sortBy?: string;
@@ -181,7 +180,6 @@ export async function discoverTv({
   dateLte?: string;
   language?: string;
   genre?: number;
-  keywordIds?: number[];
 }): Promise<TmdbDiscoverResponse> {
   // TV discover uses first_air_date, movies use release_date — translate
   const tvSortBy = sortBy
@@ -197,7 +195,6 @@ export async function discoverTv({
   });
 
   if (language) params.set('with_original_language', language);
-  if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
   if (dateGte) params.set('first_air_date.gte', dateGte);
   if (dateLte) params.set('first_air_date.lte', dateLte);
 
