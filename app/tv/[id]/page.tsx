@@ -145,7 +145,14 @@ export default async function TvPage({ params }: Props) {
               poster_path={detail.poster_path}
               release_date={detail.release_date ?? ''}
             >
-              <RequestButton id={detail.id} mediaType="tv" title={detail.title} imdbId={imdbId} />
+              <RequestButton
+                id={detail.id}
+                mediaType="tv"
+                title={detail.title}
+                poster_path={detail.poster_path}
+                release_date={detail.release_date ?? ''}
+                imdbId={imdbId}
+              />
             </DetailActions>
 
             {/* Composite score card */}

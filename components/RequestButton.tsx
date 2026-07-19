@@ -1,19 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import { useWatchlist } from '@/hooks/useWatchlist';
+import type { WatchlistItem } from '@/lib/watchlist';
 
 interface Props {
   id: number;
   mediaType: 'movie' | 'tv';
   title: string;
+  poster_path: string | null;
+  release_date: string;
   imdbId?: string | null;
 }
 
 type Status = 'idle' | 'loading' | 'added' | 'already' | 'error';
 
-export default function RequestButton({ id, mediaType, title, imdbId }: Props) {
+export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
+  const { addFavorite } = useWatchlist();
 
   async function handleClick() {
     setStatus('loading');
@@ -27,6 +32,8 @@ export default function RequestButton({ id, mediaType, title, imdbId }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
       setStatus(data.alreadyAdded ? 'already' : 'added');
+      const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
+      addFavorite(item);
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));

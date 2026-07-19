@@ -131,7 +131,13 @@ export default async function DocumentaryPage({ params }: Props) {
               poster_path={detail.poster_path}
               release_date={detail.release_date ?? ''}
             >
-              <RequestButton id={detail.id} mediaType="movie" title={detail.title} />
+              <RequestButton
+                id={detail.id}
+                mediaType="movie"
+                title={detail.title}
+                poster_path={detail.poster_path}
+                release_date={detail.release_date ?? ''}
+              />
             </DetailActions>
 
             {/* Composite score card */}
