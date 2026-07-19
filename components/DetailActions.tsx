@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import type { WatchlistItem } from '@/lib/watchlist';
@@ -10,9 +11,10 @@ interface Props {
   title: string;
   poster_path: string | null;
   release_date: string;
+  children?: ReactNode;
 }
 
-export default function DetailActions({ id, mediaType, title, poster_path, release_date }: Props) {
+export default function DetailActions({ id, mediaType, title, poster_path, release_date, children }: Props) {
   const router = useRouter();
   const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
     useWatchlist();
@@ -24,7 +26,7 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
   const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
 
   return (
-    <div className="flex items-center gap-2 mt-4">
+    <div className="flex flex-wrap items-center gap-2 mt-4">
       {/* Favorite */}
       <button
         onClick={() => favorited ? removeFavorite(id, mediaType) : addFavorite(item)}
@@ -81,6 +83,8 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
         </svg>
         {sucks ? 'Marked sucks' : 'Sucks'}
       </button>
+
+      {children}
     </div>
   );
 }

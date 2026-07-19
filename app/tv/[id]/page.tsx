@@ -7,6 +7,7 @@ import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
 import DetailActions from '@/components/DetailActions';
+import RequestButton from '@/components/RequestButton';
 import BackLink from '@/components/BackLink';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
@@ -143,7 +144,9 @@ export default async function TvPage({ params }: Props) {
               title={detail.title}
               poster_path={detail.poster_path}
               release_date={detail.release_date ?? ''}
-            />
+            >
+              <RequestButton id={detail.id} mediaType="tv" title={detail.title} imdbId={imdbId} />
+            </DetailActions>
 
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
