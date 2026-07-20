@@ -56,6 +56,8 @@ export default async function Home({ searchParams }: PageProps) {
           total_pages: Math.max(movieData.total_pages, tvData.total_pages),
         };
       })()
+    : isReality && query
+    ? await searchTv(query, page)
     : isReality
     ? await (async () => {
         const p1 = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language });
