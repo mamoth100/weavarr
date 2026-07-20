@@ -26,7 +26,7 @@ export default function DetailActions({ id, mediaType, title, poster_path, relea
   const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-4">
+    <div className="flex flex-wrap items-start gap-2 mt-4">
       {/* Favorite */}
       <button
         onClick={() => favorited ? removeFavorite(id, mediaType) : addFavorite(item)}

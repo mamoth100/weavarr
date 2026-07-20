@@ -95,35 +95,37 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           )}
         </select>
       )}
-      <button
-        onClick={handleClick}
-        disabled={locked}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-          ${
-            status === 'added' || status === 'already'
-              ? 'bg-green-600 text-white'
-              : status === 'error'
-              ? 'bg-red-600 text-white hover:bg-red-500'
-              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-          }`}
-        aria-label={`Request "${title}" download`}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        {label}
-      </button>
-      <label className="flex items-center gap-1.5 text-xs text-zinc-500 select-none">
-        <input
-          type="checkbox"
-          checked={highestQuality}
-          onChange={(e) => setHighestQuality(e.target.checked)}
+      <div className="flex flex-col gap-1.5">
+        <button
+          onClick={handleClick}
           disabled={locked}
-          className="accent-amber-400"
-        />
-        Download highest quality
-      </label>
-      {error && <p className="w-full text-xs text-red-400">{error}</p>}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+            ${
+              status === 'added' || status === 'already'
+                ? 'bg-green-600 text-white'
+                : status === 'error'
+                ? 'bg-red-600 text-white hover:bg-red-500'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+            }`}
+          aria-label={`Request "${title}" download`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          {label}
+        </button>
+        <label className="flex items-center gap-1.5 text-xs text-zinc-500 select-none">
+          <input
+            type="checkbox"
+            checked={highestQuality}
+            onChange={(e) => setHighestQuality(e.target.checked)}
+            disabled={locked}
+            className="accent-amber-400"
+          />
+          Download highest quality
+        </label>
+        {error && <p className="text-xs text-red-400 max-w-xs">{error}</p>}
+      </div>
     </>
   );
 }
