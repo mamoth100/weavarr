@@ -5,6 +5,7 @@ import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
 import GenreSwitcher from '@/components/GenreSwitcher';
+import SearchResultCard from '@/components/SearchResultCard';
 import type { SortOption } from '@/types';
 
 interface PageProps {
@@ -12,9 +13,14 @@ interface PageProps {
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const genre = searchParams.genre === 'reality' ? 'reality' : searchParams.genre === 'upcoming' ? 'upcoming' : 'documentary';
+  const genre =
+    searchParams.genre === 'reality' ? 'reality' :
+    searchParams.genre === 'upcoming' ? 'upcoming' :
+    searchParams.genre === 'search' ? 'search' :
+    'documentary';
   const isReality = genre === 'reality';
   const isUpcoming = genre === 'upcoming';
+  const isGlobalSearch = genre === 'search';
   const query = searchParams.q?.trim() ?? '';
   const activeSubgenreIds = searchParams.subgenres
     ? searchParams.subgenres.split(',').filter(Boolean)
@@ -40,7 +46,21 @@ export default async function Home({ searchParams }: PageProps) {
   const currentYear = new Date().getFullYear().toString();
   const minVotes = yearParam === currentYear ? 3 : 50;
 
-  const data = isUpcoming
+  const data = isGlobalSearch
+    ? await (async () => {
+        if (!query) return { page: 1, results: [], total_pages: 1, total_results: 0 };
+        const [movieData, tvData] = await Promise.all([
+          searchDocumentaries(query, page),
+          searchTv(query, page),
+        ]);
+        return {
+          ...movieData,
+          results: [...movieData.results, ...tvData.results],
+          total_results: movieData.total_results + tvData.total_results,
+          total_pages: Math.max(movieData.total_pages, tvData.total_pages),
+        };
+      })()
+    : isUpcoming
     ? await (async () => {
         const [movieData, tvData] = await Promise.all([
           discoverUpcoming(page),
@@ -114,7 +134,7 @@ export default async function Home({ searchParams }: PageProps) {
               Docu<span className="text-amber-400">View</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">
-              {isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
+              {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
             </p>
           </div>
           <div className="flex items-center gap-4 mt-1">
@@ -170,10 +190,42 @@ export default async function Home({ searchParams }: PageProps) {
           />
         </Suspense>
 
-        {data.results.length === 0 ? (
+        {isGlobalSearch && !query ? (
           <div className="text-center text-zinc-500 py-24">
-            No documentaries found.
+            Type something above to search everything — movies, TV, any genre.
           </div>
+        ) : data.results.length === 0 ? (
+          <div className="text-center text-zinc-500 py-24">
+            {isGlobalSearch ? 'No results found.' : 'No documentaries found.'}
+          </div>
+        ) : isGlobalSearch ? (
+          <>
+            <p className="text-xs text-zinc-600 mt-4 mb-2">
+              {data.total_results.toLocaleString()} results
+            </p>
+            <Suspense fallback={<div className="h-64 bg-zinc-900 rounded-lg animate-pulse" />}>
+              <div className="space-y-3">
+                {data.results.slice(0, 20).map((item) => (
+                  <SearchResultCard key={`${item.id}:${item.mediaType ?? 'movie'}`} item={item} />
+                ))}
+              </div>
+            </Suspense>
+
+            <Pagination
+              page={page}
+              totalPages={data.total_pages}
+              subgenres={searchParams.subgenres}
+              sort={sort}
+              decade={searchParams.decade}
+              query={query}
+              genre={genre}
+              lang={searchParams.lang}
+              year={searchParams.year}
+              show={searchParams.show}
+              sucks={searchParams.sucks}
+              fav={searchParams.fav}
+            />
+          </>
         ) : (
           <>
             <p className="text-xs text-zinc-600 mt-4 mb-2">

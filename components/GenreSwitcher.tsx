@@ -6,6 +6,7 @@ const GENRES = [
   { value: 'documentary', label: 'Documentaries', emoji: '🎬' },
   { value: 'reality', label: 'Reality TV', emoji: '📺' },
   { value: 'upcoming', label: 'Coming Soon', emoji: '🔜' },
+  { value: 'search', label: 'Search', emoji: '🔍' },
 ];
 
 export default function GenreSwitcher() {

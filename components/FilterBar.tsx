@@ -76,6 +76,7 @@ export default function FilterBar({
   const isSearching = !!currentQuery;
   const genre = searchParams.get('genre') ?? 'documentary';
   const isUpcoming = genre === 'upcoming';
+  const isGlobalSearch = genre === 'search';
 
   if (isUpcoming) {
     return (
@@ -93,7 +94,7 @@ export default function FilterBar({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={handleSearchKey}
-          placeholder="Search documentaries… press Enter"
+          placeholder={isGlobalSearch ? 'Search anything… press Enter' : 'Search documentaries… press Enter'}
           className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-9 pr-10 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
         {searchInput && (
@@ -114,6 +115,8 @@ export default function FilterBar({
             clear search
           </button>
         </p>
+      ) : isGlobalSearch ? (
+        <p className="text-xs text-zinc-600 py-2">Search across everything — any movie or show, any genre.</p>
       ) : (
         <>
           {/* Include + Language — all on one line */}
