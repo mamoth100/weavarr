@@ -138,3 +138,26 @@ export async function forceImportSonarr(downloadId: string) {
   if (!cmdRes.ok) throw new Error(`Sonarr import command failed: ${await cmdRes.text()}`);
   return { triggered: true };
 }
+
+export interface ImportHistoryItem {
+  title: string;
+  date: string;
+}
+
+export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  const res = await fetch(
+    `${SONARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeSeries=true`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Sonarr history failed: ${res.status}`);
+  const data = await res.json();
+  return (data.records ?? [])
+    .filter((r: Record<string, unknown>) => (r.eventType as string) === 'downloadFolderImported')
+    .slice(0, limit)
+    .map((r: Record<string, unknown>) => ({
+      title: (r.series as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
+      date: r.date as string,
+    }));
+}

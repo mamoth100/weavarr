@@ -36,10 +36,27 @@ interface ArrData {
   length?: number;
 }
 
+interface RecentImport {
+  title: string;
+  date: string;
+  inPlex: boolean | null;
+}
+
 interface StatusResponse {
   sab: SabData;
   radarr: QueueItem[] | ArrData;
   sonarr: QueueItem[] | ArrData;
+  recentImports?: RecentImport[];
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function formatMb(mbStr: string | undefined): string {
@@ -141,6 +158,7 @@ export default function StatusPanel() {
   }
 
   return (
+    <div className="space-y-8">
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* SABnzbd */}
       <section>
@@ -231,6 +249,31 @@ export default function StatusPanel() {
           </div>
         )}
       </section>
+    </div>
+
+    {/* Recently Imported — cross-checked against Plex */}
+    {data.recentImports && data.recentImports.length > 0 && (
+      <section>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recently Imported</h2>
+        <div className="space-y-2">
+          {data.recentImports.map((item, i) => (
+            <div key={i} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <div>
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
+              </div>
+              {item.inPlex === null ? (
+                <span className="text-xs text-zinc-600">Plex not checked</span>
+              ) : item.inPlex ? (
+                <span className="text-xs font-medium text-green-400">✓ In Plex</span>
+              ) : (
+                <span className="text-xs font-medium text-amber-400">Not in Plex yet</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
     </div>
   );
 }

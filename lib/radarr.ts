@@ -107,3 +107,25 @@ export async function forceImportRadarr(downloadId: string) {
   if (!cmdRes.ok) throw new Error(`Radarr import command failed: ${await cmdRes.text()}`);
   return { triggered: true };
 }
+
+export interface ImportHistoryItem {
+  title: string;
+  date: string;
+}
+
+export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+
+  const res = await fetch(
+    `${RADARR_URL}/api/v3/history?page=1&pageSize=${limit}&sortKey=date&sortDirection=descending&includeMovie=true`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Radarr history failed: ${res.status}`);
+  const data = await res.json();
+  return (data.records ?? [])
+    .filter((r: Record<string, unknown>) => (r.eventType as string) === 'downloadFolderImported')
+    .map((r: Record<string, unknown>) => ({
+      title: (r.movie as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
+      date: r.date as string,
+    }));
+}
