@@ -26,13 +26,15 @@ const PRESET_OPTIONS = [
 export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId, seasons }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<string>('all');
-  const { addFavorite } = useWatchlist();
-
-  const locked = status === 'loading' || status === 'added' || status === 'already';
 
   // Real seasons from TMDB, numbered and with episodes — excludes Specials (season 0)
   const realSeasons = (seasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
+  const latestSeason = realSeasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
+
+  const [selection, setSelection] = useState<string>(latestSeason > 0 ? `season:${latestSeason}` : 'all');
+  const { addFavorite } = useWatchlist();
+
+  const locked = status === 'loading' || status === 'added' || status === 'already';
 
   async function handleClick() {
     setStatus('loading');
