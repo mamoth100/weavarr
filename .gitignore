@@ -13,3 +13,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime state — not source, shouldn't be committed
+/data/
