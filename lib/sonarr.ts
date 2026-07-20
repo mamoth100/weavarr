@@ -69,3 +69,36 @@ export async function addSeriesToSonarr({
   if (!addRes.ok) throw new Error(`Sonarr add failed: ${await addRes.text()}`);
   return { alreadyAdded: false };
 }
+
+export interface SonarrQueueItem {
+  title: string;
+  episode: string | null;
+  status: string;
+  trackedDownloadState: string;
+  size: number;
+  sizeleft: number;
+  timeleft?: string;
+}
+
+export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  const res = await fetch(`${SONARR_URL}/api/v3/queue?includeSeries=true&includeEpisode=true&pageSize=50`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr queue failed: ${res.status}`);
+  const data = await res.json();
+  return (data.records ?? []).map((r: Record<string, unknown>) => {
+    const episode = r.episode as { seasonNumber?: number; episodeNumber?: number } | undefined;
+    return {
+      title: (r.series as { title?: string } | undefined)?.title ?? (r.title as string | undefined) ?? 'Unknown',
+      episode: episode ? `S${String(episode.seasonNumber).padStart(2, '0')}E${String(episode.episodeNumber).padStart(2, '0')}` : null,
+      status: r.status as string,
+      trackedDownloadState: r.trackedDownloadState as string,
+      size: r.size as number,
+      sizeleft: r.sizeleft as number,
+      timeleft: r.timeleft as string | undefined,
+    };
+  });
+}

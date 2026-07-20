@@ -9,6 +9,8 @@ const GENRES = [
   { value: 'search', label: 'Search', emoji: '🔍' },
 ];
 
+const STATUS_LINK = { href: '/status', label: 'Status', emoji: '📡' };
+
 export default function GenreSwitcher() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,6 +31,12 @@ export default function GenreSwitcher() {
           {g.emoji} {g.label}
         </button>
       ))}
+      <button
+        onClick={() => router.push(STATUS_LINK.href)}
+        className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-zinc-400 hover:text-white"
+      >
+        {STATUS_LINK.emoji} {STATUS_LINK.label}
+      </button>
     </div>
   );
 }

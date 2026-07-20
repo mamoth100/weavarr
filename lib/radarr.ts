@@ -44,3 +44,31 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!addRes.ok) throw new Error(`Radarr add failed: ${await addRes.text()}`);
   return { alreadyAdded: false };
 }
+
+export interface RadarrQueueItem {
+  title: string;
+  status: string;
+  trackedDownloadState: string;
+  size: number;
+  sizeleft: number;
+  timeleft?: string;
+}
+
+export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+
+  const res = await fetch(`${RADARR_URL}/api/v3/queue?includeMovie=true&pageSize=50`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Radarr queue failed: ${res.status}`);
+  const data = await res.json();
+  return (data.records ?? []).map((r: Record<string, unknown>) => ({
+    title: (r.movie as { title?: string } | undefined)?.title ?? (r.title as string | undefined) ?? 'Unknown',
+    status: r.status as string,
+    trackedDownloadState: r.trackedDownloadState as string,
+    size: r.size as number,
+    sizeleft: r.sizeleft as number,
+    timeleft: r.timeleft as string | undefined,
+  }));
+}
