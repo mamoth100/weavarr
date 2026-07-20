@@ -72,50 +72,48 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
     mediaType === 'movie' ? 'Request (Radarr)' : 'Request (Sonarr)';
 
   return (
-    <div className="inline-flex flex-col">
-      <div className="flex items-center gap-2">
-        {mediaType === 'tv' && (
-          <select
-            value={selection}
-            onChange={(e) => setSelection(e.target.value)}
-            disabled={locked}
-            aria-label="Which seasons to download"
-            className="px-2 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
-          >
-            {PRESET_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-            {realSeasons.length > 0 && (
-              <optgroup label="Specific Season">
-                {realSeasons.map((s) => (
-                  <option key={s.season_number} value={`season:${s.season_number}`}>
-                    Season {s.season_number} ({s.episode_count} ep)
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        )}
-        <button
-          onClick={handleClick}
+    <>
+      {mediaType === 'tv' && (
+        <select
+          value={selection}
+          onChange={(e) => setSelection(e.target.value)}
           disabled={locked}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-            ${
-              status === 'added' || status === 'already'
-                ? 'bg-green-600 text-white'
-                : status === 'error'
-                ? 'bg-red-600 text-white hover:bg-red-500'
-                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-            }`}
-          aria-label={`Request "${title}" download`}
+          aria-label="Which seasons to download"
+          className="px-2 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          {label}
-        </button>
-      </div>
-      <label className="flex items-center gap-1.5 mt-1.5 text-xs text-zinc-500 select-none">
+          {PRESET_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+          {realSeasons.length > 0 && (
+            <optgroup label="Specific Season">
+              {realSeasons.map((s) => (
+                <option key={s.season_number} value={`season:${s.season_number}`}>
+                  Season {s.season_number} ({s.episode_count} ep)
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      )}
+      <button
+        onClick={handleClick}
+        disabled={locked}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+          ${
+            status === 'added' || status === 'already'
+              ? 'bg-green-600 text-white'
+              : status === 'error'
+              ? 'bg-red-600 text-white hover:bg-red-500'
+              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+          }`}
+        aria-label={`Request "${title}" download`}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        {label}
+      </button>
+      <label className="flex items-center gap-1.5 text-xs text-zinc-500 select-none">
         <input
           type="checkbox"
           checked={highestQuality}
@@ -125,7 +123,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
         />
         Download highest quality
       </label>
-      {error && <p className="text-xs text-red-400 mt-1 max-w-xs">{error}</p>}
-    </div>
+      {error && <p className="w-full text-xs text-red-400">{error}</p>}
+    </>
   );
 }
