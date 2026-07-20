@@ -79,6 +79,13 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
   return !Array.isArray(data);
 }
 
+// "importPending" / "importing" are normal transient states that resolve on
+// their own within seconds — only offer manual import for genuinely stuck ones.
+const STUCK_STATES = ['importBlocked', 'importFailed', 'failedPending', 'failed'];
+function needsManualImport(trackedDownloadState: string): boolean {
+  return STUCK_STATES.includes(trackedDownloadState);
+}
+
 function ImportButton({ service, downloadId }: { service: 'radarr' | 'sonarr'; downloadId?: string }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +223,7 @@ export default function StatusPanel() {
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
                   <span>{formatBytes(item.sizeleft)} left{formatTimeleft(item.timeleft)}</span>
                 </div>
-                {item.trackedDownloadState !== 'downloading' && (
+                {needsManualImport(item.trackedDownloadState) && (
                   <ImportButton service="sonarr" downloadId={item.downloadId} />
                 )}
               </div>
@@ -241,7 +248,7 @@ export default function StatusPanel() {
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
                   <span>{formatBytes(item.sizeleft)} left{formatTimeleft(item.timeleft)}</span>
                 </div>
-                {item.trackedDownloadState !== 'downloading' && (
+                {needsManualImport(item.trackedDownloadState) && (
                   <ImportButton service="radarr" downloadId={item.downloadId} />
                 )}
               </div>
