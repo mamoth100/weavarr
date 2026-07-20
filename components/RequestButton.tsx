@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import type { WatchlistItem } from '@/lib/watchlist';
 import type { TmdbSeason } from '@/types';
@@ -27,11 +27,30 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
 
+  // Card-grid callers (search results) don't have the season list yet — fetch
+  // it lazily so the picker still defaults to the latest season instead of "All"
+  const [fetchedSeasons, setFetchedSeasons] = useState<TmdbSeason[] | null>(null);
+  useEffect(() => {
+    if (mediaType !== 'tv' || seasons) return;
+    fetch(`/api/tmdb/seasons?id=${id}`)
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data.seasons)) setFetchedSeasons(data.seasons); })
+      .catch(() => {});
+  }, [mediaType, seasons, id]);
+
   // Real seasons from TMDB, numbered and with episodes — excludes Specials (season 0)
-  const realSeasons = (seasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
+  const realSeasons = (seasons ?? fetchedSeasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
   const latestSeason = realSeasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
 
   const [selection, setSelection] = useState<string>(latestSeason > 0 ? `season:${latestSeason}` : 'all');
+  const userTouchedSelection = useRef(false);
+  useEffect(() => {
+    if (!userTouchedSelection.current && latestSeason > 0) {
+      setSelection(`season:${latestSeason}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestSeason]);
+
   const [highestQuality, setHighestQuality] = useState(false);
   const { addFavorite } = useWatchlist();
 
@@ -76,7 +95,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       {mediaType === 'tv' && (
         <select
           value={selection}
-          onChange={(e) => setSelection(e.target.value)}
+          onChange={(e) => { userTouchedSelection.current = true; setSelection(e.target.value); }}
           disabled={locked}
           aria-label="Which seasons to download"
           className="px-2 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"

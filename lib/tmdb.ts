@@ -248,6 +248,16 @@ export async function discoverTv({
   };
 }
 
+export async function getTvSeasons(id: number): Promise<{ season_number: number; name: string; episode_count: number }[]> {
+  const res = await fetch(`${BASE_URL}/tv/${id}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb TV seasons failed: ${res.status}`);
+  const data = await res.json();
+  return data.seasons ?? [];
+}
+
 export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await fetch(
     `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos`,
