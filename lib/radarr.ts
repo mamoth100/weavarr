@@ -1,3 +1,5 @@
+import { pickQualityProfile } from './qualityProfile';
+
 const RADARR_URL = process.env.RADARR_URL;
 const RADARR_KEY = process.env.RADARR_KEY;
 
@@ -5,7 +7,7 @@ function headers() {
   return { 'X-Api-Key': RADARR_KEY as string, 'Content-Type': 'application/json' };
 }
 
-export async function addMovieToRadarr(tmdbId: number) {
+export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
   const lookupRes = await fetch(`${RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, {
@@ -26,12 +28,14 @@ export async function addMovieToRadarr(tmdbId: number) {
   if (!profiles?.length) throw new Error('Radarr has no quality profile configured');
   if (!folders?.length) throw new Error('Radarr has no root folder configured');
 
+  const profile = pickQualityProfile(profiles, highestQuality);
+
   const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       ...movie,
-      qualityProfileId: profiles[0].id,
+      qualityProfileId: profile.id,
       rootFolderPath: folders[0].path,
       monitored: true,
       addOptions: { searchForMovie: true },

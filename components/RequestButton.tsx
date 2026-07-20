@@ -32,6 +32,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   const latestSeason = realSeasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
 
   const [selection, setSelection] = useState<string>(latestSeason > 0 ? `season:${latestSeason}` : 'all');
+  const [highestQuality, setHighestQuality] = useState(false);
   const { addFavorite } = useWatchlist();
 
   const locked = status === 'loading' || status === 'added' || status === 'already';
@@ -46,7 +47,11 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       const res = await fetch(mediaType === 'movie' ? '/api/radarr/add' : '/api/sonarr/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mediaType === 'movie' ? { tmdbId: id } : { imdbId, title, monitor, seasonNumber }),
+        body: JSON.stringify(
+          mediaType === 'movie'
+            ? { tmdbId: id, highestQuality }
+            : { imdbId, title, monitor, seasonNumber, highestQuality }
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
@@ -110,6 +115,16 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           {label}
         </button>
       </div>
+      <label className="flex items-center gap-1.5 mt-1.5 text-xs text-zinc-500 select-none">
+        <input
+          type="checkbox"
+          checked={highestQuality}
+          onChange={(e) => setHighestQuality(e.target.checked)}
+          disabled={locked}
+          className="accent-amber-400"
+        />
+        Download highest quality
+      </label>
       {error && <p className="text-xs text-red-400 mt-1 max-w-xs">{error}</p>}
     </div>
   );

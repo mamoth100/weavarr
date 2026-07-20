@@ -1,3 +1,5 @@
+import { pickQualityProfile } from './qualityProfile';
+
 const SONARR_URL = process.env.SONARR_URL;
 const SONARR_KEY = process.env.SONARR_KEY;
 
@@ -10,11 +12,13 @@ export async function addSeriesToSonarr({
   title,
   monitor = 'all',
   seasonNumber,
+  highestQuality = false,
 }: {
   imdbId: string | null;
   title: string;
   monitor?: string;
   seasonNumber?: number;
+  highestQuality?: boolean;
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
@@ -39,6 +43,8 @@ export async function addSeriesToSonarr({
   if (!profiles?.length) throw new Error('Sonarr has no quality profile configured');
   if (!folders?.length) throw new Error('Sonarr has no root folder configured');
 
+  const profile = pickQualityProfile(profiles, highestQuality);
+
   // A specific season number wins over the preset monitor strategy: hand-pick
   // which season is monitored and leave addOptions.monitor out so Sonarr
   // doesn't overwrite that per-season choice.
@@ -52,7 +58,7 @@ export async function addSeriesToSonarr({
     body: JSON.stringify({
       ...series,
       seasons,
-      qualityProfileId: profiles[0].id,
+      qualityProfileId: profile.id,
       rootFolderPath: folders[0].path,
       monitored: true,
       addOptions: seasonNumber !== undefined
