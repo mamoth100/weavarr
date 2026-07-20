@@ -117,9 +117,17 @@ export async function forceImportSonarr(downloadId: string) {
   const files = await res.json();
   if (!Array.isArray(files) || files.length === 0) throw new Error('No importable files found for this download');
 
+  // The command endpoint wants plain seriesId/episodeIds, not the nested series/episodes objects the GET response returns
   const mappedFiles = files.map((f: Record<string, unknown>) => ({
-    ...f,
+    path: f.path,
+    folderName: f.folderName,
+    seriesId: (f.series as { id?: number } | undefined)?.id,
     episodeIds: (f.episodes as { id: number }[] | undefined)?.map((e) => e.id) ?? [],
+    quality: f.quality,
+    languages: f.languages,
+    releaseGroup: f.releaseGroup,
+    indexerFlags: f.indexerFlags,
+    downloadId: f.downloadId,
   }));
 
   const cmdRes = await fetch(`${SONARR_URL}/api/v3/command`, {

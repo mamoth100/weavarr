@@ -87,10 +87,22 @@ export async function forceImportRadarr(downloadId: string) {
   const files = await res.json();
   if (!Array.isArray(files) || files.length === 0) throw new Error('No importable files found for this download');
 
+  // The command endpoint wants a plain movieId, not the nested movie object the GET response returns
+  const mappedFiles = files.map((f: Record<string, unknown>) => ({
+    path: f.path,
+    folderName: f.folderName,
+    movieId: (f.movie as { id?: number } | undefined)?.id,
+    quality: f.quality,
+    languages: f.languages,
+    releaseGroup: f.releaseGroup,
+    indexerFlags: f.indexerFlags,
+    downloadId: f.downloadId,
+  }));
+
   const cmdRes = await fetch(`${RADARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ name: 'ManualImport', files, importMode: 'auto' }),
+    body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
   });
   if (!cmdRes.ok) throw new Error(`Radarr import command failed: ${await cmdRes.text()}`);
   return { triggered: true };
