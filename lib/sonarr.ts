@@ -5,7 +5,15 @@ function headers() {
   return { 'X-Api-Key': SONARR_KEY as string, 'Content-Type': 'application/json' };
 }
 
-export async function addSeriesToSonarr({ imdbId, title }: { imdbId: string | null; title: string }) {
+export async function addSeriesToSonarr({
+  imdbId,
+  title,
+  monitor = 'all',
+}: {
+  imdbId: string | null;
+  title: string;
+  monitor?: string;
+}) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
   const term = imdbId ? `imdb:${imdbId}` : title;
@@ -37,7 +45,7 @@ export async function addSeriesToSonarr({ imdbId, title }: { imdbId: string | nu
       qualityProfileId: profiles[0].id,
       rootFolderPath: folders[0].path,
       monitored: true,
-      addOptions: { searchForMissingEpisodes: true },
+      addOptions: { monitor, searchForMissingEpisodes: monitor !== 'future' },
     }),
   });
   if (!addRes.ok) throw new Error(`Sonarr add failed: ${await addRes.text()}`);
