@@ -17,12 +17,12 @@ export default function GenreSwitcher() {
   const current = searchParams.get('genre') ?? 'documentary';
 
   return (
-    <div className="flex gap-1 p-1 bg-zinc-900 rounded-xl border border-zinc-800 w-fit">
+    <div className="flex flex-wrap gap-1 p-1 bg-zinc-900 rounded-xl border border-zinc-800 max-w-full">
       {GENRES.map((g) => (
         <button
           key={g.value}
           onClick={() => router.push(`/?genre=${g.value}`)}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
             current === g.value
               ? 'bg-amber-400 text-zinc-950'
               : 'text-zinc-400 hover:text-white'
@@ -33,7 +33,7 @@ export default function GenreSwitcher() {
       ))}
       <button
         onClick={() => router.push(STATUS_LINK.href)}
-        className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-zinc-400 hover:text-white"
+        className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-zinc-400 hover:text-white whitespace-nowrap"
       >
         {STATUS_LINK.emoji} {STATUS_LINK.label}
       </button>

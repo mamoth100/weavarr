@@ -128,7 +128,7 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <header className="border-b border-zinc-800 px-6 py-5">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               Docu<span className="text-amber-400">View</span>
@@ -137,7 +137,7 @@ export default async function Home({ searchParams }: PageProps) {
               {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
             </p>
           </div>
-          <div className="flex items-center gap-4 mt-1">
+          <div className="flex items-center flex-wrap gap-4 sm:mt-1">
               <a
                 id="nav-favorites"
                 href="/favorites"
