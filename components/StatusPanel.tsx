@@ -28,6 +28,7 @@ interface QueueItem {
   size: number;
   sizeleft: number;
   timeleft?: string;
+  downloadId?: string;
 }
 
 interface ArrData {
@@ -59,6 +60,50 @@ function formatTimeleft(timeleft: string | undefined): string {
 
 function isArrError(data: QueueItem[] | ArrData): data is ArrData {
   return !Array.isArray(data);
+}
+
+function ImportButton({ service, downloadId }: { service: 'radarr' | 'sonarr'; downloadId?: string }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  if (!downloadId) return null;
+
+  async function handleClick() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch(`/api/${service}/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ downloadId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Import failed');
+      setStatus('done');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={handleClick}
+        disabled={status === 'loading' || status === 'done'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+          status === 'done'
+            ? 'bg-green-600 text-white'
+            : status === 'error'
+            ? 'bg-red-600 text-white hover:bg-red-500'
+            : 'bg-amber-500 text-black hover:bg-amber-400'
+        }`}
+      >
+        {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered ✓' : status === 'error' ? 'Failed — retry' : 'Import'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
 }
 
 export default function StatusPanel() {
@@ -153,6 +198,9 @@ export default function StatusPanel() {
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
                   <span>{formatBytes(item.sizeleft)} left{formatTimeleft(item.timeleft)}</span>
                 </div>
+                {item.trackedDownloadState !== 'downloading' && (
+                  <ImportButton service="sonarr" downloadId={item.downloadId} />
+                )}
               </div>
             ))}
           </div>
@@ -175,6 +223,9 @@ export default function StatusPanel() {
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
                   <span>{formatBytes(item.sizeleft)} left{formatTimeleft(item.timeleft)}</span>
                 </div>
+                {item.trackedDownloadState !== 'downloading' && (
+                  <ImportButton service="radarr" downloadId={item.downloadId} />
+                )}
               </div>
             ))}
           </div>

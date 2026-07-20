@@ -52,6 +52,7 @@ export interface RadarrQueueItem {
   size: number;
   sizeleft: number;
   timeleft?: string;
+  downloadId?: string;
 }
 
 export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
@@ -70,5 +71,27 @@ export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
     size: r.size as number,
     sizeleft: r.sizeleft as number,
     timeleft: r.timeleft as string | undefined,
+    downloadId: r.downloadId as string | undefined,
   }));
+}
+
+/** Accepts whatever Radarr's own manual-import suggestion is for this download — the same result you'd get clicking "Import" in the Radarr UI without changing anything. */
+export async function forceImportRadarr(downloadId: string) {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+
+  const res = await fetch(`${RADARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Radarr manual import lookup failed: ${res.status}`);
+  const files = await res.json();
+  if (!Array.isArray(files) || files.length === 0) throw new Error('No importable files found for this download');
+
+  const cmdRes = await fetch(`${RADARR_URL}/api/v3/command`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name: 'ManualImport', files, importMode: 'auto' }),
+  });
+  if (!cmdRes.ok) throw new Error(`Radarr import command failed: ${await cmdRes.text()}`);
+  return { triggered: true };
 }

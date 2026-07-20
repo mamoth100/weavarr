@@ -78,6 +78,7 @@ export interface SonarrQueueItem {
   size: number;
   sizeleft: number;
   timeleft?: string;
+  downloadId?: string;
 }
 
 export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
@@ -99,6 +100,33 @@ export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
       size: r.size as number,
       sizeleft: r.sizeleft as number,
       timeleft: r.timeleft as string | undefined,
+      downloadId: r.downloadId as string | undefined,
     };
   });
+}
+
+/** Accepts whatever Sonarr's own manual-import suggestion is for this download — same as clicking "Import" in the Sonarr UI without changing anything. */
+export async function forceImportSonarr(downloadId: string) {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  const res = await fetch(`${SONARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr manual import lookup failed: ${res.status}`);
+  const files = await res.json();
+  if (!Array.isArray(files) || files.length === 0) throw new Error('No importable files found for this download');
+
+  const mappedFiles = files.map((f: Record<string, unknown>) => ({
+    ...f,
+    episodeIds: (f.episodes as { id: number }[] | undefined)?.map((e) => e.id) ?? [],
+  }));
+
+  const cmdRes = await fetch(`${SONARR_URL}/api/v3/command`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
+  });
+  if (!cmdRes.ok) throw new Error(`Sonarr import command failed: ${await cmdRes.text()}`);
+  return { triggered: true };
 }
