@@ -28,6 +28,12 @@ export interface TmdbVideo {
   published_at: string;
 }
 
+export interface TmdbSeason {
+  season_number: number;
+  name: string;
+  episode_count: number;
+}
+
 export interface TmdbDetailResponse extends TmdbMovie {
   genres: { id: number; name: string }[];
   keywords: { keywords: TmdbKeyword[] };
@@ -37,6 +43,7 @@ export interface TmdbDetailResponse extends TmdbMovie {
   videos?: { results: TmdbVideo[] };
   status?: string;
   spoken_languages?: { iso_639_1: string; english_name: string }[];
+  seasons?: TmdbSeason[];
 }
 
 export interface TmdbDiscoverResponse {

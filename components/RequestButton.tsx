@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import type { WatchlistItem } from '@/lib/watchlist';
+import type { TmdbSeason } from '@/types';
 
 interface Props {
   id: number;
@@ -11,33 +12,39 @@ interface Props {
   poster_path: string | null;
   release_date: string;
   imdbId?: string | null;
+  seasons?: TmdbSeason[];
 }
 
 type Status = 'idle' | 'loading' | 'added' | 'already' | 'error';
 
-const SONARR_MONITOR_OPTIONS = [
+const PRESET_OPTIONS = [
   { value: 'all', label: 'All Seasons' },
   { value: 'future', label: 'Future Only' },
-  { value: 'firstSeason', label: 'First Season' },
   { value: 'pilot', label: 'Pilot Only' },
 ] as const;
 
-export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId }: Props) {
+export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId, seasons }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [monitor, setMonitor] = useState<string>('all');
+  const [selection, setSelection] = useState<string>('all');
   const { addFavorite } = useWatchlist();
 
   const locked = status === 'loading' || status === 'added' || status === 'already';
 
+  // Real seasons from TMDB, numbered and with episodes — excludes Specials (season 0)
+  const realSeasons = (seasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
+
   async function handleClick() {
     setStatus('loading');
     setError(null);
+    const isSeasonPick = selection.startsWith('season:');
+    const seasonNumber = isSeasonPick ? Number(selection.split(':')[1]) : undefined;
+    const monitor = isSeasonPick ? undefined : selection;
     try {
       const res = await fetch(mediaType === 'movie' ? '/api/radarr/add' : '/api/sonarr/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mediaType === 'movie' ? { tmdbId: id } : { imdbId, title, monitor }),
+        body: JSON.stringify(mediaType === 'movie' ? { tmdbId: id } : { imdbId, title, monitor, seasonNumber }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
@@ -62,15 +69,24 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       <div className="flex items-center gap-2">
         {mediaType === 'tv' && (
           <select
-            value={monitor}
-            onChange={(e) => setMonitor(e.target.value)}
+            value={selection}
+            onChange={(e) => setSelection(e.target.value)}
             disabled={locked}
             aria-label="Which seasons to download"
             className="px-2 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
           >
-            {SONARR_MONITOR_OPTIONS.map((opt) => (
+            {PRESET_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
+            {realSeasons.length > 0 && (
+              <optgroup label="Specific Season">
+                {realSeasons.map((s) => (
+                  <option key={s.season_number} value={`season:${s.season_number}`}>
+                    Season {s.season_number} ({s.episode_count} ep)
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         )}
         <button

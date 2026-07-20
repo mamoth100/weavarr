@@ -9,10 +9,12 @@ export async function addSeriesToSonarr({
   imdbId,
   title,
   monitor = 'all',
+  seasonNumber,
 }: {
   imdbId: string | null;
   title: string;
   monitor?: string;
+  seasonNumber?: number;
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
@@ -37,15 +39,25 @@ export async function addSeriesToSonarr({
   if (!profiles?.length) throw new Error('Sonarr has no quality profile configured');
   if (!folders?.length) throw new Error('Sonarr has no root folder configured');
 
+  // A specific season number wins over the preset monitor strategy: hand-pick
+  // which season is monitored and leave addOptions.monitor out so Sonarr
+  // doesn't overwrite that per-season choice.
+  const seasons = seasonNumber !== undefined
+    ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: s.seasonNumber === seasonNumber }))
+    : series.seasons;
+
   const addRes = await fetch(`${SONARR_URL}/api/v3/series`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       ...series,
+      seasons,
       qualityProfileId: profiles[0].id,
       rootFolderPath: folders[0].path,
       monitored: true,
-      addOptions: { monitor, searchForMissingEpisodes: monitor !== 'future' },
+      addOptions: seasonNumber !== undefined
+        ? { searchForMissingEpisodes: true }
+        : { monitor, searchForMissingEpisodes: monitor !== 'future' },
     }),
   });
   if (!addRes.ok) throw new Error(`Sonarr add failed: ${await addRes.text()}`);

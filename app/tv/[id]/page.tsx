@@ -152,6 +152,7 @@ export default async function TvPage({ params }: Props) {
                 poster_path={detail.poster_path}
                 release_date={detail.release_date ?? ''}
                 imdbId={imdbId}
+                seasons={detail.seasons}
               />
             </DetailActions>
 
