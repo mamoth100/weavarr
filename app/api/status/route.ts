@@ -19,7 +19,7 @@ export async function GET() {
     getSonarrQueue(),
     getRadarrRecentImports(POOL_SIZE),
     getSonarrRecentImports(POOL_SIZE),
-    getCleanupCandidates(),
+    getCleanupCandidates(200),
   ]);
 
   const importedTitles = [

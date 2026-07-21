@@ -74,25 +74,49 @@ export interface WatchedEpisode {
   viewedAt: string;
 }
 
-/** Recently watched episodes, per Plex's own watch-history log — Plex only logs an entry once its own "watched" threshold (~90%) is crossed. */
+let tvSectionKeyCache: string | null | undefined;
+
+async function getTvSectionKey(): Promise<string | null> {
+  if (tvSectionKeyCache !== undefined) return tvSectionKeyCache;
+  const res = await fetch(`${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}`, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Plex sections failed: ${res.status}`);
+  const data = await res.json();
+  const sections: { key?: string; type?: string }[] = data.MediaContainer?.Directory ?? [];
+  tvSectionKeyCache = sections.find((s) => s.type === 'show')?.key ?? null;
+  return tvSectionKeyCache;
+}
+
+/**
+ * Recently watched episodes, queried directly by viewCount/lastViewedAt on
+ * the TV library section. Deliberately NOT using Plex's session-history log
+ * (/status/sessions/history/all) — that only records actual playback
+ * sessions, so manually marking an episode "watched" (no playback involved)
+ * never shows up there even though it does set viewCount/lastViewedAt.
+ */
 export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpisode[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
+  const sectionKey = await getTvSectionKey();
+  if (!sectionKey) return [];
+
   const res = await fetch(
-    `${PLEX_URL}/status/sessions/history/all?X-Plex-Token=${PLEX_TOKEN}&sort=viewedAt:desc&limit=${limit}`,
+    `${PLEX_URL}/library/sections/${sectionKey}/all?type=4&viewCount%3E=1&sort=lastViewedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=${limit}&X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
-  if (!res.ok) throw new Error(`Plex history failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Plex watched episodes failed: ${res.status}`);
   const data = await res.json();
   const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
 
   return items
-    .filter((i) => i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined)
+    .filter((i) => i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined && i.lastViewedAt)
     .map((i) => ({
       showTitle: i.grandparentTitle as string,
       seasonNumber: i.parentIndex as number,
       episodeNumber: i.index as number,
-      viewedAt: new Date((i.viewedAt as number) * 1000).toISOString(),
+      viewedAt: new Date((i.lastViewedAt as number) * 1000).toISOString(),
     }));
 }
 
