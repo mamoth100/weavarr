@@ -82,7 +82,9 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
 
 // Downloading has a direct percentage; post-processing entries (e.g.
 // "Unpacking: 52/56 - 0:22 left") only have a fraction embedded in the text.
+// "Waiting" items always sit at 0% (haven't started) — not worth a bar.
 function extractProgressPercent(slot: SabSlot): number | null {
+  if (slot.status === 'Waiting') return null;
   if (slot.percentage !== undefined) return Number(slot.percentage);
   const match = slot.status.match(/(\d+)\/(\d+)/);
   if (!match) return null;
