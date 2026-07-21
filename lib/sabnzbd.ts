@@ -25,8 +25,7 @@ function statusPriority(status: string): number {
   if (status === 'Downloading') return 0;
   if (status.startsWith('Unpacking') || ['Extracting', 'Verifying', 'Repairing', 'Moving', 'Running'].includes(status)) return 1;
   if (status === 'Waiting') return 2;
-  if (status === 'Queued') return 3;
-  return 4;
+  return 3;
 }
 
 export async function getSabQueue(): Promise<SabQueue> {
@@ -57,12 +56,13 @@ export async function getSabQueue(): Promise<SabQueue> {
 
   // Once a download finishes, SAB moves it out of the queue entirely and
   // into history for post-processing (repair/extract/verify) — "Completed"
-  // entries are done and not worth showing here.
+  // entries are done and not worth showing here. SAB's own web UI displays
+  // its raw "Queued" history status as "Waiting" — match that wording.
   const postProcessingSlots: SabSlot[] = (historyData.history?.slots ?? [])
     .filter((s: Record<string, unknown>) => s.status !== 'Completed')
     .map((s: Record<string, unknown>) => ({
       filename: s.name as string,
-      status: (s.action_line as string) || (s.status as string),
+      status: (s.action_line as string) || (s.status === 'Queued' ? 'Waiting' : (s.status as string)),
     }));
 
   const slots = [...queueSlots, ...postProcessingSlots].sort(
