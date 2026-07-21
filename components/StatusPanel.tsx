@@ -223,7 +223,10 @@ export default function StatusPanel() {
                       <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                         <span className="text-amber-400">{slot.status}</span>
                         {slot.percentage !== undefined && (
-                          <span className="text-amber-400">{slot.percentage}% · {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}</span>
+                          <span className="text-amber-400">
+                            {slot.status !== 'Waiting' && `${slot.percentage}% · `}
+                            {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}
+                          </span>
                         )}
                       </div>
                       {progress !== null && <ProgressBar percent={progress} />}
