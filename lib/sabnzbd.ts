@@ -21,6 +21,14 @@ export interface SabQueue {
   slots: SabSlot[];
 }
 
+function statusPriority(status: string): number {
+  if (status === 'Downloading') return 0;
+  if (status.startsWith('Unpacking') || ['Extracting', 'Verifying', 'Repairing', 'Moving', 'Running'].includes(status)) return 1;
+  if (status === 'Waiting') return 2;
+  if (status === 'Queued') return 3;
+  return 4;
+}
+
 export async function getSabQueue(): Promise<SabQueue> {
   if (!SAB_URL || !SAB_KEY) throw new Error('SABnzbd is not configured');
 
@@ -57,7 +65,9 @@ export async function getSabQueue(): Promise<SabQueue> {
       status: (s.action_line as string) || (s.status as string),
     }));
 
-  const slots = [...queueSlots, ...postProcessingSlots];
+  const slots = [...queueSlots, ...postProcessingSlots].sort(
+    (a, b) => statusPriority(a.status) - statusPriority(b.status)
+  );
 
   return {
     speed: q.speed ?? '0',
