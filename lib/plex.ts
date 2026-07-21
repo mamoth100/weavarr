@@ -66,3 +66,32 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
 
   return episodes.some((ep) => ep.parentIndex === seasonNumber && ep.index === episodeNumber);
 }
+
+export interface WatchedEpisode {
+  showTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  viewedAt: string;
+}
+
+/** Recently watched episodes, per Plex's own watch-history log — Plex only logs an entry once its own "watched" threshold (~90%) is crossed. */
+export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpisode[]> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const res = await fetch(
+    `${PLEX_URL}/status/sessions/history/all?X-Plex-Token=${PLEX_TOKEN}&sort=viewedAt:desc&limit=${limit}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Plex history failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+
+  return items
+    .filter((i) => i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined)
+    .map((i) => ({
+      showTitle: i.grandparentTitle as string,
+      seasonNumber: i.parentIndex as number,
+      episodeNumber: i.index as number,
+      viewedAt: new Date((i.viewedAt as number) * 1000).toISOString(),
+    }));
+}

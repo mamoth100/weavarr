@@ -173,3 +173,61 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
       };
     });
 }
+
+export interface SonarrSeriesLite {
+  id: number;
+  title: string;
+}
+
+export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
+  const data = await res.json();
+  return (data as Record<string, unknown>[]).map((s) => ({ id: s.id as number, title: s.title as string }));
+}
+
+export interface SonarrEpisodeFileInfo {
+  episodeId: number;
+  episodeFileId: number;
+}
+
+/** Finds the episode + file IDs for a specific season/episode of an already-added series — null if not found or no file on disk. */
+export async function findSonarrEpisodeFile(
+  seriesId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<SonarrEpisodeFileInfo | null> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  const match = episodes.find(
+    (e) => e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber && e.hasFile
+  );
+  if (!match) return null;
+  const episodeFile = match.episodeFile as { id?: number } | undefined;
+  if (!episodeFile?.id) return null;
+  return { episodeId: match.id as number, episodeFileId: episodeFile.id };
+}
+
+/** Deletes just this episode's file and unmonitors that single episode — leaves the series and every other episode untouched. */
+export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  const deleteRes = await fetch(`${SONARR_URL}/api/v3/episodefile/${episodeFileId}`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (!deleteRes.ok) throw new Error(`Sonarr episode file delete failed: ${await deleteRes.text()}`);
+
+  const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
+  });
+  if (!monitorRes.ok) throw new Error(`Sonarr unmonitor failed: ${await monitorRes.text()}`);
+}

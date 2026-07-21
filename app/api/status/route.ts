@@ -3,6 +3,7 @@ import { getSabQueue } from '@/lib/sabnzbd';
 import { getRadarrQueue, getRadarrRecentImports } from '@/lib/radarr';
 import { getSonarrQueue, getSonarrRecentImports } from '@/lib/sonarr';
 import { plexHasTitle, plexHasEpisode } from '@/lib/plex';
+import { getCleanupCandidates } from '@/lib/cleanupCandidates';
 
 const RESOLVED_LIMIT = 10;
 const POOL_SIZE = 20;
@@ -12,12 +13,13 @@ function errMessage(reason: unknown): string {
 }
 
 export async function GET() {
-  const [sab, radarr, sonarr, radarrHistory, sonarrHistory] = await Promise.allSettled([
+  const [sab, radarr, sonarr, radarrHistory, sonarrHistory, cleanup] = await Promise.allSettled([
     getSabQueue(),
     getRadarrQueue(),
     getSonarrQueue(),
     getRadarrRecentImports(POOL_SIZE),
     getSonarrRecentImports(POOL_SIZE),
+    getCleanupCandidates(),
   ]);
 
   const importedTitles = [
@@ -51,5 +53,6 @@ export async function GET() {
     radarr: radarr.status === 'fulfilled' ? radarr.value : { error: errMessage(radarr.reason) },
     sonarr: sonarr.status === 'fulfilled' ? sonarr.value : { error: errMessage(sonarr.reason) },
     recentImports,
+    readyToCleanup: cleanup.status === 'fulfilled' ? cleanup.value : { error: errMessage(cleanup.reason) },
   });
 }

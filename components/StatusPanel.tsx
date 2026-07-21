@@ -43,11 +43,29 @@ interface RecentImport {
   inPlex: boolean | null;
 }
 
+interface CleanupCandidateItem {
+  showTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  viewedAt: string;
+  episodeId: number;
+  episodeFileId: number;
+}
+
+interface CleanupError {
+  error: string;
+}
+
 interface StatusResponse {
   sab: SabData;
   radarr: QueueItem[] | ArrData;
   sonarr: QueueItem[] | ArrData;
   recentImports?: RecentImport[];
+  readyToCleanup?: CleanupCandidateItem[] | CleanupError;
+}
+
+function isCleanupError(data: CleanupCandidateItem[] | CleanupError): data is CleanupError {
+  return !Array.isArray(data);
 }
 
 function timeAgo(dateStr: string): string {
@@ -147,6 +165,69 @@ function ImportButton({ service, downloadId }: { service: 'radarr' | 'sonarr'; d
         }`}
       >
         {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered ✓' : status === 'error' ? 'Failed — retry' : 'Import'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function CleanupButton({ episodeId, episodeFileId }: { episodeId: number; episodeFileId: number }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId, episodeFileId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      setStatus('done');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'done') {
+    return <span className="text-xs font-medium text-green-400 mt-2 inline-block">Deleted ✓</span>;
+  }
+
+  if (status === 'confirm' || status === 'loading') {
+    return (
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-xs text-zinc-400">Delete this episode's file?</span>
+        <button
+          onClick={handleConfirm}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
+        >
+          {status === 'loading' ? 'Deleting…' : 'Yes, delete'}
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setStatus('confirm')}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'error' ? 'Failed — retry' : 'Delete episode'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -308,6 +389,24 @@ export default function StatusPanel() {
               ) : (
                 <span className="text-xs font-medium text-amber-400">Not in Plex yet</span>
               )}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* Ready to Clean Up — episodes watched (per Plex) that still have a file in Sonarr */}
+    {data.readyToCleanup && !isCleanupError(data.readyToCleanup) && data.readyToCleanup.length > 0 && (
+      <section>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Ready to Clean Up</h2>
+        <div className="space-y-2">
+          {data.readyToCleanup.map((item, i) => (
+            <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <p className="text-sm font-medium">
+                {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
+              </p>
+              <p className="text-xs text-zinc-500">Watched {timeAgo(item.viewedAt)}</p>
+              <CleanupButton episodeId={item.episodeId} episodeFileId={item.episodeFileId} />
             </div>
           ))}
         </div>
