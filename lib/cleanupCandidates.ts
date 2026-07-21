@@ -1,4 +1,4 @@
-import { getPlexEpisodeWatchHistory } from './plex';
+import { getPlexEpisodeWatchHistory, getPlexInProgressEpisodes } from './plex';
 import { getSonarrSeriesList, findSonarrEpisodeFile } from './sonarr';
 
 export interface CleanupCandidate {
@@ -11,26 +11,54 @@ export interface CleanupCandidate {
   episodeFileId: number;
 }
 
+const WATCHED_PERCENT_THRESHOLD = 0.9;
+
 function getExcludedShows(): Set<string> {
   const raw = process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
   return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 }
 
+interface WatchSignal {
+  showTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  viewedAt: string;
+}
+
 export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate[]> {
   const excluded = getExcludedShows();
-  const [history, series] = await Promise.all([
+  const [history, inProgress, series] = await Promise.all([
     getPlexEpisodeWatchHistory(limit),
+    getPlexInProgressEpisodes(),
     getSonarrSeriesList(),
   ]);
+
+  // Two independent signals, either one qualifies: Plex's own watch-history
+  // log (it logs an entry once its internal "watched" threshold is crossed),
+  // or an in-progress episode already at/above 90% per Plex's own raw
+  // viewOffset/duration — no percentage math beyond that ratio.
+  const watchedSignals: WatchSignal[] = history.map((w) => ({
+    showTitle: w.showTitle,
+    seasonNumber: w.seasonNumber,
+    episodeNumber: w.episodeNumber,
+    viewedAt: w.viewedAt,
+  }));
+  const almostDoneSignals: WatchSignal[] = inProgress
+    .filter((e) => e.duration > 0 && e.viewOffset / e.duration >= WATCHED_PERCENT_THRESHOLD)
+    .map((e) => ({
+      showTitle: e.showTitle,
+      seasonNumber: e.seasonNumber,
+      episodeNumber: e.episodeNumber,
+      viewedAt: new Date().toISOString(),
+    }));
 
   const candidates: CleanupCandidate[] = [];
   const episodeCache = new Map<string, ReturnType<typeof findSonarrEpisodeFile>>();
   const seen = new Set<string>();
 
-  for (const watched of history) {
+  for (const watched of [...watchedSignals, ...almostDoneSignals]) {
     if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
 
-    // History is newest-first, so the first time we see a season/episode is its most recent watch — skip repeats.
     const dedupeKey = `${watched.showTitle.toLowerCase()}:${watched.seasonNumber}:${watched.episodeNumber}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);

@@ -95,3 +95,41 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
       viewedAt: new Date((i.viewedAt as number) * 1000).toISOString(),
     }));
 }
+
+export interface InProgressEpisode {
+  showTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  viewOffset: number;
+  duration: number;
+}
+
+/** Episodes currently mid-playback per Plex's "on deck" list, with the raw viewOffset/duration Plex itself tracks — no history-log event required. */
+export async function getPlexInProgressEpisodes(): Promise<InProgressEpisode[]> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const res = await fetch(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Plex on deck failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+
+  return items
+    .filter((i) =>
+      i.type === 'episode' &&
+      i.grandparentTitle &&
+      i.parentIndex !== undefined &&
+      i.index !== undefined &&
+      typeof i.viewOffset === 'number' &&
+      typeof i.duration === 'number'
+    )
+    .map((i) => ({
+      showTitle: i.grandparentTitle as string,
+      seasonNumber: i.parentIndex as number,
+      episodeNumber: i.index as number,
+      viewOffset: i.viewOffset as number,
+      duration: i.duration as number,
+    }));
+}
