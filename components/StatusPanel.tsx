@@ -296,10 +296,10 @@ export default function StatusPanel() {
               <p className="text-xs text-zinc-600">Queue is empty.</p>
             ) : (
               <div className="space-y-2">
-                {data.sab.slots.map((slot, i) => {
+                {data.sab.slots.map((slot) => {
                   const progress = extractProgressPercent(slot);
                   return (
-                    <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                    <div key={slot.filename} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
                       <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
                       <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                         <span className="text-amber-400">{slot.status}</span>
@@ -330,7 +330,7 @@ export default function StatusPanel() {
         ) : (
           <div className="space-y-2">
             {data.sonarr.map((item, i) => (
-              <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <div key={item.downloadId ?? `${item.title}-${item.episode}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
                 <p className="text-sm font-medium truncate">{item.title}{item.episode ? ` — ${item.episode}` : ''}</p>
                 <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
@@ -355,7 +355,7 @@ export default function StatusPanel() {
         ) : (
           <div className="space-y-2">
             {data.radarr.map((item, i) => (
-              <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <div key={item.downloadId ?? `${item.title}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
                 <p className="text-sm font-medium truncate">{item.title}</p>
                 <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
@@ -376,8 +376,8 @@ export default function StatusPanel() {
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Ready to Clean Up</h2>
         <div className="space-y-2">
-          {data.readyToCleanup.map((item, i) => (
-            <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+          {data.readyToCleanup.map((item) => (
+            <div key={item.episodeId} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <p className="text-sm font-medium">
                 {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
               </p>
@@ -394,8 +394,8 @@ export default function StatusPanel() {
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recently Imported</h2>
         <div className="space-y-2">
-          {data.recentImports.map((item, i) => (
-            <div key={i} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+          {data.recentImports.map((item) => (
+            <div key={`${item.title}-${item.episode ?? ''}-${item.date}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <div>
                 <p className="text-sm font-medium">{item.title}{item.episode ? ` — ${item.episode}` : ''}</p>
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
