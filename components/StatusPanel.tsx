@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 
 interface SabSlot {
   filename: string;
-  mb: string;
-  mbleft: string;
-  percentage: string;
   status: string;
-  timeleft: string;
+  mb?: string;
+  mbleft?: string;
+  percentage?: string;
+  timeleft?: string;
 }
 
 interface SabData {
@@ -198,7 +198,9 @@ export default function StatusPanel() {
                     <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
                     <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                       <span className="text-amber-400">{slot.status}</span>
-                      <span>{slot.percentage}% · {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}</span>
+                      {slot.percentage !== undefined && (
+                        <span>{slot.percentage}% · {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}</span>
+                      )}
                     </div>
                   </div>
                 ))}
