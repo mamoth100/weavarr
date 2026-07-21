@@ -80,6 +80,26 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
   return !Array.isArray(data);
 }
 
+// Downloading has a direct percentage; post-processing entries (e.g.
+// "Unpacking: 52/56 - 0:22 left") only have a fraction embedded in the text.
+function extractProgressPercent(slot: SabSlot): number | null {
+  if (slot.percentage !== undefined) return Number(slot.percentage);
+  const match = slot.status.match(/(\d+)\/(\d+)/);
+  if (!match) return null;
+  return (Number(match[1]) / Number(match[2])) * 100;
+}
+
+function ProgressBar({ percent }: { percent: number }) {
+  return (
+    <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+      <div
+        className="h-full bg-amber-400 rounded-full transition-all"
+        style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+      />
+    </div>
+  );
+}
+
 // "importPending" / "importing" are normal transient states that resolve on
 // their own within seconds — only offer manual import for genuinely stuck ones.
 const STUCK_STATES = ['importBlocked', 'importFailed', 'failedPending', 'failed'];
@@ -193,17 +213,21 @@ export default function StatusPanel() {
               <p className="text-xs text-zinc-600">Queue is empty.</p>
             ) : (
               <div className="space-y-2">
-                {data.sab.slots.map((slot, i) => (
-                  <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                    <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
-                    <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
-                      <span className="text-amber-400">{slot.status}</span>
-                      {slot.percentage !== undefined && (
-                        <span className="text-amber-400">{slot.percentage}% · {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}</span>
-                      )}
+                {data.sab.slots.map((slot, i) => {
+                  const progress = extractProgressPercent(slot);
+                  return (
+                    <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                      <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
+                      <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
+                        <span className="text-amber-400">{slot.status}</span>
+                        {slot.percentage !== undefined && (
+                          <span className="text-amber-400">{slot.percentage}% · {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}</span>
+                        )}
+                      </div>
+                      {progress !== null && <ProgressBar percent={progress} />}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
