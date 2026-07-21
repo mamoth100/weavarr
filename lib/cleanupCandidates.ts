@@ -11,7 +11,10 @@ export interface CleanupCandidate {
   episodeFileId: number;
 }
 
-const WATCHED_PERCENT_THRESHOLD = 0.9;
+function getWatchedPercentThreshold(): number {
+  const raw = Number(process.env.CLEANUP_WATCHED_PERCENT);
+  return (Number.isFinite(raw) && raw > 0 ? raw : 90) / 100;
+}
 
 function getExcludedShows(): Set<string> {
   const raw = process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
@@ -27,6 +30,7 @@ interface WatchSignal {
 
 export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate[]> {
   const excluded = getExcludedShows();
+  const threshold = getWatchedPercentThreshold();
   const [history, inProgress, series] = await Promise.all([
     getPlexEpisodeWatchHistory(limit),
     getPlexInProgressEpisodes(),
@@ -35,8 +39,8 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
 
   // Two independent signals, either one qualifies: Plex's own watch-history
   // log (it logs an entry once its internal "watched" threshold is crossed),
-  // or an in-progress episode already at/above 90% per Plex's own raw
-  // viewOffset/duration — no percentage math beyond that ratio.
+  // or an in-progress episode already at/above CLEANUP_WATCHED_PERCENT per
+  // Plex's own raw viewOffset/duration — no percentage math beyond that ratio.
   const watchedSignals: WatchSignal[] = history.map((w) => ({
     showTitle: w.showTitle,
     seasonNumber: w.seasonNumber,
@@ -44,7 +48,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
     viewedAt: w.viewedAt,
   }));
   const almostDoneSignals: WatchSignal[] = inProgress
-    .filter((e) => e.duration > 0 && e.viewOffset / e.duration >= WATCHED_PERCENT_THRESHOLD)
+    .filter((e) => e.duration > 0 && e.viewOffset / e.duration >= threshold)
     .map((e) => ({
       showTitle: e.showTitle,
       seasonNumber: e.seasonNumber,
