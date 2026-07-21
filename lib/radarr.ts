@@ -1,4 +1,5 @@
 import { pickQualityProfile } from './qualityProfile';
+import { trackedStatePriority } from './queuePriority';
 
 const RADARR_URL = process.env.RADARR_URL;
 const RADARR_KEY = process.env.RADARR_KEY;
@@ -72,7 +73,7 @@ export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
     sizeleft: r.sizeleft as number,
     timeleft: r.timeleft as string | undefined,
     downloadId: r.downloadId as string | undefined,
-  }));
+  })).sort((a: RadarrQueueItem, b: RadarrQueueItem) => trackedStatePriority(a.trackedDownloadState) - trackedStatePriority(b.trackedDownloadState));
 }
 
 /** Accepts whatever Radarr's own manual-import suggestion is for this download — the same result you'd get clicking "Import" in the Radarr UI without changing anything. */

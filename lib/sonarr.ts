@@ -1,4 +1,5 @@
 import { pickQualityProfile } from './qualityProfile';
+import { trackedStatePriority } from './queuePriority';
 
 const SONARR_URL = process.env.SONARR_URL;
 const SONARR_KEY = process.env.SONARR_KEY;
@@ -102,7 +103,7 @@ export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
       timeleft: r.timeleft as string | undefined,
       downloadId: r.downloadId as string | undefined,
     };
-  });
+  }).sort((a: SonarrQueueItem, b: SonarrQueueItem) => trackedStatePriority(a.trackedDownloadState) - trackedStatePriority(b.trackedDownloadState));
 }
 
 /** Accepts whatever Sonarr's own manual-import suggestion is for this download — same as clicking "Import" in the Sonarr UI without changing anything. */
