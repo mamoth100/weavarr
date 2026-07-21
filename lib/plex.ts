@@ -120,6 +120,31 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
     }));
 }
 
+/**
+ * Set of "showTitle:season:episode" keys with an actual logged playback
+ * session — used only to tell "really watched" apart from "manually marked
+ * watched" (which sets viewCount/lastViewedAt but never hits this log).
+ */
+export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const res = await fetch(
+    `${PLEX_URL}/status/sessions/history/all?X-Plex-Token=${PLEX_TOKEN}&sort=viewedAt:desc&limit=${limit}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Plex session history failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+
+  const keys = new Set<string>();
+  for (const i of items) {
+    if (i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined) {
+      keys.add(`${(i.grandparentTitle as string).toLowerCase().trim()}:${i.parentIndex}:${i.index}`);
+    }
+  }
+  return keys;
+}
+
 export interface InProgressEpisode {
   showTitle: string;
   seasonNumber: number;

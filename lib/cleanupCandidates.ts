@@ -1,4 +1,4 @@
-import { getPlexEpisodeWatchHistory, getPlexInProgressEpisodes } from './plex';
+import { getPlexEpisodeWatchHistory, getPlexInProgressEpisodes, getPlexPlayedSessionKeys } from './plex';
 import { getSonarrSeriesList, findSonarrEpisodeFile } from './sonarr';
 
 export interface CleanupCandidate {
@@ -9,6 +9,7 @@ export interface CleanupCandidate {
   seriesId: number;
   episodeId: number;
   episodeFileId: number;
+  reason: string;
 }
 
 function getWatchedPercentThreshold(): number {
@@ -26,27 +27,34 @@ interface WatchSignal {
   seasonNumber: number;
   episodeNumber: number;
   viewedAt: string;
+  reason: string;
 }
 
 export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate[]> {
   const excluded = getExcludedShows();
   const threshold = getWatchedPercentThreshold();
-  const [history, inProgress, series] = await Promise.all([
+  const [history, inProgress, series, playedKeys] = await Promise.all([
     getPlexEpisodeWatchHistory(limit),
     getPlexInProgressEpisodes(),
     getSonarrSeriesList(),
+    getPlexPlayedSessionKeys(limit),
   ]);
 
-  // Two independent signals, either one qualifies: Plex's own watch-history
-  // log (it logs an entry once its internal "watched" threshold is crossed),
-  // or an in-progress episode already at/above CLEANUP_WATCHED_PERCENT per
-  // Plex's own raw viewOffset/duration — no percentage math beyond that ratio.
-  const watchedSignals: WatchSignal[] = history.map((w) => ({
-    showTitle: w.showTitle,
-    seasonNumber: w.seasonNumber,
-    episodeNumber: w.episodeNumber,
-    viewedAt: w.viewedAt,
-  }));
+  // Two independent signals, either one qualifies: Plex's own watch state
+  // (viewCount/lastViewedAt — set by either real playback OR a manual
+  // "mark watched", cross-referenced against the session-history log to
+  // tell which one it was), or an in-progress episode already at/above
+  // CLEANUP_WATCHED_PERCENT per Plex's raw viewOffset/duration.
+  const watchedSignals: WatchSignal[] = history.map((w) => {
+    const key = `${w.showTitle.toLowerCase().trim()}:${w.seasonNumber}:${w.episodeNumber}`;
+    return {
+      showTitle: w.showTitle,
+      seasonNumber: w.seasonNumber,
+      episodeNumber: w.episodeNumber,
+      viewedAt: w.viewedAt,
+      reason: playedKeys.has(key) ? 'Watched' : 'Marked watched manually',
+    };
+  });
   const almostDoneSignals: WatchSignal[] = inProgress
     .filter((e) => e.duration > 0 && e.viewOffset / e.duration >= threshold)
     .map((e) => ({
@@ -54,6 +62,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       seasonNumber: e.seasonNumber,
       episodeNumber: e.episodeNumber,
       viewedAt: new Date().toISOString(),
+      reason: `${Math.round((e.viewOffset / e.duration) * 100)}% watched`,
     }));
 
   const candidates: CleanupCandidate[] = [];
@@ -89,6 +98,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       seriesId: matchedSeries.id,
       episodeId: episodeFile.episodeId,
       episodeFileId: episodeFile.episodeFileId,
+      reason: watched.reason,
     });
   }
 

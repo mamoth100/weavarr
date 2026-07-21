@@ -50,6 +50,7 @@ interface CleanupCandidateItem {
   viewedAt: string;
   episodeId: number;
   episodeFileId: number;
+  reason: string;
 }
 
 interface CleanupError {
@@ -378,9 +379,12 @@ export default function StatusPanel() {
         <div className="space-y-2">
           {data.readyToCleanup.map((item) => (
             <div key={item.episodeId} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-              <p className="text-sm font-medium">
-                {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">
+                  {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
+                </p>
+                <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
+              </div>
               <p className="text-xs text-zinc-500">Watched {timeAgo(item.viewedAt)}</p>
               <CleanupButton episodeId={item.episodeId} episodeFileId={item.episodeFileId} />
             </div>
