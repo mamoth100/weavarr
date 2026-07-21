@@ -371,6 +371,24 @@ export default function StatusPanel() {
       </section>
     </div>
 
+    {/* Ready to Clean Up — episodes watched (per Plex) that still have a file in Sonarr */}
+    {data.readyToCleanup && !isCleanupError(data.readyToCleanup) && data.readyToCleanup.length > 0 && (
+      <section>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Ready to Clean Up</h2>
+        <div className="space-y-2">
+          {data.readyToCleanup.map((item, i) => (
+            <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <p className="text-sm font-medium">
+                {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
+              </p>
+              <p className="text-xs text-zinc-500">Watched {timeAgo(item.viewedAt)}</p>
+              <CleanupButton episodeId={item.episodeId} episodeFileId={item.episodeFileId} />
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
     {/* Recently Imported — cross-checked against Plex */}
     {data.recentImports && data.recentImports.length > 0 && (
       <section>
@@ -389,24 +407,6 @@ export default function StatusPanel() {
               ) : (
                 <span className="text-xs font-medium text-amber-400">Not in Plex yet</span>
               )}
-            </div>
-          ))}
-        </div>
-      </section>
-    )}
-
-    {/* Ready to Clean Up — episodes watched (per Plex) that still have a file in Sonarr */}
-    {data.readyToCleanup && !isCleanupError(data.readyToCleanup) && data.readyToCleanup.length > 0 && (
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Ready to Clean Up</h2>
-        <div className="space-y-2">
-          {data.readyToCleanup.map((item, i) => (
-            <div key={i} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-              <p className="text-sm font-medium">
-                {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
-              </p>
-              <p className="text-xs text-zinc-500">Watched {timeAgo(item.viewedAt)}</p>
-              <CleanupButton episodeId={item.episodeId} episodeFileId={item.episodeFileId} />
             </div>
           ))}
         </div>
