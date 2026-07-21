@@ -39,6 +39,7 @@ interface ArrData {
 interface RecentImport {
   title: string;
   date: string;
+  episode?: string | null;
   inPlex: boolean | null;
 }
 
@@ -266,7 +267,7 @@ export default function StatusPanel() {
           {data.recentImports.map((item, i) => (
             <div key={i} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <div>
-                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-sm font-medium">{item.title}{item.episode ? ` — ${item.episode}` : ''}</p>
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
               </div>
               {item.inPlex === null ? (

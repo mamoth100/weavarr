@@ -142,13 +142,14 @@ export async function forceImportSonarr(downloadId: string) {
 export interface ImportHistoryItem {
   title: string;
   date: string;
+  episode?: string | null;
 }
 
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
   const res = await fetch(
-    `${SONARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeSeries=true`,
+    `${SONARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true`,
     { headers: headers(), cache: 'no-store' }
   );
   if (!res.ok) throw new Error(`Sonarr history failed: ${res.status}`);
@@ -156,8 +157,14 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
   return (data.records ?? [])
     .filter((r: Record<string, unknown>) => (r.eventType as string) === 'downloadFolderImported')
     .slice(0, limit)
-    .map((r: Record<string, unknown>) => ({
-      title: (r.series as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
-      date: r.date as string,
-    }));
+    .map((r: Record<string, unknown>) => {
+      const episode = r.episode as { seasonNumber?: number; episodeNumber?: number } | undefined;
+      return {
+        title: (r.series as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
+        date: r.date as string,
+        episode: episode?.seasonNumber !== undefined && episode?.episodeNumber !== undefined
+          ? `S${String(episode.seasonNumber).padStart(2, '0')}E${String(episode.episodeNumber).padStart(2, '0')}`
+          : null,
+      };
+    });
 }
