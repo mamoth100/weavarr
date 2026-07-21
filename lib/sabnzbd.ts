@@ -39,7 +39,10 @@ export async function getSabQueue(): Promise<SabQueue> {
       mb: s.mb,
       mbleft: s.mbleft,
       percentage: s.percentage,
-      status: s.status,
+      // SAB's own API reports "Downloading" for every queued slot, even ones
+      // that haven't started — index 0 is the only one actually receiving
+      // bytes. Anything else is really just waiting its turn.
+      status: Number(s.index) > 0 && s.status === 'Downloading' ? 'Waiting' : s.status,
       timeleft: s.timeleft,
     })),
   };

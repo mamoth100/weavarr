@@ -143,6 +143,8 @@ export interface ImportHistoryItem {
   title: string;
   date: string;
   episode?: string | null;
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
@@ -165,6 +167,8 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
         episode: episode?.seasonNumber !== undefined && episode?.episodeNumber !== undefined
           ? `S${String(episode.seasonNumber).padStart(2, '0')}E${String(episode.episodeNumber).padStart(2, '0')}`
           : null,
+        seasonNumber: episode?.seasonNumber,
+        episodeNumber: episode?.episodeNumber,
       };
     });
 }

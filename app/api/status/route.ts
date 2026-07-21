@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSabQueue } from '@/lib/sabnzbd';
 import { getRadarrQueue, getRadarrRecentImports } from '@/lib/radarr';
 import { getSonarrQueue, getSonarrRecentImports } from '@/lib/sonarr';
-import { plexHasTitle } from '@/lib/plex';
+import { plexHasTitle, plexHasEpisode } from '@/lib/plex';
 
 function errMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
@@ -25,7 +25,9 @@ export async function GET() {
   const recentImports = await Promise.all(
     importedTitles.map(async (item) => {
       try {
-        const inPlex = await plexHasTitle(item.title);
+        const inPlex = item.seasonNumber !== undefined && item.episodeNumber !== undefined
+          ? await plexHasEpisode(item.title, item.seasonNumber, item.episodeNumber)
+          : await plexHasTitle(item.title);
         return { ...item, inPlex };
       } catch {
         return { ...item, inPlex: null };

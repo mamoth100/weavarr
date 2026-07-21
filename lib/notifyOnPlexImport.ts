@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { getRadarrRecentImports } from './radarr';
 import { getSonarrRecentImports } from './sonarr';
-import { plexHasTitle } from './plex';
+import { plexHasTitle, plexHasEpisode } from './plex';
 import { sendPushoverNotification } from './pushover';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'notified-imports.json');
@@ -46,16 +46,19 @@ export async function checkForNewPlexImports(): Promise<void> {
     const key = `${item.title}:${item.date}`;
     if (seen.has(key)) continue;
 
+    const label = item.episode ? `${item.title} ${item.episode}` : item.title;
     try {
-      const inPlex = await plexHasTitle(item.title);
+      const inPlex = item.seasonNumber !== undefined && item.episodeNumber !== undefined
+        ? await plexHasEpisode(item.title, item.seasonNumber, item.episodeNumber)
+        : await plexHasTitle(item.title);
       if (inPlex) {
-        await sendPushoverNotification('Ready to watch', `${item.title} is now in Plex.`);
+        await sendPushoverNotification('Ready to watch', `${label} is now in Plex.`);
         seen.add(key);
         changed = true;
-        console.log(`[notifyOnPlexImport] sent notification for "${item.title}"`);
+        console.log(`[notifyOnPlexImport] sent notification for "${label}"`);
       }
     } catch (err) {
-      console.error(`[notifyOnPlexImport] failed for "${item.title}":`, err instanceof Error ? err.message : err);
+      console.error(`[notifyOnPlexImport] failed for "${label}":`, err instanceof Error ? err.message : err);
     }
   }
 

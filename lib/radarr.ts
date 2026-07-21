@@ -111,6 +111,9 @@ export async function forceImportRadarr(downloadId: string) {
 export interface ImportHistoryItem {
   title: string;
   date: string;
+  episode?: string | null;
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
