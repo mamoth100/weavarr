@@ -82,9 +82,9 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
 
 // Downloading has a direct percentage; post-processing entries (e.g.
 // "Unpacking: 52/56 - 0:22 left") only have a fraction embedded in the text.
-// "Waiting" items always sit at 0% (haven't started) — not worth a bar.
+// "Queued" items always sit at 0% (haven't started downloading) — not worth a bar.
 function extractProgressPercent(slot: SabSlot): number | null {
-  if (slot.status === 'Waiting') return null;
+  if (slot.status === 'Queued') return null;
   if (slot.percentage !== undefined) return Number(slot.percentage);
   const match = slot.status.match(/(\d+)\/(\d+)/);
   if (!match) return null;
@@ -224,7 +224,7 @@ export default function StatusPanel() {
                         <span className="text-amber-400">{slot.status}</span>
                         {slot.percentage !== undefined && (
                           <span className="text-amber-400">
-                            {slot.status !== 'Waiting' && `${slot.percentage}% · `}
+                            {slot.status !== 'Queued' && `${slot.percentage}% · `}
                             {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}
                           </span>
                         )}

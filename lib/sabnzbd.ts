@@ -25,7 +25,8 @@ function statusPriority(status: string): number {
   if (status === 'Downloading') return 0;
   if (status.startsWith('Unpacking') || ['Extracting', 'Verifying', 'Repairing', 'Moving', 'Running'].includes(status)) return 1;
   if (status === 'Waiting') return 2;
-  return 3;
+  if (status === 'Queued') return 3;
+  return 4;
 }
 
 export async function getSabQueue(): Promise<SabQueue> {
@@ -49,8 +50,8 @@ export async function getSabQueue(): Promise<SabQueue> {
     percentage: s.percentage,
     // SAB's own API reports "Downloading" for every queued slot, even ones
     // that haven't started — index 0 is the only one actually receiving
-    // bytes. Anything else is really just waiting its turn.
-    status: Number(s.index) > 0 && s.status === 'Downloading' ? 'Waiting' : s.status,
+    // bytes. Anything else hasn't started downloading yet — it's Queued.
+    status: Number(s.index) > 0 && s.status === 'Downloading' ? 'Queued' : s.status,
     timeleft: s.timeleft,
   }));
 
