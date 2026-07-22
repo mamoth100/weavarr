@@ -74,10 +74,10 @@ export interface WatchedEpisode {
   viewedAt: string;
 }
 
-let tvSectionKeyCache: string | null | undefined;
+const sectionKeyCache = new Map<string, string | null>();
 
-async function getTvSectionKey(): Promise<string | null> {
-  if (tvSectionKeyCache !== undefined) return tvSectionKeyCache;
+async function getSectionKey(type: 'show' | 'movie'): Promise<string | null> {
+  if (sectionKeyCache.has(type)) return sectionKeyCache.get(type)!;
   const res = await fetch(`${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
@@ -85,8 +85,25 @@ async function getTvSectionKey(): Promise<string | null> {
   if (!res.ok) throw new Error(`Plex sections failed: ${res.status}`);
   const data = await res.json();
   const sections: { key?: string; type?: string }[] = data.MediaContainer?.Directory ?? [];
-  tvSectionKeyCache = sections.find((s) => s.type === 'show')?.key ?? null;
-  return tvSectionKeyCache;
+  const key = sections.find((s) => s.type === type)?.key ?? null;
+  sectionKeyCache.set(type, key);
+  return key;
+}
+
+async function getTvSectionKey(): Promise<string | null> {
+  return getSectionKey('show');
+}
+
+/** Tells Plex to rescan the movie library (e.g. after deleting a movie elsewhere) so it notices the file is gone right away instead of waiting for its next scheduled scan. */
+export async function refreshPlexMovieLibrary(): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+  const sectionKey = await getSectionKey('movie');
+  if (!sectionKey) return;
+  const res = await fetch(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
 }
 
 /**

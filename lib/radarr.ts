@@ -8,6 +8,23 @@ function headers() {
   return { 'X-Api-Key': RADARR_KEY as string, 'Content-Type': 'application/json' };
 }
 
+/**
+ * The Radarr movie id if this TMDB movie is already added, otherwise null —
+ * used to swap Request for Delete on the detail page. Deliberately queries
+ * the actual movie list (not /movie/lookup/tmdb, which doesn't reliably
+ * return an id for movies already in the library even when one exists).
+ */
+export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number | null> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/movie?tmdbId=${tmdbId}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Radarr movie lookup failed: ${res.status}`);
+  const movies = await res.json();
+  return Array.isArray(movies) && movies.length > 0 ? movies[0].id ?? null : null;
+}
+
 export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
@@ -107,6 +124,40 @@ export async function forceImportRadarr(downloadId: string) {
   });
   if (!cmdRes.ok) throw new Error(`Radarr import command failed: ${await cmdRes.text()}`);
   return { triggered: true };
+}
+
+export interface RadarrMovie {
+  id: number;
+  title: string;
+  year: number;
+  hasFile: boolean;
+  sizeOnDisk: number;
+  tmdbId: number;
+}
+
+export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/movie`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Radarr movie list failed: ${res.status}`);
+  const data: Record<string, unknown>[] = await res.json();
+  return data.map((m) => ({
+    id: m.id as number,
+    title: m.title as string,
+    year: m.year as number,
+    hasFile: m.hasFile as boolean,
+    sizeOnDisk: (m.sizeOnDisk as number) ?? 0,
+    tmdbId: m.tmdbId as number,
+  }));
+}
+
+/** Removes the movie from Radarr entirely and deletes its file(s) from disk. */
+export async function deleteRadarrMovie(movieId: number): Promise<void> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/movie/${movieId}?deleteFiles=true&addImportExclusion=false`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error(`Radarr movie delete failed: ${await res.text()}`);
 }
 
 export interface ImportHistoryItem {

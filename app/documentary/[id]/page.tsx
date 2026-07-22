@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
+import { getRadarrMovieIdByTmdbId } from '@/lib/radarr';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
@@ -29,9 +30,10 @@ export default async function DocumentaryPage({ params }: Props) {
   const imdbId = detail.external_ids?.imdb_id ?? null;
 
   // Fetch external data in parallel (Trakt loaded client-side to avoid Cloudflare block)
-  const [omdb, watchProviders] = await Promise.all([
+  const [omdb, watchProviders, radarrMovieId] = await Promise.all([
     imdbId ? getOmdbData(imdbId) : null,
     getWatchProviders(id),
+    getRadarrMovieIdByTmdbId(id).catch(() => null),
   ]);
 
   const score = computeCompositeScore(
@@ -137,6 +139,7 @@ export default async function DocumentaryPage({ params }: Props) {
                 title={detail.title}
                 poster_path={detail.poster_path}
                 release_date={detail.release_date ?? ''}
+                radarrMovieId={radarrMovieId}
               />
             </DetailActions>
 

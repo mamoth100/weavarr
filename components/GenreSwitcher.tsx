@@ -9,7 +9,10 @@ const GENRES = [
   { value: 'search', label: 'Search', emoji: '🔍' },
 ];
 
-const STATUS_LINK = { href: '/status', label: 'Status', emoji: '📡' };
+const EXTRA_LINKS = [
+  { href: '/status', label: 'Status', emoji: '📡' },
+  { href: '/radarr-library', label: 'Movies (Radarr)', emoji: '🎬' },
+];
 
 export default function GenreSwitcher() {
   const router = useRouter();
@@ -31,12 +34,15 @@ export default function GenreSwitcher() {
           {g.emoji} {g.label}
         </button>
       ))}
-      <button
-        onClick={() => router.push(STATUS_LINK.href)}
-        className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-zinc-400 hover:text-white whitespace-nowrap"
-      >
-        {STATUS_LINK.emoji} {STATUS_LINK.label}
-      </button>
+      {EXTRA_LINKS.map((link) => (
+        <button
+          key={link.href}
+          onClick={() => router.push(link.href)}
+          className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-zinc-400 hover:text-white whitespace-nowrap"
+        >
+          {link.emoji} {link.label}
+        </button>
+      ))}
     </div>
   );
 }
