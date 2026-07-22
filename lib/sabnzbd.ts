@@ -57,10 +57,12 @@ export async function getSabQueue(): Promise<SabQueue> {
 
   // Once a download finishes, SAB moves it out of the queue entirely and
   // into history for post-processing (repair/extract/verify) — "Completed"
-  // entries are done and not worth showing here. SAB's own web UI displays
-  // its raw "Queued" history status as "Waiting" — match that wording.
+  // and "Failed" are both terminal/dead-end states (Radarr/Sonarr has
+  // already moved on to trying something else) and not worth showing here.
+  // SAB's own web UI displays its raw "Queued" history status as "Waiting"
+  // — match that wording.
   const postProcessingSlots: SabSlot[] = (historyData.history?.slots ?? [])
-    .filter((s: Record<string, unknown>) => s.status !== 'Completed')
+    .filter((s: Record<string, unknown>) => s.status !== 'Completed' && s.status !== 'Failed')
     .map((s: Record<string, unknown>) => ({
       filename: s.name as string,
       status: (s.action_line as string) || (s.status === 'Queued' ? 'Waiting' : (s.status as string)),
