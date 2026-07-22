@@ -23,13 +23,21 @@ export async function addSeriesToSonarr({
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  const term = imdbId ? `imdb:${imdbId}` : title;
-  const lookupRes = await fetch(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
-    headers: headers(),
-    cache: 'no-store',
-  });
-  if (!lookupRes.ok) throw new Error(`Sonarr lookup failed: ${lookupRes.status}`);
-  const results = await lookupRes.json();
+  async function lookup(term: string) {
+    const res = await fetch(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
+      headers: headers(),
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Sonarr lookup failed: ${res.status}`);
+    return res.json();
+  }
+
+  // Sonarr's imdb: lookup uses a separate, less complete index than its
+  // title search and can come back empty even for a show it knows by title
+  // (confirmed live: it has no imdb: entry for its own reported imdbId on
+  // some shows) — fall back to a plain title search when that happens.
+  let results = imdbId ? await lookup(`imdb:${imdbId}`) : [];
+  if (results.length === 0) results = await lookup(title);
   const series = results[0];
   if (!series) throw new Error('No matching series found in Sonarr');
 
