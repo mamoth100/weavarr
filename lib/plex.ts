@@ -106,6 +106,18 @@ export async function refreshPlexMovieLibrary(): Promise<void> {
   if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
 }
 
+/** Tells Plex to rescan the TV library (e.g. after deleting a show elsewhere) so it notices right away instead of waiting for its next scheduled scan. */
+export async function refreshPlexTvLibrary(): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+  const sectionKey = await getTvSectionKey();
+  if (!sectionKey) return;
+  const res = await fetch(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
+}
+
 /**
  * Recently watched episodes, queried directly by viewCount/lastViewedAt on
  * the TV library section. Deliberately NOT using Plex's session-history log

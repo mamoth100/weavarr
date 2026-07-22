@@ -14,6 +14,7 @@ interface Props {
   imdbId?: string | null;
   seasons?: TmdbSeason[];
   radarrMovieId?: number | null;
+  sonarrSeriesId?: number | null;
 }
 
 function DeleteMovieButton({ movieId }: { movieId: number }) {
@@ -79,6 +80,69 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
   );
 }
 
+function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      setStatus('done');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'done') {
+    return <span className="text-xs font-medium text-green-400 inline-block">Deleted ✓</span>;
+  }
+
+  if (status === 'confirm' || status === 'loading') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-400">Delete this show?</span>
+        <button
+          onClick={handleConfirm}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
+        >
+          {status === 'loading' ? 'Deleting…' : 'Yes, delete'}
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setStatus('confirm')}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'error' ? 'Failed — retry' : 'Delete from Sonarr'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 type Status = 'idle' | 'loading' | 'added' | 'already' | 'error';
 
 const PRESET_OPTIONS = [
@@ -87,7 +151,7 @@ const PRESET_OPTIONS = [
   { value: 'pilot', label: 'Pilot Only' },
 ] as const;
 
-export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId, seasons, radarrMovieId }: Props) {
+export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId, seasons, radarrMovieId, sonarrSeriesId }: Props) {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +220,10 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
 
   if (mediaType === 'movie' && radarrMovieId) {
     return <DeleteMovieButton movieId={radarrMovieId} />;
+  }
+
+  if (mediaType === 'tv' && sonarrSeriesId) {
+    return <DeleteSeriesButton seriesId={sonarrSeriesId} />;
   }
 
   return (

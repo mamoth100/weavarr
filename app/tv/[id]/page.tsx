@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTvDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
+import { getSonarrSeriesIdByImdbId } from '@/lib/sonarr';
 import { computeCompositeScore } from '@/lib/scoring';
 import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
@@ -28,9 +29,10 @@ export default async function TvPage({ params }: Props) {
 
   const imdbId = detail.external_ids?.imdb_id ?? null;
 
-  const [omdb, watchProviders] = await Promise.all([
+  const [omdb, watchProviders, sonarrSeriesId] = await Promise.all([
     imdbId ? getOmdbData(imdbId) : null,
     getWatchProviders(id, 'tv'),
+    imdbId ? getSonarrSeriesIdByImdbId(imdbId).catch(() => null) : null,
   ]);
 
   const score = computeCompositeScore(
@@ -153,6 +155,7 @@ export default async function TvPage({ params }: Props) {
                 release_date={detail.release_date ?? ''}
                 imdbId={imdbId}
                 seasons={detail.seasons}
+                sonarrSeriesId={sonarrSeriesId}
               />
             </DetailActions>
 

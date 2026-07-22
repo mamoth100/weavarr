@@ -195,6 +195,57 @@ export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
   return (data as Record<string, unknown>[]).map((s) => ({ id: s.id as number, title: s.title as string }));
 }
 
+export interface SonarrSeries {
+  id: number;
+  title: string;
+  year: number;
+  imdbId: string | null;
+  episodeFileCount: number;
+  episodeCount: number;
+  sizeOnDisk: number;
+}
+
+export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
+  const data: Record<string, unknown>[] = await res.json();
+  return data.map((s) => {
+    const stats = s.statistics as Record<string, unknown> | undefined;
+    return {
+      id: s.id as number,
+      title: s.title as string,
+      year: s.year as number,
+      imdbId: (s.imdbId as string) ?? null,
+      episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
+      episodeCount: (stats?.episodeCount as number) ?? 0,
+      sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
+    };
+  });
+}
+
+/**
+ * The Sonarr series id if this IMDb-identified show is already added, otherwise
+ * null — used to swap Request for Delete on the detail page. Deliberately scans
+ * the actual series list rather than series/lookup?term=imdb:X, which (per
+ * getRadarrMovieIdByTmdbId's Radarr equivalent, and confirmed live for Sonarr
+ * too) can miss shows Sonarr already has.
+ */
+export async function getSonarrSeriesIdByImdbId(imdbId: string): Promise<number | null> {
+  const all = await getAllSonarrSeries();
+  return all.find((s) => s.imdbId === imdbId)?.id ?? null;
+}
+
+/** Removes the series from Sonarr entirely and deletes its file(s) from disk. */
+export async function deleteSonarrSeries(seriesId: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}?deleteFiles=true&addImportListExclusion=false`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error(`Sonarr series delete failed: ${await res.text()}`);
+}
+
 export interface SonarrEpisodeFileInfo {
   episodeId: number;
   episodeFileId: number;
