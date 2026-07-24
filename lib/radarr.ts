@@ -166,6 +166,8 @@ export interface ImportHistoryItem {
   episode?: string | null;
   seasonNumber?: number;
   episodeNumber?: number;
+  movieId?: number;
+  seriesId?: number;
 }
 
 export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
@@ -182,5 +184,6 @@ export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryI
     .map((r: Record<string, unknown>) => ({
       title: (r.movie as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
       date: r.date as string,
+      movieId: r.movieId as number,
     }));
 }

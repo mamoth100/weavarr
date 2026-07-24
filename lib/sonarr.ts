@@ -154,6 +154,8 @@ export interface ImportHistoryItem {
   episode?: string | null;
   seasonNumber?: number;
   episodeNumber?: number;
+  seriesId?: number;
+  movieId?: number;
 }
 
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
@@ -178,8 +180,25 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
           : null,
         seasonNumber: episode?.seasonNumber,
         episodeNumber: episode?.episodeNumber,
+        seriesId: r.seriesId as number,
       };
     });
+}
+
+/** Season:episode keys that currently have a file, for a series that's confirmed to still exist. */
+export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<string>> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  const set = new Set<string>();
+  for (const e of episodes) {
+    if (e.hasFile) set.add(`${e.seasonNumber}:${e.episodeNumber}`);
+  }
+  return set;
 }
 
 export interface SonarrSeriesLite {

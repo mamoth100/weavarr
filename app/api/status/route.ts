@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSabQueue } from '@/lib/sabnzbd';
-import { getRadarrQueue, getRadarrRecentImports } from '@/lib/radarr';
-import { getSonarrQueue, getSonarrRecentImports } from '@/lib/sonarr';
+import { getRadarrQueue, getRadarrRecentImports, getAllRadarrMovies } from '@/lib/radarr';
+import { getSonarrQueue, getSonarrRecentImports, getAllSonarrSeries, getSonarrEpisodeFileSet } from '@/lib/sonarr';
 import { plexHasTitle, plexHasEpisode } from '@/lib/plex';
 import { getCleanupCandidates } from '@/lib/cleanupCandidates';
 
@@ -13,13 +13,15 @@ function errMessage(reason: unknown): string {
 }
 
 export async function GET() {
-  const [sab, radarr, sonarr, radarrHistory, sonarrHistory, cleanup] = await Promise.allSettled([
+  const [sab, radarr, sonarr, radarrHistory, sonarrHistory, cleanup, radarrMovies, sonarrSeries] = await Promise.allSettled([
     getSabQueue(),
     getRadarrQueue(),
     getSonarrQueue(),
     getRadarrRecentImports(POOL_SIZE),
     getSonarrRecentImports(POOL_SIZE),
     getCleanupCandidates(200),
+    getAllRadarrMovies(),
+    getAllSonarrSeries(),
   ]);
 
   const importedTitles = [
@@ -27,8 +29,45 @@ export async function GET() {
     ...(sonarrHistory.status === 'fulfilled' ? sonarrHistory.value : []),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
+  // Radarr/Sonarr history is permanent — deleting a movie or episode doesn't
+  // remove its import event, so without this check a deleted title would sit
+  // in this list forever, stuck as "Not in Plex yet" since Plex will never
+  // pick it up. Drop anything whose file is confirmed gone; on lookup failure
+  // fail open (keep the item) rather than hide a legitimate pending import.
+  const radarrFileMap = radarrMovies.status === 'fulfilled'
+    ? new Map(radarrMovies.value.map((m) => [m.id, m.hasFile]))
+    : null;
+  const existingSeriesIds = sonarrSeries.status === 'fulfilled'
+    ? new Set(sonarrSeries.value.map((s) => s.id))
+    : null;
+  const seriesIdsToCheck = Array.from(new Set(
+    importedTitles
+      .filter((i) => i.seriesId !== undefined && existingSeriesIds?.has(i.seriesId))
+      .map((i) => i.seriesId as number)
+  ));
+  const episodeFileSets = await Promise.all(
+    seriesIdsToCheck.map((id) => getSonarrEpisodeFileSet(id).catch(() => null))
+  );
+  const seriesFileMap = new Map(seriesIdsToCheck.map((id, i) => [id, episodeFileSets[i]]));
+
+  const stillPresent = importedTitles.filter((item) => {
+    if (item.movieId !== undefined) {
+      if (!radarrFileMap) return true;
+      return radarrFileMap.get(item.movieId) === true;
+    }
+    if (item.seriesId !== undefined) {
+      if (!existingSeriesIds) return true;
+      if (!existingSeriesIds.has(item.seriesId)) return false;
+      if (item.seasonNumber === undefined || item.episodeNumber === undefined) return true;
+      const fileSet = seriesFileMap.get(item.seriesId);
+      if (!fileSet) return true;
+      return fileSet.has(`${item.seasonNumber}:${item.episodeNumber}`);
+    }
+    return true;
+  });
+
   const checked = await Promise.all(
-    importedTitles.map(async (item) => {
+    stillPresent.map(async (item) => {
       try {
         const inPlex = item.seasonNumber !== undefined && item.episodeNumber !== undefined
           ? await plexHasEpisode(item.title, item.seasonNumber, item.episodeNumber)
