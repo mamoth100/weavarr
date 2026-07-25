@@ -10,9 +10,12 @@ const GENRES = [
   { value: 'search', label: 'Search', emoji: '🔍' },
 ];
 
-const ADMIN_LINKS = [
+const VISIBLE_LINKS = [
   { href: '/status', label: 'Status', emoji: '📡' },
   { href: '/ready-to-watch', label: 'Ready to Watch', emoji: '✅' },
+];
+
+const ADMIN_LINKS = [
   { href: '/radarr-library', label: 'Movies (Radarr)', emoji: '🎬' },
   { href: '/sonarr-library', label: 'TV (Sonarr)', emoji: '📺' },
 ];
@@ -49,6 +52,15 @@ export default function GenreSwitcher() {
             }`}
           >
             {g.emoji} {g.label}
+          </button>
+        ))}
+        {VISIBLE_LINKS.map((link) => (
+          <button
+            key={link.href}
+            onClick={() => router.push(link.href)}
+            className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap text-zinc-400 hover:text-white"
+          >
+            {link.emoji} {link.label}
           </button>
         ))}
       </div>
