@@ -348,9 +348,53 @@ export default function ReadyToWatchPanel() {
   }
 
   const filtered = items.filter((i) => i.title.toLowerCase().includes(query.toLowerCase()));
+  const tvItems = filtered.filter((i) => i.type === 'tv');
+  const movieItems = filtered.filter((i) => i.type === 'movie');
+
+  function renderRow(item: ReadyToWatchItem) {
+    return (
+      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+        <div>
+          <p className="text-sm font-medium">
+            {item.title} {item.type === 'movie' && item.year ? `(${item.year})` : ''}
+          </p>
+          <p className="text-xs text-zinc-500">
+            {item.type === 'tv' && item.unwatchedEpisodes && (
+              <>
+                <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+              </>
+            )}
+            {formatBytes(item.sizeOnDisk)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {item.type === 'movie' ? (
+            <>
+              <MovieWatchedButton
+                item={item}
+                onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
+              />
+              <MovieDeleteButton item={item} />
+            </>
+          ) : (
+            <>
+              <ShowWatchedDropdown
+                item={item}
+                onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+              />
+              <ShowDeleteDropdown
+                item={item}
+                onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between text-sm text-zinc-500">
         <span>{items.length} ready to watch</span>
         <input
@@ -364,50 +408,18 @@ export default function ReadyToWatchPanel() {
       {filtered.length === 0 && (
         <p className="text-zinc-600 text-sm">Nothing unwatched right now — you're all caught up.</p>
       )}
-      <div className="space-y-2">
-        {filtered.map((item) => (
-          <div key={`${item.type}-${item.id}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-            <div>
-              <p className="text-sm font-medium">
-                {item.title} {item.type === 'movie' && item.year ? `(${item.year})` : ''}
-                <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 align-middle">
-                  {item.type === 'movie' ? 'Movie' : 'TV'}
-                </span>
-              </p>
-              <p className="text-xs text-zinc-500">
-                {item.type === 'tv' && item.unwatchedEpisodes && (
-                  <>
-                    <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
-                  </>
-                )}
-                {formatBytes(item.sizeOnDisk)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {item.type === 'movie' ? (
-                <>
-                  <MovieWatchedButton
-                    item={item}
-                    onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
-                  />
-                  <MovieDeleteButton item={item} />
-                </>
-              ) : (
-                <>
-                  <ShowWatchedDropdown
-                    item={item}
-                    onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
-                  />
-                  <ShowDeleteDropdown
-                    item={item}
-                    onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {tvItems.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">TV Shows</h2>
+          <div className="space-y-2">{tvItems.map(renderRow)}</div>
+        </div>
+      )}
+      {movieItems.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Movies</h2>
+          <div className="space-y-2">{movieItems.map(renderRow)}</div>
+        </div>
+      )}
     </div>
   );
 }
