@@ -356,7 +356,12 @@ export default function ReadyToWatchPanel() {
       <div key={`${item.type}-${item.id}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
         <div>
           <p className="text-sm font-medium">
-            {item.title} {item.type === 'movie' && item.year ? `(${item.year})` : ''}
+            {item.title}{' '}
+            {item.type === 'movie' && item.year
+              ? `(${item.year})`
+              : item.type === 'tv' && item.unwatchedEpisodes
+              ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
+              : ''}
           </p>
           <p className="text-xs text-zinc-500">
             {item.type === 'tv' && item.unwatchedEpisodes && (
