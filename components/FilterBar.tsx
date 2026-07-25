@@ -86,6 +86,20 @@ export default function FilterBar({
     navigate({ subgenres: next.length ? next.join(',') : undefined }, `subgenre-${id}`);
   }
 
+  function resetAllFilters() {
+    setYearInput('');
+    navigate({
+      show: undefined,
+      sucks: undefined,
+      fav: undefined,
+      lang: undefined,
+      sort: undefined,
+      decade: undefined,
+      year: undefined,
+      subgenres: undefined,
+    });
+  }
+
   const isSearching = !!currentQuery;
   const genre = searchParams.get('genre') ?? 'documentary';
   const isUpcoming = genre === 'upcoming';
@@ -180,6 +194,14 @@ export default function FilterBar({
                 <span className="text-zinc-500">✕</span>
               </button>
             ))}
+            {chips.length > 0 && (
+              <button
+                onClick={resetAllFilters}
+                className="text-sm font-medium text-zinc-500 hover:text-white underline underline-offset-2 transition-colors"
+              >
+                Reset all
+              </button>
+            )}
           </div>
 
           {/* Mobile scrim */}
