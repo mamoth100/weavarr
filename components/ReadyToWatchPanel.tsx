@@ -99,7 +99,17 @@ function DeleteButton({ item }: { item: ReadyToWatchItem }) {
   );
 }
 
-function WatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched: () => void }) {
+async function callMarkWatched(body: object): Promise<void> {
+  const res = await fetch('/api/plex/mark-watched', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed');
+}
+
+function MovieWatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched: () => void }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -107,16 +117,7 @@ function WatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched:
     setStatus('loading');
     setError(null);
     try {
-      const body = item.type === 'movie'
-        ? { type: 'movie', title: item.title }
-        : { type: 'tv', title: item.title, episodes: item.unwatchedEpisodes };
-      const res = await fetch('/api/plex/mark-watched', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      await callMarkWatched({ type: 'movie', title: item.title });
       onWatched();
     } catch (err) {
       setStatus('error');
@@ -135,6 +136,60 @@ function WatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched:
       >
         {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched'}
       </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function ShowWatchedDropdown({
+  item,
+  onEpisodeWatched,
+}: {
+  item: ReadyToWatchItem;
+  onEpisodeWatched: (seasonNumber: number, episodeNumber: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function markEpisode(seasonNumber: number, episodeNumber: number) {
+    setStatus('loading');
+    setError(null);
+    try {
+      await callMarkWatched({ type: 'tv', title: item.title, episodes: [{ seasonNumber, episodeNumber }] });
+      setStatus('idle');
+      setOpen(false);
+      onEpisodeWatched(seasonNumber, episodeNumber);
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={status === 'loading'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
+        }`}
+      >
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched ▾'}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+          {(item.unwatchedEpisodes ?? []).map((e) => (
+            <button
+              key={`${e.seasonNumber}-${e.episodeNumber}`}
+              onClick={() => markEpisode(e.seasonNumber, e.episodeNumber)}
+              className="block w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
+            >
+              {formatEpisode(e)}
+            </button>
+          ))}
+        </div>
+      )}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
@@ -206,10 +261,29 @@ export default function ReadyToWatchPanel() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <WatchedButton
-                item={item}
-                onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
-              />
+              {item.type === 'movie' ? (
+                <MovieWatchedButton
+                  item={item}
+                  onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
+                />
+              ) : (
+                <ShowWatchedDropdown
+                  item={item}
+                  onEpisodeWatched={(seasonNumber, episodeNumber) =>
+                    setItems((prev) =>
+                      (prev ?? [])
+                        .map((i) => {
+                          if (i.type !== 'tv' || i.id !== item.id) return i;
+                          const remaining = (i.unwatchedEpisodes ?? []).filter(
+                            (e) => !(e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber)
+                          );
+                          return { ...i, unwatchedEpisodes: remaining };
+                        })
+                        .filter((i) => i.type !== 'tv' || (i.unwatchedEpisodes && i.unwatchedEpisodes.length > 0))
+                    )
+                  }
+                />
+              )}
               <DeleteButton item={item} />
             </div>
           </div>
