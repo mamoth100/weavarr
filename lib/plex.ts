@@ -67,6 +67,64 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
   return episodes.some((ep) => ep.parentIndex === seasonNumber && ep.index === episodeNumber);
 }
 
+/** Marks a single Plex item (movie or episode) as watched via its ratingKey. */
+async function scrobble(ratingKey: string): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+  const res = await fetch(
+    `${PLEX_URL}/:/scrobble?key=${ratingKey}&identifier=com.plexapp.plugins.library&X-Plex-Token=${PLEX_TOKEN}`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Plex scrobble failed: ${res.status}`);
+}
+
+/** Resolves a movie title to its Plex ratingKey and marks it watched. */
+export async function markPlexMovieWatched(title: string): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const searchQuery = stripDisambiguator(title);
+  const hubs = await searchPlex(searchQuery);
+  const movieHub = hubs.find((h) => h.type === 'movie');
+  const movies = movieHub?.Metadata ?? [];
+  const normalized = searchQuery.toLowerCase().trim();
+  const matched = movies.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  if (!matched?.ratingKey) throw new Error(`Could not find "${title}" in Plex`);
+
+  await scrobble(matched.ratingKey);
+}
+
+/** Resolves specific season/episode numbers of a show to their Plex ratingKeys and marks each watched. */
+export async function markPlexEpisodesWatched(
+  showTitle: string,
+  episodes: { seasonNumber: number; episodeNumber: number }[]
+): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const searchQuery = stripDisambiguator(showTitle);
+  const hubs = await searchPlex(searchQuery);
+  const showHub = hubs.find((h) => h.type === 'show');
+  const shows = showHub?.Metadata ?? [];
+  const normalized = searchQuery.toLowerCase().trim();
+  const matchedShow = shows.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  if (!matchedShow?.ratingKey) throw new Error(`Could not find "${showTitle}" in Plex`);
+
+  const episodesRes = await fetch(
+    `${PLEX_URL}/library/metadata/${matchedShow.ratingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (!episodesRes.ok) throw new Error(`Plex episode lookup failed: ${episodesRes.status}`);
+  const episodesData = await episodesRes.json();
+  const allEpisodes: { parentIndex?: number; index?: number; ratingKey?: string }[] =
+    episodesData.MediaContainer?.Metadata ?? [];
+
+  const wanted = new Set(episodes.map((e) => `${e.seasonNumber}:${e.episodeNumber}`));
+  const ratingKeys = allEpisodes
+    .filter((e) => e.parentIndex !== undefined && e.index !== undefined && wanted.has(`${e.parentIndex}:${e.index}`) && e.ratingKey)
+    .map((e) => e.ratingKey as string);
+
+  if (ratingKeys.length === 0) throw new Error(`Could not find those episodes of "${showTitle}" in Plex`);
+  await Promise.all(ratingKeys.map((rk) => scrobble(rk)));
+}
+
 export interface WatchedEpisode {
   showTitle: string;
   seasonNumber: number;

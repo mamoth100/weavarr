@@ -99,6 +99,47 @@ function DeleteButton({ item }: { item: ReadyToWatchItem }) {
   );
 }
 
+function WatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const body = item.type === 'movie'
+        ? { type: 'movie', title: item.title }
+        : { type: 'tv', title: item.title, episodes: item.unwatchedEpisodes };
+      const res = await fetch('/api/plex/mark-watched', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      onWatched();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={handleClick}
+        disabled={status === 'loading'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
+        }`}
+      >
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +205,13 @@ export default function ReadyToWatchPanel() {
                 {formatBytes(item.sizeOnDisk)}
               </p>
             </div>
-            <DeleteButton item={item} />
+            <div className="flex items-center gap-2">
+              <WatchedButton
+                item={item}
+                onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
+              />
+              <DeleteButton item={item} />
+            </div>
           </div>
         ))}
       </div>
