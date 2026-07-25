@@ -118,6 +118,22 @@ export async function refreshPlexTvLibrary(): Promise<void> {
   if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
 }
 
+/** Titles with viewCount>=1 in the movie library section — used to find unwatched-but-downloaded movies. */
+export async function getPlexWatchedMovieTitles(): Promise<string[]> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+  const sectionKey = await getSectionKey('movie');
+  if (!sectionKey) return [];
+
+  const res = await fetch(
+    `${PLEX_URL}/library/sections/${sectionKey}/all?type=1&viewCount%3E=1&X-Plex-Container-Start=0&X-Plex-Container-Size=1000&X-Plex-Token=${PLEX_TOKEN}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Plex watched movies failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+  return items.map((i) => i.title as string).filter(Boolean);
+}
+
 /**
  * Recently watched episodes, queried directly by viewCount/lastViewedAt on
  * the TV library section. Deliberately NOT using Plex's session-history log

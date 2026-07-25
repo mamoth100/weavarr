@@ -11,6 +11,7 @@ const GENRES = [
 
 const EXTRA_LINKS = [
   { href: '/status', label: 'Status', emoji: '📡' },
+  { href: '/ready-to-watch', label: 'Ready to Watch', emoji: '✅' },
   { href: '/radarr-library', label: 'Movies (Radarr)', emoji: '🎬' },
   { href: '/sonarr-library', label: 'TV (Sonarr)', emoji: '📺' },
 ];
