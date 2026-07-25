@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ReadyToWatchItem {
   type: 'movie' | 'tv';
@@ -34,7 +34,7 @@ function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNu
   );
 }
 
-function DeleteButton({ item }: { item: ReadyToWatchItem }) {
+function MovieDeleteButton({ item }: { item: ReadyToWatchItem }) {
   const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -42,12 +42,10 @@ function DeleteButton({ item }: { item: ReadyToWatchItem }) {
     setStatus('loading');
     setError(null);
     try {
-      const url = item.type === 'movie' ? '/api/radarr/delete' : '/api/sonarr/delete';
-      const body = item.type === 'movie' ? { movieId: item.id } : { seriesId: item.id };
-      const res = await fetch(url, {
+      const res = await fetch('/api/radarr/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ movieId: item.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Delete failed');
@@ -65,7 +63,7 @@ function DeleteButton({ item }: { item: ReadyToWatchItem }) {
   if (status === 'confirm' || status === 'loading') {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs text-zinc-400">Delete this {item.type === 'movie' ? 'movie' : 'show'}?</span>
+        <span className="text-xs text-zinc-400">Delete this movie?</span>
         <button
           onClick={handleConfirm}
           disabled={status === 'loading'}
@@ -94,6 +92,105 @@ function DeleteButton({ item }: { item: ReadyToWatchItem }) {
       >
         {status === 'error' ? 'Failed — retry' : 'Delete'}
       </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function ShowDeleteDropdown({
+  item,
+  onEpisodeDeleted,
+}: {
+  item: ReadyToWatchItem;
+  onEpisodeDeleted: (seasonNumber: number, episodeNumber: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<{ seasonNumber: number; episodeNumber: number } | null>(null);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setConfirming(null);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
+
+  async function confirmDelete(seasonNumber: number, episodeNumber: number) {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/delete-episode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId: item.id, seasonNumber, episodeNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      setStatus('idle');
+      setOpen(false);
+      setConfirming(null);
+      onEpisodeDeleted(seasonNumber, episodeNumber);
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={status === 'loading'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete ▾'}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+          {(item.unwatchedEpisodes ?? []).map((e) => {
+            const isConfirming = confirming?.seasonNumber === e.seasonNumber && confirming?.episodeNumber === e.episodeNumber;
+            if (isConfirming) {
+              return (
+                <div key={`${e.seasonNumber}-${e.episodeNumber}`} className="px-3 py-1.5 flex items-center gap-2 bg-zinc-900">
+                  <span className="text-xs text-zinc-400">{formatEpisode(e)}?</span>
+                  <button
+                    onClick={() => confirmDelete(e.seasonNumber, e.episodeNumber)}
+                    disabled={status === 'loading'}
+                    className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setConfirming(null)}
+                    disabled={status === 'loading'}
+                    className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
+                  >
+                    No
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <button
+                key={`${e.seasonNumber}-${e.episodeNumber}`}
+                onClick={() => setConfirming({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber })}
+                className="block w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
+              >
+                {formatEpisode(e)}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
@@ -151,6 +248,18 @@ function ShowWatchedDropdown({
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
 
   async function markEpisode(seasonNumber: number, episodeNumber: number) {
     setStatus('loading');
@@ -167,7 +276,7 @@ function ShowWatchedDropdown({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={status === 'loading'}
@@ -224,6 +333,20 @@ export default function ReadyToWatchPanel() {
     );
   }
 
+  function removeUnwatchedEpisode(itemId: number, seasonNumber: number, episodeNumber: number) {
+    setItems((prev) =>
+      (prev ?? [])
+        .map((i) => {
+          if (i.type !== 'tv' || i.id !== itemId) return i;
+          const remaining = (i.unwatchedEpisodes ?? []).filter(
+            (e) => !(e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber)
+          );
+          return { ...i, unwatchedEpisodes: remaining };
+        })
+        .filter((i) => i.type !== 'tv' || (i.unwatchedEpisodes && i.unwatchedEpisodes.length > 0))
+    );
+  }
+
   const filtered = items.filter((i) => i.title.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -246,7 +369,7 @@ export default function ReadyToWatchPanel() {
           <div key={`${item.type}-${item.id}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
             <div>
               <p className="text-sm font-medium">
-                {item.title} {item.year ? `(${item.year})` : ''}
+                {item.title} {item.type === 'movie' && item.year ? `(${item.year})` : ''}
                 <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 align-middle">
                   {item.type === 'movie' ? 'Movie' : 'TV'}
                 </span>
@@ -262,29 +385,25 @@ export default function ReadyToWatchPanel() {
             </div>
             <div className="flex items-center gap-2">
               {item.type === 'movie' ? (
-                <MovieWatchedButton
-                  item={item}
-                  onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
-                />
+                <>
+                  <MovieWatchedButton
+                    item={item}
+                    onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
+                  />
+                  <MovieDeleteButton item={item} />
+                </>
               ) : (
-                <ShowWatchedDropdown
-                  item={item}
-                  onEpisodeWatched={(seasonNumber, episodeNumber) =>
-                    setItems((prev) =>
-                      (prev ?? [])
-                        .map((i) => {
-                          if (i.type !== 'tv' || i.id !== item.id) return i;
-                          const remaining = (i.unwatchedEpisodes ?? []).filter(
-                            (e) => !(e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber)
-                          );
-                          return { ...i, unwatchedEpisodes: remaining };
-                        })
-                        .filter((i) => i.type !== 'tv' || (i.unwatchedEpisodes && i.unwatchedEpisodes.length > 0))
-                    )
-                  }
-                />
+                <>
+                  <ShowWatchedDropdown
+                    item={item}
+                    onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+                  />
+                  <ShowDeleteDropdown
+                    item={item}
+                    onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+                  />
+                </>
               )}
-              <DeleteButton item={item} />
             </div>
           </div>
         ))}
