@@ -7,7 +7,7 @@ interface ReadyToWatchItem {
   id: number;
   title: string;
   year: number;
-  unwatchedEpisodeCount?: number;
+  unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number }[];
   sizeOnDisk: number;
 }
 
@@ -15,6 +15,23 @@ function formatBytes(bytes: number): string {
   if (!bytes) return '—';
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+}
+
+function formatEpisode(e: { seasonNumber: number; episodeNumber: number }): string {
+  return `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`;
+}
+
+const MAX_EPISODE_TAGS = 6;
+
+function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNumber: number }[] }) {
+  const shown = episodes.slice(0, MAX_EPISODE_TAGS);
+  const remaining = episodes.length - shown.length;
+  return (
+    <span>
+      {shown.map(formatEpisode).join(', ')}
+      {remaining > 0 && ` +${remaining} more`}
+    </span>
+  );
 }
 
 function DeleteButton({ item }: { item: ReadyToWatchItem }) {
@@ -139,7 +156,11 @@ export default function ReadyToWatchPanel() {
                 </span>
               </p>
               <p className="text-xs text-zinc-500">
-                {item.type === 'tv' && `${item.unwatchedEpisodeCount} unwatched episode${item.unwatchedEpisodeCount === 1 ? '' : 's'} · `}
+                {item.type === 'tv' && item.unwatchedEpisodes && (
+                  <>
+                    <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+                  </>
+                )}
                 {formatBytes(item.sizeOnDisk)}
               </p>
             </div>

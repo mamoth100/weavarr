@@ -15,7 +15,7 @@ export interface ReadyToWatchShow {
   id: number;
   title: string;
   year: number;
-  unwatchedEpisodeCount: number;
+  unwatchedEpisodes: { seasonNumber: number; episodeNumber: number }[];
   sizeOnDisk: number;
 }
 
@@ -55,14 +55,20 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
         .filter((w) => titleFuzzyMatch(w.showTitle, s.title))
         .map((w) => `${w.seasonNumber}:${w.episodeNumber}`)
     );
-    const unwatchedCount = fileSet.filter((key) => !watchedKeysForShow.has(key)).length;
-    if (unwatchedCount > 0) {
+    const unwatchedEpisodes = fileSet
+      .filter((key) => !watchedKeysForShow.has(key))
+      .map((key) => {
+        const [seasonNumber, episodeNumber] = key.split(':').map(Number);
+        return { seasonNumber, episodeNumber };
+      })
+      .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
+    if (unwatchedEpisodes.length > 0) {
       showItems.push({
         type: 'tv',
         id: s.id,
         title: s.title,
         year: s.year,
-        unwatchedEpisodeCount: unwatchedCount,
+        unwatchedEpisodes,
         sizeOnDisk: s.sizeOnDisk,
       });
     }
