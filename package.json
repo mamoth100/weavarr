@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",
+    "androidtv-remote": "^1.0.10",
+    "bonjour-service": "^1.4.3",
     "next": "14.2.29",
     "react": "^18",
     "react-dom": "^18"
