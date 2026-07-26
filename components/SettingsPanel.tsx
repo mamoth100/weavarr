@@ -11,6 +11,10 @@ interface SettingStatus {
   value: string | null;
 }
 
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'Plex', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
+
+type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string };
+
 export default function SettingsPanel() {
   const [settings, setSettings] = useState<SettingStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +22,7 @@ export default function SettingsPanel() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
+  const [testStates, setTestStates] = useState<Record<string, TestState>>({});
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -70,6 +75,60 @@ export default function SettingsPanel() {
     setRestartStatus('error');
   }
 
+  async function handleTest(group: string) {
+    setTestStates((prev) => ({ ...prev, [group]: { status: 'testing' } }));
+
+    // Trakt's Cloudflare protection blocks server-side requests (confirmed
+    // live — same reason TraktScore already runs client-side elsewhere in
+    // this app). Has to run from the browser, not through /api/settings/test.
+    if (group === 'Trakt') {
+      const clientId =
+        edits['NEXT_PUBLIC_TRAKT_CLIENT_ID']?.trim() ||
+        edits['TRAKT_CLIENT_ID']?.trim() ||
+        settings!.find((s) => s.key === 'NEXT_PUBLIC_TRAKT_CLIENT_ID')?.value ||
+        '';
+      if (!clientId) {
+        setTestStates((prev) => ({ ...prev, Trakt: { status: 'fail', message: 'Client ID required' } }));
+        return;
+      }
+      try {
+        const res = await fetch('https://api.trakt.tv/shows/trending?limit=1', {
+          headers: { 'trakt-api-version': '2', 'trakt-api-key': clientId },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} — check Client ID`);
+        setTestStates((prev) => ({ ...prev, Trakt: { status: 'ok', message: 'Client ID valid' } }));
+      } catch (err) {
+        setTestStates((prev) => ({
+          ...prev,
+          Trakt: { status: 'fail', message: err instanceof Error ? err.message : String(err) },
+        }));
+      }
+      return;
+    }
+
+    const groupFields = settings!.filter((s) => s.group === group);
+    const values: Record<string, string> = {};
+    for (const f of groupFields) {
+      const edited = edits[f.key];
+      if (edited && edited.trim() !== '') values[f.key] = edited.trim();
+      else if (!f.secret && f.value) values[f.key] = f.value;
+    }
+    try {
+      const res = await fetch('/api/settings/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group, values }),
+      });
+      const data = await res.json();
+      setTestStates((prev) => ({ ...prev, [group]: { status: data.ok ? 'ok' : 'fail', message: data.message } }));
+    } catch (err) {
+      setTestStates((prev) => ({
+        ...prev,
+        [group]: { status: 'fail', message: err instanceof Error ? err.message : String(err) },
+      }));
+    }
+  }
+
   async function handleSave() {
     setSaveStatus('saving');
     setSaveError(null);
@@ -103,9 +162,30 @@ export default function SettingsPanel() {
         <p className="text-amber-400">Changes need a restart to apply — use the Restart App button below after saving.</p>
       </div>
 
-      {groups.map((group) => (
+      {groups.map((group) => {
+        const testState = testStates[group] ?? { status: 'idle' as const };
+        return (
         <div key={group} className="space-y-2">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">{group}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">{group}</h2>
+            {TESTABLE_GROUPS.has(group) && (
+              <>
+                <button
+                  onClick={() => handleTest(group)}
+                  disabled={testState.status === 'testing'}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
+                >
+                  {testState.status === 'testing' ? 'Testing…' : 'Test'}
+                </button>
+                {testState.status === 'ok' && (
+                  <span className="text-xs font-medium text-green-400">✓ {testState.message}</span>
+                )}
+                {testState.status === 'fail' && (
+                  <span className="text-xs font-medium text-red-400">✕ {testState.message}</span>
+                )}
+              </>
+            )}
+          </div>
           <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
             {settings
               .filter((s) => s.group === group)
@@ -131,7 +211,8 @@ export default function SettingsPanel() {
               ))}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <div className="flex items-center gap-3 flex-wrap sticky bottom-4">
         <button

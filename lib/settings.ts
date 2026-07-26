@@ -64,6 +64,12 @@ export interface SettingStatus {
   value: string | null; // only populated for non-secret fields
 }
 
+/** Server-internal only — the real value, including secrets. Never return this from an API route directly. */
+export async function getRawEnvValue(key: string): Promise<string | null> {
+  const lines = await readEnvLines();
+  return parseEnvValue(lines, key);
+}
+
 export async function getSettingsStatus(): Promise<SettingStatus[]> {
   const lines = await readEnvLines();
   return SETTINGS_SCHEMA.map((field) => {
