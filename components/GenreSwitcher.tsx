@@ -18,7 +18,6 @@ const VISIBLE_LINKS = [
 const ADMIN_LINKS = [
   { href: '/radarr-library', label: 'Movies (Radarr)', emoji: '🎬' },
   { href: '/sonarr-library', label: 'TV (Sonarr)', emoji: '📺' },
-  { href: '/settings', label: 'Settings', emoji: '⚙️' },
 ];
 
 export default function GenreSwitcher() {
