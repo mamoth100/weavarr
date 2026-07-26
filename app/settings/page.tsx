@@ -1,5 +1,6 @@
 import BackLink from '@/components/BackLink';
 import SettingsPanel from '@/components/SettingsPanel';
+import ShieldSetupPanel from '@/components/ShieldSetupPanel';
 
 export default function SettingsPage() {
   return (
@@ -16,7 +17,8 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+        <ShieldSetupPanel />
         <SettingsPanel />
       </div>
     </main>
