@@ -1,6 +1,6 @@
 import { getAllRadarrMovies } from './radarr';
 import { getAllSonarrSeries, getSonarrEpisodeFileSet } from './sonarr';
-import { getPlexWatchedMovieTitles, getPlexEpisodeWatchHistory, plexHasTitle } from './plex';
+import { getPlexWatchedMovies, getPlexEpisodeWatchHistory, plexHasTitle } from './plex';
 
 export interface ReadyToWatchMovie {
   type: 'movie';
@@ -21,17 +21,17 @@ export interface ReadyToWatchShow {
 
 export type ReadyToWatchItem = ReadyToWatchMovie | ReadyToWatchShow;
 
-function titleFuzzyMatch(a: string, b: string): boolean {
+export function titleFuzzyMatch(a: string, b: string): boolean {
   const x = a.toLowerCase().trim();
   const y = b.toLowerCase().trim();
   return x === y || x.includes(y) || y.includes(x);
 }
 
 export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
-  const [movies, series, watchedMovieTitles, watchedEpisodes] = await Promise.all([
+  const [movies, series, watchedMovies, watchedEpisodes] = await Promise.all([
     getAllRadarrMovies(),
     getAllSonarrSeries(),
-    getPlexWatchedMovieTitles(),
+    getPlexWatchedMovies(),
     getPlexEpisodeWatchHistory(1000),
   ]);
 
@@ -39,7 +39,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   const inPlexFlags = await Promise.all(downloadedMovies.map((m) => plexHasTitle(m.title).catch(() => false)));
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
-    .filter((m, i) => inPlexFlags[i] && !watchedMovieTitles.some((t) => titleFuzzyMatch(t, m.title)))
+    .filter((m, i) => inPlexFlags[i] && !watchedMovies.some((w) => titleFuzzyMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk }));
 
   const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);

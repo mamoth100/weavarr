@@ -12,7 +12,8 @@ export interface CleanupCandidate {
   reason: string;
 }
 
-function getWatchedPercentThreshold(): number {
+/** Shared with the movie side of "recently watched" so both use the same threshold. */
+export function getWatchedPercentThreshold(): number {
   const raw = Number(process.env.CLEANUP_WATCHED_PERCENT);
   return (Number.isFinite(raw) && raw > 0 ? raw : 90) / 100;
 }

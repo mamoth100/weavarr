@@ -304,6 +304,202 @@ function ShowWatchedDropdown({
   );
 }
 
+interface RecentlyWatchedMovie {
+  type: 'movie';
+  key: string;
+  id: number;
+  title: string;
+  year: number;
+  watchedAt: string;
+  reason: string;
+  sizeOnDisk: number;
+}
+
+interface RecentlyWatchedEpisode {
+  type: 'tv';
+  key: string;
+  seriesId: number;
+  title: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  watchedAt: string;
+  reason: string;
+}
+
+type RecentlyWatchedItem = RecentlyWatchedMovie | RecentlyWatchedEpisode;
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function RecentlyWatchedDeleteButton({ item, onDeleted }: { item: RecentlyWatchedItem; onDeleted: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const url = item.type === 'movie' ? '/api/radarr/delete' : '/api/sonarr/delete-episode';
+      const body = item.type === 'movie'
+        ? { movieId: item.id }
+        : { seriesId: item.seriesId, seasonNumber: item.seasonNumber, episodeNumber: item.episodeNumber };
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      setStatus('done');
+      onDeleted();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'done') {
+    return <span className="text-xs font-medium text-green-400">Deleted ✓</span>;
+  }
+
+  if (status === 'confirm' || status === 'loading') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-400">Delete{item.type === 'movie' ? ' this movie' : ''}?</span>
+        <button
+          onClick={handleConfirm}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
+        >
+          {status === 'loading' ? 'Deleting…' : 'Yes, delete'}
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          disabled={status === 'loading'}
+          className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setStatus('confirm')}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'error' ? 'Failed — retry' : 'Delete'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function ClearButton({ itemKey, onCleared }: { itemKey: string; onCleared: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/recently-watched/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: itemKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      onCleared();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={handleClick}
+        disabled={status === 'loading'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+        }`}
+      >
+        {status === 'loading' ? 'Clearing…' : status === 'error' ? 'Failed — retry' : 'Clear'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function RecentlyWatchedSection() {
+  const [items, setItems] = useState<RecentlyWatchedItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/recently-watched', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) setError(data.error);
+        else setItems(data.items);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }, []);
+
+  if (error || (items && items.length === 0)) return null;
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Recently Watched</h2>
+      <div className="space-y-2">
+        {!items
+          ? [1, 2, 3].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
+          : items.map((item) => {
+              return (
+                <div key={item.key} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">
+                      {item.title}
+                      {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
+                    </p>
+                    <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <p className="text-xs text-zinc-500">
+                      Watched {timeAgo(item.watchedAt)}
+                      {item.type === 'movie' && ` · ${formatBytes(item.sizeOnDisk)}`}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <ClearButton
+                        itemKey={item.key}
+                        onCleared={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
+                      />
+                      <RecentlyWatchedDeleteButton
+                        item={item}
+                        onDeleted={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+      </div>
+    </div>
+  );
+}
+
 export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -425,6 +621,7 @@ export default function ReadyToWatchPanel() {
           <div className="space-y-2">{movieItems.map(renderRow)}</div>
         </div>
       )}
+      <RecentlyWatchedSection />
     </div>
   );
 }

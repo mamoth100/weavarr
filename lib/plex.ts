@@ -176,8 +176,13 @@ export async function refreshPlexTvLibrary(): Promise<void> {
   if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
 }
 
-/** Titles with viewCount>=1 in the movie library section — used to find unwatched-but-downloaded movies. */
-export async function getPlexWatchedMovieTitles(): Promise<string[]> {
+export interface WatchedMovie {
+  title: string;
+  lastViewedAt: string;
+}
+
+/** Movies with viewCount>=1 in the movie library section, with when they were last watched. */
+export async function getPlexWatchedMovies(): Promise<WatchedMovie[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
   const sectionKey = await getSectionKey('movie');
   if (!sectionKey) return [];
@@ -189,7 +194,39 @@ export async function getPlexWatchedMovieTitles(): Promise<string[]> {
   if (!res.ok) throw new Error(`Plex watched movies failed: ${res.status}`);
   const data = await res.json();
   const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
-  return items.map((i) => i.title as string).filter(Boolean);
+  return items
+    .filter((i) => i.title && i.lastViewedAt)
+    .map((i) => ({
+      title: i.title as string,
+      lastViewedAt: new Date((i.lastViewedAt as number) * 1000).toISOString(),
+    }));
+}
+
+export interface InProgressMovie {
+  title: string;
+  viewOffset: number;
+  duration: number;
+}
+
+/** Movies currently mid-playback per Plex's "on deck" list — the movie-side equivalent of getPlexInProgressEpisodes. */
+export async function getPlexInProgressMovies(): Promise<InProgressMovie[]> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
+  const res = await fetch(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Plex on deck failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+
+  return items
+    .filter((i) => i.type === 'movie' && i.title && typeof i.viewOffset === 'number' && typeof i.duration === 'number')
+    .map((i) => ({
+      title: i.title as string,
+      viewOffset: i.viewOffset as number,
+      duration: i.duration as number,
+    }));
 }
 
 /**
