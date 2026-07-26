@@ -10,9 +10,10 @@ function headers() {
 
 /**
  * The Radarr movie id if this TMDB movie is already added, otherwise null —
- * used to swap Request for Delete on the detail page. Deliberately queries
- * the actual movie list (not /movie/lookup/tmdb, which doesn't reliably
- * return an id for movies already in the library even when one exists).
+ * used both to swap Request for Delete on the detail page and to check
+ * "already added" before submitting a new request. Deliberately queries the
+ * actual movie list (not /movie/lookup/tmdb, which doesn't reliably return
+ * an id for movies already in the library even when one exists).
  */
 export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number | null> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
@@ -28,14 +29,15 @@ export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number |
 export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
+  const existingId = await getRadarrMovieIdByTmdbId(tmdbId);
+  if (existingId) return { alreadyAdded: true };
+
   const lookupRes = await fetch(`${RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, {
     headers: headers(),
     cache: 'no-store',
   });
   if (!lookupRes.ok) throw new Error(`Radarr lookup failed: ${lookupRes.status}`);
   const movie = await lookupRes.json();
-
-  if (movie.id) return { alreadyAdded: true };
 
   const [profilesRes, foldersRes] = await Promise.all([
     fetch(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
