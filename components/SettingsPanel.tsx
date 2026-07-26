@@ -17,6 +17,7 @@ export default function SettingsPanel() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -44,6 +45,30 @@ export default function SettingsPanel() {
 
   const groups = Array.from(new Set(settings.map((s) => s.group)));
   const changedCount = Object.values(edits).filter((v) => v.trim() !== '').length;
+
+  async function handleRestart() {
+    setRestartStatus('restarting');
+    try {
+      await fetch('/api/settings/restart', { method: 'POST' });
+    } catch {
+      // Expected — the request can fail right as the process dies mid-response.
+    }
+    // Poll until the app answers again, then confirm.
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const res = await fetch('/api/settings', { cache: 'no-store' });
+        if (res.ok) {
+          setRestartStatus('back');
+          return;
+        }
+      } catch {
+        // still down, keep polling
+      }
+    }
+    setRestartStatus('error');
+  }
 
   async function handleSave() {
     setSaveStatus('saving');
@@ -75,7 +100,7 @@ export default function SettingsPanel() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>Secret fields (API keys, tokens) never show their current value — leave blank to keep it unchanged.</p>
         <p>Every save is backed up first (last 10 kept), so a bad value can always be rolled back.</p>
-        <p className="text-amber-400">Changes take effect after the app restarts — ask Claude to redeploy, or restart the service yourself.</p>
+        <p className="text-amber-400">Changes need a restart to apply — use the Restart App button below after saving.</p>
       </div>
 
       {groups.map((group) => (
@@ -108,7 +133,7 @@ export default function SettingsPanel() {
         </div>
       ))}
 
-      <div className="flex items-center gap-3 sticky bottom-4">
+      <div className="flex items-center gap-3 flex-wrap sticky bottom-4">
         <button
           onClick={handleSave}
           disabled={saveStatus === 'saving' || changedCount === 0}
@@ -116,8 +141,20 @@ export default function SettingsPanel() {
         >
           {saveStatus === 'saving' ? 'Saving…' : `Save${changedCount > 0 ? ` (${changedCount} changed)` : ''}`}
         </button>
-        {saveStatus === 'saved' && <span className="text-sm text-green-400">Saved ✓ — restart the app to apply</span>}
+        {saveStatus === 'saved' && restartStatus === 'idle' && (
+          <span className="text-sm text-green-400">Saved ✓</span>
+        )}
         {saveStatus === 'error' && <span className="text-sm text-red-400">Failed: {saveError}</span>}
+
+        <button
+          onClick={handleRestart}
+          disabled={restartStatus === 'restarting'}
+          className="px-4 py-2 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:opacity-60"
+        >
+          {restartStatus === 'restarting' ? 'Restarting…' : 'Restart App'}
+        </button>
+        {restartStatus === 'back' && <span className="text-sm text-green-400">Back up ✓</span>}
+        {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s — check on the Pi</span>}
       </div>
     </div>
   );
