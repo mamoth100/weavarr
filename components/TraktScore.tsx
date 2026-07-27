@@ -83,7 +83,7 @@ export default function TraktScore({ imdbId }: { imdbId: string }) {
       </div>
       {data.watchers !== null && (
         <div className="text-zinc-500 text-xs mt-0.5">
-          👁 {data.watchers.toLocaleString()} watchers on Trakt
+          {data.watchers.toLocaleString()} watchers on Trakt
         </div>
       )}
     </>

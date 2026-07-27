@@ -55,7 +55,7 @@ export default function SearchResultCard({ item }: Props) {
         <p className="text-xs text-zinc-500">
           {mediaType === 'tv' ? 'TV' : 'Movie'}
           {year ? ` · ${year}` : ''}
-          {item.vote_average ? ` · ⭐ ${item.vote_average.toFixed(1)}` : ''}
+          {item.vote_average ? ` · ${item.vote_average.toFixed(1)}` : ''}
         </p>
 
         <div className="flex flex-wrap items-start gap-2 mt-2">
@@ -65,7 +65,7 @@ export default function SearchResultCard({ item }: Props) {
               favorited ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
-            {favorited ? '♥ Favorited' : '♡ Favorite'}
+            {favorited ? 'Favorited' : 'Favorite'}
           </button>
           <button
             onClick={() => toggleWatched(watchItem)}
@@ -73,7 +73,7 @@ export default function SearchResultCard({ item }: Props) {
               watched ? 'bg-green-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
-            {watched ? '✓ Watched' : 'Mark watched'}
+            {watched ? 'Watched' : 'Mark watched'}
           </button>
           <button
             onClick={() => (sucks ? removeSucks(item.id, mediaType) : addSucks(watchItem))}
@@ -81,7 +81,7 @@ export default function SearchResultCard({ item }: Props) {
               sucks ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
-            {sucks ? 'Marked sucks' : '👎 Sucks'}
+            {sucks ? 'Marked sucks' : 'Sucks'}
           </button>
           <RequestButton
             id={item.id}

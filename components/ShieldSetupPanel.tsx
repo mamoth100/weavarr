@@ -125,7 +125,7 @@ export default function ShieldSetupPanel() {
           {paired === null && <span className="text-zinc-500">No Shield paired yet — find one below to pair it.</span>}
           {paired && (
             <span className="text-green-400">
-              ✓ Paired to <span className="font-medium">{paired.name}</span>{' '}
+              Paired to <span className="font-medium">{paired.name}</span>{' '}
               <span className="text-zinc-600">({paired.host})</span>
             </span>
           )}
@@ -150,7 +150,7 @@ export default function ShieldSetupPanel() {
                       <p className="text-xs text-zinc-600">{s.host}</p>
                     </div>
                     {isPaired ? (
-                      <span className="text-xs font-medium text-green-400">✓ Paired</span>
+                      <span className="text-xs font-medium text-green-400">Paired</span>
                     ) : (
                       <button
                         onClick={() => handleStartPair(s.host, s.name)}

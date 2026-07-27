@@ -197,7 +197,7 @@ export default async function DocumentaryPage({ params }: Props) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
               >
-                ▶ Watch Trailer
+                Watch Trailer
               </a>
             )}
 
@@ -278,7 +278,7 @@ export default async function DocumentaryPage({ params }: Props) {
                   </p>
                 )}
                 {omdb.Awards && omdb.Awards !== 'N/A' && (
-                  <p className="text-amber-400 text-xs mt-2">🏆 {omdb.Awards}</p>
+                  <p className="text-amber-400 text-xs mt-2">{omdb.Awards}</p>
                 )}
               </div>
             )}

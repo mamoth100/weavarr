@@ -93,7 +93,6 @@ export interface WatchProviders {
 export interface Subgenre {
   id: string;
   label: string;
-  emoji: string;
   // Keyword IDs from TMDb — verify/update at: https://www.themoviedb.org/keyword
   keywordIds: number[];
 }

@@ -121,9 +121,9 @@ export default async function TvPage({ params }: Props) {
                                             'bg-zinc-700/60 text-zinc-400 border-zinc-600';
                 return (
                   <span className={`px-2 py-0.5 rounded-full text-xs border ${color}`}>
-                    {s === 'Returning Series' ? '● Ongoing' :
-                     s === 'Canceled'         ? '✕ Cancelled' :
-                     s === 'In Production'    ? '⟳ In Production' :
+                    {s === 'Returning Series' ? 'Ongoing' :
+                     s === 'Canceled'         ? 'Cancelled' :
+                     s === 'In Production'    ? 'In Production' :
                      s}
                   </span>
                 );
@@ -213,7 +213,7 @@ export default async function TvPage({ params }: Props) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
               >
-                ▶ Watch Trailer
+                Watch Trailer
               </a>
             )}
 
@@ -294,7 +294,7 @@ export default async function TvPage({ params }: Props) {
                   </p>
                 )}
                 {omdb.Awards && omdb.Awards !== 'N/A' && (
-                  <p className="text-amber-400 text-xs mt-2">🏆 {omdb.Awards}</p>
+                  <p className="text-amber-400 text-xs mt-2">{omdb.Awards}</p>
                 )}
               </div>
             )}
@@ -317,7 +317,7 @@ export default async function TvPage({ params }: Props) {
               href="/?genre=reality"
               className="inline-block mt-8 text-sm text-zinc-500 hover:text-amber-400 transition"
             >
-              ← Back to Reality TV
+              Back to Reality TV
             </Link>
           </div>
         </div>

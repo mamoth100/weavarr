@@ -9,7 +9,7 @@ export default function BackLink() {
       onClick={() => router.back()}
       className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors mb-6"
     >
-      ← Back to Browse
+      Back to Browse
     </button>
   );
 }
