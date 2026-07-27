@@ -5,7 +5,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'true-crime',
     label: 'True Crime',
-    emoji: '🔍',
     keywordIds: [
       33722, // true crime
       10714, // serial killer
@@ -23,7 +22,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'nature',
     label: 'Nature & Wildlife',
-    emoji: '🌿',
     keywordIds: [
       18330, // nature
       9902,  // wildlife
@@ -39,7 +37,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'history',
     label: 'History',
-    emoji: '📜',
     keywordIds: [
       282633,// history
       15126, // historical
@@ -55,7 +52,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'science',
     label: 'Science & Tech',
-    emoji: '🔬',
     keywordIds: [
       287067,// science
       1576,  // technology
@@ -72,7 +68,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'political',
     label: 'Political',
-    emoji: '🏛️',
     keywordIds: [
       6078,  // politics
       264792,// political
@@ -89,7 +84,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'sports',
     label: 'Sports',
-    emoji: '⚽',
     keywordIds: [
       6075,  // sports
       333328,// sport
@@ -104,7 +98,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'music',
     label: 'Music',
-    emoji: '🎵',
     keywordIds: [
       283297,// music
       4048,  // musician
@@ -118,7 +111,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'war',
     label: 'War',
-    emoji: '⚔️',
     keywordIds: [
       273967,// war
       14643, // battle
@@ -133,7 +125,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'food',
     label: 'Food & Culture',
-    emoji: '🍽️',
     keywordIds: [
       10637, // food
       1918,  // cooking
@@ -144,7 +135,6 @@ export const SUBGENRES: Subgenre[] = [
   {
     id: 'conspiracy',
     label: 'Conspiracy',
-    emoji: '👁️',
     keywordIds: [
       10410, // conspiracy
       6158,  // cult
@@ -156,23 +146,23 @@ export const SUBGENRES: Subgenre[] = [
   },
 ];
 
-export const STREAMING_PROVIDERS: { id: number; name: string; emoji: string }[] = [
-  { id: 8,    name: 'Netflix',    emoji: '🔴' },
-  { id: 9,    name: 'Prime',      emoji: '🔵' },
-  { id: 15,   name: 'Hulu',       emoji: '🟢' },
-  { id: 1899, name: 'Max',        emoji: '🟣' },
-  { id: 337,  name: 'Disney+',    emoji: '✨' },
-  { id: 350,  name: 'Apple TV+',  emoji: '🍎' },
-  { id: 386,  name: 'Peacock',    emoji: '🦚' },
-  { id: 531,  name: 'Paramount+', emoji: '⛰️' },
+export const STREAMING_PROVIDERS: { id: number; name: string }[] = [
+  { id: 8,    name: 'Netflix' },
+  { id: 9,    name: 'Prime' },
+  { id: 15,   name: 'Hulu' },
+  { id: 1899, name: 'Max' },
+  { id: 337,  name: 'Disney+' },
+  { id: 350,  name: 'Apple TV+' },
+  { id: 386,  name: 'Peacock' },
+  { id: 531,  name: 'Paramount+' },
 ];
 
-export const SORT_OPTIONS: { value: SortOption; label: string; emoji: string }[] = [
-  { value: 'vote_average.desc', label: 'Top Rated', emoji: '⭐' },
-  { value: 'popularity.desc', label: 'Popular', emoji: '🔥' },
-  { value: 'release_date.desc', label: 'Newest', emoji: '🆕' },
-  { value: 'release_date.asc', label: 'Oldest', emoji: '📅' },
-  { value: 'vote_count.desc', label: 'Most Reviewed', emoji: '💬' },
+export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'vote_average.desc', label: 'Top Rated' },
+  { value: 'popularity.desc', label: 'Popular' },
+  { value: 'release_date.desc', label: 'Newest' },
+  { value: 'release_date.asc', label: 'Oldest' },
+  { value: 'vote_count.desc', label: 'Most Reviewed' },
 ];
 
 export const DECADES: { label: string; value: string; gte?: string; lte?: string }[] = [

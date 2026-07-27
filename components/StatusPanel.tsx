@@ -165,7 +165,7 @@ function ImportButton({ service, downloadId }: { service: 'radarr' | 'sonarr'; d
             : 'bg-amber-500 text-black hover:bg-amber-400'
         }`}
       >
-        {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered ✓' : status === 'error' ? 'Failed — retry' : 'Import'}
+        {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered' : status === 'error' ? 'Failed — retry' : 'Import'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -195,7 +195,7 @@ function CleanupButton({ episodeId, episodeFileId }: { episodeId: number; episod
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400 mt-2 inline-block">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400 mt-2 inline-block">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {
@@ -407,7 +407,7 @@ export default function StatusPanel() {
               {item.inPlex === null ? (
                 <span className="text-xs text-zinc-600">Plex not checked</span>
               ) : item.inPlex ? (
-                <span className="text-xs font-medium text-green-400">✓ In Plex</span>
+                <span className="text-xs font-medium text-green-400">In Plex</span>
               ) : (
                 <span className="text-xs font-medium text-amber-400">Not in Plex yet</span>
               )}

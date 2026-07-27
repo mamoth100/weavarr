@@ -40,7 +40,7 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400 inline-block">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400 inline-block">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {
@@ -103,7 +103,7 @@ function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400 inline-block">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400 inline-block">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {
@@ -213,7 +213,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
 
   const label =
     status === 'loading' ? 'Requesting…' :
-    status === 'added' ? 'Requested ✓' :
+    status === 'added' ? 'Requested' :
     status === 'already' ? 'Already in ' + (mediaType === 'movie' ? 'Radarr' : 'Sonarr') :
     status === 'error' ? 'Failed — retry' :
     mediaType === 'movie' ? 'Request (Radarr)' : 'Request (Sonarr)';

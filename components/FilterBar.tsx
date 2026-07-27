@@ -122,15 +122,15 @@ export default function FilterBar({
   const eraLabel = currentYear ? `Year ${currentYear}` : DECADES.find((d) => d.value === currentDecade && d.value)?.label;
 
   const chips: { key: string; label: string; onClear: () => void }[] = [];
-  if (showAll) chips.push({ key: 'show', label: '✓ Watched', onClear: () => navigate({ show: undefined }, 'show-all') });
-  if (sucksOn) chips.push({ key: 'sucks', label: '👎 Sucks', onClear: () => navigate({ sucks: undefined }, 'icon-sucks-row1') });
-  if (favOn) chips.push({ key: 'fav', label: '❤️ Favorites', onClear: () => navigate({ fav: undefined }, 'icon-fav-row1') });
-  if (langAll) chips.push({ key: 'lang', label: '🌍 All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
-  if (!sortIsDefault && sortOpt) chips.push({ key: 'sort', label: `${sortOpt.emoji} ${sortOpt.label}`, onClear: () => navigate({ sort: undefined }) });
-  if (eraLabel) chips.push({ key: 'era', label: `📅 ${eraLabel}`, onClear: () => { setYearInput(''); navigate({ decade: undefined, year: undefined }); } });
+  if (showAll) chips.push({ key: 'show', label: 'Watched', onClear: () => navigate({ show: undefined }, 'show-all') });
+  if (sucksOn) chips.push({ key: 'sucks', label: 'Sucks', onClear: () => navigate({ sucks: undefined }, 'icon-sucks-row1') });
+  if (favOn) chips.push({ key: 'fav', label: 'Favorites', onClear: () => navigate({ fav: undefined }, 'icon-fav-row1') });
+  if (langAll) chips.push({ key: 'lang', label: 'All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
+  if (!sortIsDefault && sortOpt) chips.push({ key: 'sort', label: sortOpt.label, onClear: () => navigate({ sort: undefined }) });
+  if (eraLabel) chips.push({ key: 'era', label: eraLabel, onClear: () => { setYearInput(''); navigate({ decade: undefined, year: undefined }); } });
   if (isDocumentaryGenre) {
     SUBGENRES.filter((sg) => activeSubgenres.includes(sg.id)).forEach((sg) =>
-      chips.push({ key: `sg-${sg.id}`, label: `${sg.emoji} ${sg.label}`, onClear: () => toggleSubgenre(sg.id) })
+      chips.push({ key: `sg-${sg.id}`, label: sg.label, onClear: () => toggleSubgenre(sg.id) })
     );
   }
 
@@ -138,21 +138,20 @@ export default function FilterBar({
     <div className="space-y-3">
       {/* Search bar */}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">🔍</span>
         <input
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={handleSearchKey}
           placeholder={isGlobalSearch ? 'Search anything… press Enter' : 'Search documentaries… press Enter'}
-          className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-9 pr-10 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+          className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-3 pr-14 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
         {searchInput && (
           <button
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-500 hover:text-white transition"
           >
-            ✕
+            Clear
           </button>
         )}
       </div>
@@ -177,7 +176,7 @@ export default function FilterBar({
                 filtersOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
               }`}
             >
-              ☰ Filters
+              Filters
               {chips.length > 0 && (
                 <span className="bg-amber-500 text-black rounded-full text-xs font-bold px-1.5 leading-4">
                   {chips.length}
@@ -191,7 +190,6 @@ export default function FilterBar({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
               >
                 {chip.label}
-                <span className="text-zinc-500">✕</span>
               </button>
             ))}
             {chips.length > 0 && (
@@ -236,7 +234,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                ✓ Watched
+                Watched
               </button>
               <button
                 onClick={() => navigate({ sucks: searchParams.get('sucks') === 'show' ? undefined : 'show' }, 'icon-sucks-row1')}
@@ -246,7 +244,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                👎 Sucks
+                Sucks
               </button>
               <button
                 onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav-row1')}
@@ -256,7 +254,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                ❤️ Favorites
+                Favorites
               </button>
 
               <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1 w-full sm:w-auto mt-2 sm:mt-0">Language</span>
@@ -268,7 +266,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                🇬🇧 English only
+                English only
               </button>
               <button
                 onClick={() => navigate({ lang: 'all' }, 'lang-all')}
@@ -278,7 +276,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                🌍 All languages
+                All languages
               </button>
             </div>
 
@@ -295,7 +293,7 @@ export default function FilterBar({
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
-                  {opt.emoji} {opt.label}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -343,9 +341,9 @@ export default function FilterBar({
                 {currentYear && (
                   <button
                     onClick={() => { setYearInput(''); navigate({ year: undefined }); }}
-                    className="absolute right-2 text-zinc-500 hover:text-white transition"
+                    className="absolute right-2 text-xs font-medium text-zinc-500 hover:text-white transition"
                   >
-                    ✕
+                    Clear
                   </button>
                 )}
               </div>
@@ -375,7 +373,7 @@ export default function FilterBar({
                         : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                     }`}
                   >
-                    {sg.emoji} {sg.label}
+                    {sg.label}
                   </button>
                 ))}
               </div>

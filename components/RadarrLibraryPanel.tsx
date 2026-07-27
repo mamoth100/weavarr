@@ -40,7 +40,7 @@ function DeleteButton({ movieId }: { movieId: number }) {
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {

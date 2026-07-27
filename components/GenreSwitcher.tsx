@@ -4,20 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const GENRES = [
-  { value: 'documentary', label: 'Documentaries', emoji: '🎬' },
-  { value: 'reality', label: 'Reality TV', emoji: '📺' },
-  { value: 'upcoming', label: 'Coming Soon', emoji: '🔜' },
-  { value: 'search', label: 'Search', emoji: '🔍' },
+  { value: 'documentary', label: 'Documentaries' },
+  { value: 'reality', label: 'Reality TV' },
+  { value: 'upcoming', label: 'Coming Soon' },
+  { value: 'search', label: 'Search' },
 ];
 
 const VISIBLE_LINKS = [
-  { href: '/status', label: 'Status', emoji: '📡' },
-  { href: '/ready-to-watch', label: 'Ready to Watch', emoji: '✅' },
+  { href: '/status', label: 'Status' },
+  { href: '/ready-to-watch', label: 'Ready to Watch' },
 ];
 
 const ADMIN_LINKS = [
-  { href: '/radarr-library', label: 'Movies (Radarr)', emoji: '🎬' },
-  { href: '/sonarr-library', label: 'TV (Sonarr)', emoji: '📺' },
+  { href: '/radarr-library', label: 'Movies (Radarr)' },
+  { href: '/sonarr-library', label: 'TV (Sonarr)' },
 ];
 
 export default function GenreSwitcher() {
@@ -51,7 +51,7 @@ export default function GenreSwitcher() {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            {g.emoji} {g.label}
+            {g.label}
           </button>
         ))}
         {VISIBLE_LINKS.map((link) => (
@@ -60,7 +60,7 @@ export default function GenreSwitcher() {
             onClick={() => router.push(link.href)}
             className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap text-zinc-400 hover:text-white"
           >
-            {link.emoji} {link.label}
+            {link.label}
           </button>
         ))}
       </div>
@@ -73,7 +73,7 @@ export default function GenreSwitcher() {
             menuOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          ⋯
+          More
         </button>
         {menuOpen && (
           <div className="absolute right-0 mt-1 z-20 min-w-[190px] bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-1">
@@ -86,7 +86,7 @@ export default function GenreSwitcher() {
                 }}
                 className="w-full text-left px-3.5 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors whitespace-nowrap"
               >
-                {link.emoji} {link.label}
+                {link.label}
               </button>
             ))}
           </div>

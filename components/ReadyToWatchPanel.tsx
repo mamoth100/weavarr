@@ -57,7 +57,7 @@ function MovieDeleteButton({ item }: { item: ReadyToWatchItem }) {
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {
@@ -152,7 +152,7 @@ function ShowDeleteDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete ▾'}
+        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
@@ -234,7 +234,7 @@ function PlayOnShieldButton() {
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
         }`}
       >
-        {status === 'loading' ? 'Waking…' : status === 'done' ? '▶ Opened Plex' : status === 'error' ? 'Failed — retry' : '▶ Open on Shield'}
+        {status === 'loading' ? 'Waking…' : status === 'done' ? 'Opened Plex' : status === 'error' ? 'Failed — retry' : 'Open on Shield'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -319,7 +319,7 @@ function ShowWatchedDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched ▾'}
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
@@ -401,7 +401,7 @@ function RecentlyWatchedDeleteButton({ item, onDeleted }: { item: RecentlyWatche
   }
 
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400">Deleted ✓</span>;
+    return <span className="text-xs font-medium text-green-400">Deleted</span>;
   }
 
   if (status === 'confirm' || status === 'loading') {

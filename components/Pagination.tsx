@@ -37,7 +37,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
           href={buildHref(page - 1)}
           className="px-4 py-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition text-sm"
         >
-          ← Previous
+          Previous
         </a>
       )}
       <span className="text-sm text-zinc-400">
@@ -48,7 +48,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
           href={buildHref(page + 1)}
           className="px-4 py-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition text-sm"
         >
-          Next →
+          Next
         </a>
       )}
     </div>

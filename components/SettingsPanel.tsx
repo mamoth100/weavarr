@@ -178,10 +178,10 @@ export default function SettingsPanel() {
                   {testState.status === 'testing' ? 'Testing…' : 'Test'}
                 </button>
                 {testState.status === 'ok' && (
-                  <span className="text-xs font-medium text-green-400">✓ {testState.message}</span>
+                  <span className="text-xs font-medium text-green-400">{testState.message}</span>
                 )}
                 {testState.status === 'fail' && (
-                  <span className="text-xs font-medium text-red-400">✕ {testState.message}</span>
+                  <span className="text-xs font-medium text-red-400">{testState.message}</span>
                 )}
               </>
             )}
@@ -204,7 +204,7 @@ export default function SettingsPanel() {
                   />
                   {s.secret && (
                     <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
-                      {s.isSet ? '● set' : '○ not set'}
+                      {s.isSet ? 'set' : 'not set'}
                     </span>
                   )}
                 </div>
@@ -223,7 +223,7 @@ export default function SettingsPanel() {
           {saveStatus === 'saving' ? 'Saving…' : `Save${changedCount > 0 ? ` (${changedCount} changed)` : ''}`}
         </button>
         {saveStatus === 'saved' && restartStatus === 'idle' && (
-          <span className="text-sm text-green-400">Saved ✓</span>
+          <span className="text-sm text-green-400">Saved</span>
         )}
         {saveStatus === 'error' && <span className="text-sm text-red-400">Failed: {saveError}</span>}
 
@@ -234,7 +234,7 @@ export default function SettingsPanel() {
         >
           {restartStatus === 'restarting' ? 'Restarting…' : 'Restart App'}
         </button>
-        {restartStatus === 'back' && <span className="text-sm text-green-400">Back up ✓</span>}
+        {restartStatus === 'back' && <span className="text-sm text-green-400">Back up</span>}
         {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s — check on the Pi</span>}
       </div>
     </div>
