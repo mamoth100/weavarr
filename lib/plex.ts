@@ -125,46 +125,6 @@ export async function markPlexEpisodesWatched(
   await Promise.all(ratingKeys.map((rk) => scrobble(rk)));
 }
 
-/** Resolves a movie title to its Plex ratingKey, or null if not found. */
-export async function findPlexMovieRatingKey(title: string): Promise<string | null> {
-  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
-  const searchQuery = stripDisambiguator(title);
-  const hubs = await searchPlex(searchQuery);
-  const movieHub = hubs.find((h) => h.type === 'movie');
-  const movies = movieHub?.Metadata ?? [];
-  const normalized = searchQuery.toLowerCase().trim();
-  const matched = movies.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
-  return matched?.ratingKey ?? null;
-}
-
-/** Resolves a single show episode to its Plex ratingKey, or null if not found. */
-export async function findPlexEpisodeRatingKey(
-  showTitle: string,
-  seasonNumber: number,
-  episodeNumber: number
-): Promise<string | null> {
-  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
-  const searchQuery = stripDisambiguator(showTitle);
-  const hubs = await searchPlex(searchQuery);
-  const showHub = hubs.find((h) => h.type === 'show');
-  const shows = showHub?.Metadata ?? [];
-  const normalized = searchQuery.toLowerCase().trim();
-  const matchedShow = shows.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
-  if (!matchedShow?.ratingKey) return null;
-
-  const episodesRes = await fetch(
-    `${PLEX_URL}/library/metadata/${matchedShow.ratingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
-    { headers: { Accept: 'application/json' }, cache: 'no-store' }
-  );
-  if (!episodesRes.ok) throw new Error(`Plex episode lookup failed: ${episodesRes.status}`);
-  const episodesData = await episodesRes.json();
-  const allEpisodes: { parentIndex?: number; index?: number; ratingKey?: string }[] =
-    episodesData.MediaContainer?.Metadata ?? [];
-
-  const match = allEpisodes.find((e) => e.parentIndex === seasonNumber && e.index === episodeNumber);
-  return match?.ratingKey ?? null;
-}
-
 export interface WatchedEpisode {
   showTitle: string;
   seasonNumber: number;

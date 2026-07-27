@@ -1,16 +1,14 @@
 import { AndroidRemote, RemoteDirection, RemoteKeyCode } from 'androidtv-remote';
 import { getPairedShield, resolveShieldHost } from './shieldPairing';
-import { getPlexClients, playOnClient, type PlexClient } from './plexClientControl';
 
 /**
- * Wakes the paired Shield, foregrounds Plex, and commands it to play the
- * given library item. Two steps here are best-effort and UNVERIFIED against
- * a live device (no Shield has been paired yet as of writing this): whether
- * KEYCODE_WAKEUP actually rouses a fully-asleep Shield over this protocol,
- * and whether the `plex://` app-link foregrounds Plex versus Plex needing to
- * already be running in the background for its client-control API to see it.
+ * Wakes the paired Shield and foregrounds Plex. Commanding Plex to play a
+ * specific title from here isn't possible — that needs Plex's own
+ * client-control protocol, which turned out to be unreliable for this
+ * client (empty/stale discovery, a local command port that comes and goes).
+ * This just gets the TV on and Plex open; picking the title is manual.
  */
-export async function playOnShield(ratingKey: string): Promise<void> {
+export async function openPlexOnShield(): Promise<void> {
   const paired = await getPairedShield();
   if (!paired) throw new Error('No Shield paired yet — pair one in Settings first.');
 
@@ -43,22 +41,4 @@ export async function playOnShield(ratingKey: string): Promise<void> {
     // Best-effort — Plex may already be running.
   }
   remote.stop();
-
-  const client = await waitForShieldPlexClient(host, 20000);
-  if (!client) {
-    throw new Error('Plex did not appear on the Shield in time — is it installed and signed in?');
-  }
-
-  await playOnClient(client, ratingKey);
-}
-
-async function waitForShieldPlexClient(shieldHost: string, timeoutMs: number): Promise<PlexClient | null> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const clients = await getPlexClients();
-    const match = clients.find((c) => c.address === shieldHost);
-    if (match) return match;
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  return null;
 }
