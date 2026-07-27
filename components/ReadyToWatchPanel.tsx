@@ -206,17 +206,7 @@ async function callMarkWatched(body: object): Promise<void> {
   if (!res.ok) throw new Error(data.error ?? 'Failed');
 }
 
-async function callPlayOnShield(body: object): Promise<void> {
-  const res = await fetch('/api/shield/play', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? 'Failed');
-}
-
-function MoviePlayOnShieldButton({ item }: { item: ReadyToWatchItem }) {
+function PlayOnShieldButton() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -224,7 +214,9 @@ function MoviePlayOnShieldButton({ item }: { item: ReadyToWatchItem }) {
     setStatus('loading');
     setError(null);
     try {
-      await callPlayOnShield({ type: 'movie', title: item.title });
+      const res = await fetch('/api/shield/play', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
       setStatus('done');
     } catch (err) {
       setStatus('error');
@@ -237,71 +229,13 @@ function MoviePlayOnShieldButton({ item }: { item: ReadyToWatchItem }) {
       <button
         onClick={handleClick}
         disabled={status === 'loading'}
+        title="Wakes the Shield and opens Plex — pick the title yourself once it's up"
         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
         }`}
       >
-        {status === 'loading' ? 'Starting…' : status === 'done' ? '▶ Playing' : status === 'error' ? 'Failed — retry' : '▶ Play on Shield'}
+        {status === 'loading' ? 'Waking…' : status === 'done' ? '▶ Opened Plex' : status === 'error' ? 'Failed — retry' : '▶ Open on Shield'}
       </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
-  );
-}
-
-function ShowPlayOnShieldDropdown({ item }: { item: ReadyToWatchItem }) {
-  const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleOutsideClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [open]);
-
-  async function playEpisode(seasonNumber: number, episodeNumber: number) {
-    setStatus('loading');
-    setError(null);
-    try {
-      await callPlayOnShield({ type: 'tv', title: item.title, seasonNumber, episodeNumber });
-      setStatus('idle');
-      setOpen(false);
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        disabled={status === 'loading'}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-        }`}
-      >
-        {status === 'loading' ? 'Starting…' : status === 'error' ? 'Failed — retry' : '▶ Play ▾'}
-      </button>
-      {open && (
-        <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
-          {(item.unwatchedEpisodes ?? []).map((e) => (
-            <button
-              key={`${e.seasonNumber}-${e.episodeNumber}`}
-              onClick={() => playEpisode(e.seasonNumber, e.episodeNumber)}
-              className="block w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
-            >
-              {formatEpisode(e)}
-            </button>
-          ))}
-        </div>
-      )}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
@@ -672,7 +606,7 @@ export default function ReadyToWatchPanel() {
         <div className="flex items-center gap-2">
           {item.type === 'movie' ? (
             <>
-              <MoviePlayOnShieldButton item={item} />
+              <PlayOnShieldButton />
               <MovieWatchedButton
                 item={item}
                 onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
@@ -681,7 +615,7 @@ export default function ReadyToWatchPanel() {
             </>
           ) : (
             <>
-              <ShowPlayOnShieldDropdown item={item} />
+              <PlayOnShieldButton />
               <ShowWatchedDropdown
                 item={item}
                 onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
