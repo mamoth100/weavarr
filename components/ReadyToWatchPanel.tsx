@@ -206,41 +206,6 @@ async function callMarkWatched(body: object): Promise<void> {
   if (!res.ok) throw new Error(data.error ?? 'Failed');
 }
 
-function PlayOnShieldButton() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleClick() {
-    setStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/shield/play', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
-      setStatus('done');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  return (
-    <div>
-      <button
-        onClick={handleClick}
-        disabled={status === 'loading'}
-        title="Wakes the Shield and opens Plex — pick the title yourself once it's up"
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-        }`}
-      >
-        {status === 'loading' ? 'Waking…' : status === 'done' ? 'Opened Plex' : status === 'error' ? 'Failed — retry' : 'Open on Shield'}
-      </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
-  );
-}
-
 function MovieWatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched: () => void }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -606,7 +571,6 @@ export default function ReadyToWatchPanel() {
         <div className="flex items-center gap-2">
           {item.type === 'movie' ? (
             <>
-              <PlayOnShieldButton />
               <MovieWatchedButton
                 item={item}
                 onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
@@ -615,7 +579,6 @@ export default function ReadyToWatchPanel() {
             </>
           ) : (
             <>
-              <PlayOnShieldButton />
               <ShowWatchedDropdown
                 item={item}
                 onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
