@@ -152,7 +152,7 @@ function ShowDeleteDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete'}
+        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete ▾'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
@@ -284,7 +284,7 @@ function ShowWatchedDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched'}
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched ▾'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
