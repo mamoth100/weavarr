@@ -8,8 +8,19 @@ export interface WatchlistItem {
   addedAt: number;
 }
 
-const FAV_KEY = 'docuview_favorites';
-const WATCHED_KEY = 'docuview_watched';
+const FAV_KEY = 'weavarr_favorites';
+const WATCHED_KEY = 'weavarr_watched';
+const OLD_FAV_KEY = 'docuview_favorites';
+const OLD_WATCHED_KEY = 'docuview_watched';
+
+function migrateKey(oldKey: string, newKey: string): void {
+  if (localStorage.getItem(newKey) !== null) return;
+  const old = localStorage.getItem(oldKey);
+  if (old !== null) {
+    localStorage.setItem(newKey, old);
+    localStorage.removeItem(oldKey);
+  }
+}
 
 export function watchedKey(id: number, mediaType: string): string {
   return `${id}:${mediaType}`;
@@ -17,6 +28,7 @@ export function watchedKey(id: number, mediaType: string): string {
 
 export function loadFavorites(): WatchlistItem[] {
   try {
+    migrateKey(OLD_FAV_KEY, FAV_KEY);
     const raw = localStorage.getItem(FAV_KEY);
     return raw ? (JSON.parse(raw) as WatchlistItem[]) : [];
   } catch {
@@ -30,6 +42,7 @@ export function saveFavorites(items: WatchlistItem[]): void {
 
 export function loadWatched(): WatchlistItem[] {
   try {
+    migrateKey(OLD_WATCHED_KEY, WATCHED_KEY);
     const raw = localStorage.getItem(WATCHED_KEY);
     return raw ? (JSON.parse(raw) as WatchlistItem[]) : [];
   } catch {

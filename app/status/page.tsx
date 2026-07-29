@@ -9,7 +9,7 @@ export default function StatusPage() {
         <div className="flex items-center justify-between">
           <div>
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
-              Docu<span className="text-amber-400">View</span>
+              Weav<span className="text-amber-400">arr</span>
             </Link>
             <p className="text-zinc-500 text-sm mt-0.5">Download status — SABnzbd, Sonarr, Radarr</p>
           </div>

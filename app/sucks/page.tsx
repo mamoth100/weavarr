@@ -15,7 +15,7 @@ export default function SucksPage() {
         <div className="flex items-center justify-between">
           <div>
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
-              Docu<span className="text-amber-400">View</span>
+              Weav<span className="text-amber-400">arr</span>
             </Link>
             <p className="text-zinc-500 text-sm mt-0.5">Things that suck</p>
           </div>

@@ -3,7 +3,7 @@ export default function Loading() {
     <main className="min-h-screen bg-zinc-950 text-white">
       <header className="border-b border-zinc-800 px-6 py-5">
         <h1 className="text-2xl font-bold tracking-tight">
-          Docu<span className="text-amber-400">View</span>
+          Weav<span className="text-amber-400">arr</span>
         </h1>
         <p className="text-zinc-500 text-sm mt-0.5">
           The documentary discovery engine

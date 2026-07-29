@@ -65,7 +65,7 @@ export default async function TvPage({ params }: Props) {
       {/* Nav */}
       <header className="border-b border-zinc-800 px-6 py-5">
         <Link href="/?genre=reality" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
-          Docu<span className="text-amber-400">View</span>
+          Weav<span className="text-amber-400">arr</span>
         </Link>
       </header>
 
@@ -162,7 +162,7 @@ export default async function TvPage({ params }: Props) {
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
               <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
-                DocuView Score <span className="normal-case text-zinc-600">(Bayesian · IMDb-anchored)</span>
+                Weavarr Score <span className="normal-case text-zinc-600">(Bayesian · IMDb-anchored)</span>
               </div>
               <div className="flex items-center gap-4">
                 <ScoreBadge score={score.score} size="lg" />

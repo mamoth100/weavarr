@@ -114,7 +114,7 @@ async function testSupabase(url?: string, anonKey?: string): Promise<TestResult>
   try {
     // The bare /rest/v1/ root rejects publishable/anon keys ("secret key
     // required") on newer Supabase projects — query an actual table
-    // DocuView uses instead, which is what the anon key is really for.
+    // Weavarr uses instead, which is what the anon key is really for.
     const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/favorites?select=id&limit=1`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
       cache: 'no-store',

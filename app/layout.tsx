@@ -13,13 +13,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'DocuView — Documentary Discovery',
+  title: 'Weavarr — Documentary Discovery',
   description: 'Discover, sort, and filter the best documentaries across every genre.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'DocuView',
+    title: 'Weavarr',
   },
   icons: {
     icon: [
