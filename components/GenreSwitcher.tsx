@@ -2,11 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { MenuVisibility } from '@/lib/settings';
+import type { MenuConfig } from '@/lib/settings';
 
-const ALL_GENRES = [
-  { value: 'documentary', label: 'Documentaries', flag: 'documentaries' as const },
-  { value: 'reality', label: 'Reality TV', flag: 'reality' as const },
+const ALL_EXTRA_TABS = [
   { value: 'upcoming', label: 'Coming Soon', flag: 'upcoming' as const },
   { value: 'search', label: 'Search', flag: 'search' as const },
 ];
@@ -21,16 +19,19 @@ const ALL_ADMIN_LINKS = [
   { href: '/sonarr-library', label: 'TV (Sonarr)', flag: 'sonarrLibrary' as const },
 ];
 
-export default function GenreSwitcher({ visibility }: { visibility: MenuVisibility }) {
+export default function GenreSwitcher({ config }: { config: MenuConfig }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const current = searchParams.get('genre') ?? 'documentary';
+  const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'documentary';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const GENRES = ALL_GENRES.filter((g) => visibility[g.flag]);
-  const VISIBLE_LINKS = ALL_VISIBLE_LINKS.filter((l) => visibility[l.flag]);
-  const ADMIN_LINKS = ALL_ADMIN_LINKS.filter((l) => visibility[l.flag]);
+  const GENRES = [
+    ...config.genres.map((g) => ({ value: g.id, label: g.label })),
+    ...ALL_EXTRA_TABS.filter((t) => config[t.flag]),
+  ];
+  const VISIBLE_LINKS = ALL_VISIBLE_LINKS.filter((l) => config[l.flag]);
+  const ADMIN_LINKS = ALL_ADMIN_LINKS.filter((l) => config[l.flag]);
 
   useEffect(() => {
     if (!menuOpen) return;

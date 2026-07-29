@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
-import { discoverDocumentaries, discoverTv, discoverUpcoming, discoverUpcomingTv, searchDocumentaries, searchTv } from '@/lib/tmdb';
+import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, searchMovies, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
-import { getMenuVisibility } from '@/lib/settings';
+import { GENRE_CATALOG, getGenre } from '@/lib/genreCatalog';
+import { getMenuConfig } from '@/lib/settings';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
@@ -14,15 +15,13 @@ interface PageProps {
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const visibility = await getMenuVisibility();
-  const genre =
-    searchParams.genre === 'reality' ? 'reality' :
-    searchParams.genre === 'upcoming' ? 'upcoming' :
-    searchParams.genre === 'search' ? 'search' :
-    'documentary';
-  const isReality = genre === 'reality';
-  const isUpcoming = genre === 'upcoming';
-  const isGlobalSearch = genre === 'search';
+  const config = await getMenuConfig();
+  const isUpcoming = searchParams.genre === 'upcoming';
+  const isGlobalSearch = searchParams.genre === 'search';
+  const activeGenre = isUpcoming || isGlobalSearch ? GENRE_CATALOG[0] : getGenre(searchParams.genre);
+  const genre = isUpcoming ? 'upcoming' : isGlobalSearch ? 'search' : activeGenre.id;
+  const hasMovies = Boolean(activeGenre.movieGenreId);
+  const hasTv = Boolean(activeGenre.tvGenreId);
   const query = searchParams.q?.trim() ?? '';
   const activeSubgenreIds = searchParams.subgenres
     ? searchParams.subgenres.split(',').filter(Boolean)
@@ -52,7 +51,7 @@ export default async function Home({ searchParams }: PageProps) {
     ? await (async () => {
         if (!query) return { page: 1, results: [], total_pages: 1, total_results: 0 };
         const [movieData, tvData] = await Promise.all([
-          searchDocumentaries(query, page),
+          searchMovies(query, page),
           searchTv(query, page),
         ]);
         return {
@@ -78,19 +77,28 @@ export default async function Home({ searchParams }: PageProps) {
           total_pages: Math.max(movieData.total_pages, tvData.total_pages),
         };
       })()
-    : isReality && query
+    : !hasMovies && query
     ? await searchTv(query, page)
-    : isReality
+    : !hasMovies
     ? await (async () => {
-        const p1 = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language });
+        const p1 = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.tvGenreId });
         if (p1.total_pages <= page) return p1;
-        const p2 = await discoverTv({ page: page + 1, sortBy: sort, minVotes, dateGte, dateLte, language });
+        const p2 = await discoverTv({ page: page + 1, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.tvGenreId });
+        return { ...p1, results: [...p1.results, ...p2.results] };
+      })()
+    : !hasTv && query
+    ? await searchMovies(query, page)
+    : !hasTv
+    ? await (async () => {
+        const p1 = await discoverMovies({ page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.movieGenreId });
+        if (p1.total_pages <= page) return p1;
+        const p2 = await discoverMovies({ page: page + 1, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.movieGenreId });
         return { ...p1, results: [...p1.results, ...p2.results] };
       })()
     : query
     ? await (async () => {
         const [movieData, tvData] = await Promise.all([
-          searchDocumentaries(query, page),
+          searchMovies(query, page),
           searchTv(query, page),
         ]);
         return {
@@ -101,15 +109,15 @@ export default async function Home({ searchParams }: PageProps) {
         };
       })()
     : await (async () => {
-        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language };
+        const movieArgs = { page, sortBy: sort, keywordIds, minVotes: keywordIds.length > 0 ? 5 : minVotes, dateGte, dateLte, language, genre: activeGenre.movieGenreId };
         const tvMinVotes = yearParam === currentYear ? 0 : (keywordIds.length > 0 ? 5 : minVotes);
-        const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: 99, keywordIds };
+        const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: activeGenre.tvGenreId, keywordIds };
         const [p1, tvP1] = await Promise.all([
-          discoverDocumentaries(movieArgs),
+          discoverMovies(movieArgs),
           discoverTv(tvArgs),
         ]);
         const [p2, tvP2] = await Promise.all([
-          p1.total_pages > page ? discoverDocumentaries({ ...movieArgs, page: page + 1 }) : null,
+          p1.total_pages > page ? discoverMovies({ ...movieArgs, page: page + 1 }) : null,
           tvP1.total_pages > page ? discoverTv({ ...tvArgs, page: page + 1 }) : null,
         ]);
         const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
@@ -124,7 +132,7 @@ export default async function Home({ searchParams }: PageProps) {
         };
       })();
 
-  const mediaType = isReality ? 'tv' : 'movie';
+  const mediaType = hasMovies ? 'movie' : 'tv';
   const enriched = data;
 
   return (
@@ -136,7 +144,7 @@ export default async function Home({ searchParams }: PageProps) {
               Weav<span className="text-amber-400">arr</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">
-              {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
+              {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isUpcoming ? 'Documentaries coming soon' : `${activeGenre.label} discovery engine`}
             </p>
           </div>
           <div className="flex items-center flex-wrap gap-4 sm:mt-1">
@@ -187,7 +195,7 @@ export default async function Home({ searchParams }: PageProps) {
 
       <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
         <Suspense>
-          <GenreSwitcher visibility={visibility} />
+          <GenreSwitcher config={config} />
         </Suspense>
       </div>
 
@@ -209,7 +217,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">
-            {isGlobalSearch ? 'No results found.' : 'No documentaries found.'}
+            {isGlobalSearch ? 'No results found.' : isUpcoming ? 'No upcoming documentaries found.' : `No ${activeGenre.label.toLowerCase()} found.`}
           </div>
         ) : isGlobalSearch ? (
           <>
