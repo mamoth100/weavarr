@@ -15,9 +15,9 @@ export default function FavoritesPage() {
       <header className="border-b border-zinc-800 px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Docu<span className="text-amber-400">View</span>
-            </h1>
+            </Link>
             <p className="text-zinc-500 text-sm mt-0.5">Your favorites</p>
           </div>
           <BackLink />
