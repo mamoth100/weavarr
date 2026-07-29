@@ -33,7 +33,42 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false — Pi only)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
+  { key: 'MENU_SHOW_DOCUMENTARIES', label: 'Documentaries tab', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_REALITY', label: 'Reality TV tab', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_UPCOMING', label: 'Coming Soon tab', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_SEARCH', label: 'Search tab', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_STATUS', label: 'Status link', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_READY_TO_WATCH', label: 'Ready to Watch link', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_RADARR_LIBRARY', label: 'Movies (Radarr) link', group: 'Menu', secret: false },
+  { key: 'MENU_SHOW_SONARR_LIBRARY', label: 'TV (Sonarr) link', group: 'Menu', secret: false },
 ];
+
+export interface MenuVisibility {
+  documentaries: boolean;
+  reality: boolean;
+  upcoming: boolean;
+  search: boolean;
+  status: boolean;
+  readyToWatch: boolean;
+  radarrLibrary: boolean;
+  sonarrLibrary: boolean;
+}
+
+/** Reads menu toggle flags straight off disk (not cached process.env), so changes apply without a restart. Unset = visible. */
+export async function getMenuVisibility(): Promise<MenuVisibility> {
+  const lines = await readEnvLines();
+  const flag = (key: string) => parseEnvValue(lines, key) !== 'false';
+  return {
+    documentaries: flag('MENU_SHOW_DOCUMENTARIES'),
+    reality: flag('MENU_SHOW_REALITY'),
+    upcoming: flag('MENU_SHOW_UPCOMING'),
+    search: flag('MENU_SHOW_SEARCH'),
+    status: flag('MENU_SHOW_STATUS'),
+    readyToWatch: flag('MENU_SHOW_READY_TO_WATCH'),
+    radarrLibrary: flag('MENU_SHOW_RADARR_LIBRARY'),
+    sonarrLibrary: flag('MENU_SHOW_SONARR_LIBRARY'),
+  };
+}
 
 async function readEnvLines(): Promise<string[]> {
   try {

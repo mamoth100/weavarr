@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import BackLink from '@/components/BackLink';
-import SettingsPanel from '@/components/SettingsPanel';
+import SettingsLayout from '@/components/SettingsLayout';
 
 export default function SettingsPage() {
   return (
@@ -17,8 +17,8 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        <SettingsPanel />
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        <SettingsLayout />
       </div>
     </main>
   );

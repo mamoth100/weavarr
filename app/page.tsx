@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { discoverDocumentaries, discoverTv, discoverUpcoming, discoverUpcomingTv, searchDocumentaries, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
+import { getMenuVisibility } from '@/lib/settings';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
@@ -13,6 +14,7 @@ interface PageProps {
 }
 
 export default async function Home({ searchParams }: PageProps) {
+  const visibility = await getMenuVisibility();
   const genre =
     searchParams.genre === 'reality' ? 'reality' :
     searchParams.genre === 'upcoming' ? 'upcoming' :
@@ -185,7 +187,7 @@ export default async function Home({ searchParams }: PageProps) {
 
       <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
         <Suspense>
-          <GenreSwitcher />
+          <GenreSwitcher visibility={visibility} />
         </Suspense>
       </div>
 

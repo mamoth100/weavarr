@@ -48,7 +48,7 @@ export default function SettingsPanel() {
     );
   }
 
-  const groups = Array.from(new Set(settings.map((s) => s.group)));
+  const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu');
   const changedCount = Object.values(edits).filter((v) => v.trim() !== '').length;
 
   async function handleRestart() {
