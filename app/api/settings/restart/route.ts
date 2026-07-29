@@ -5,7 +5,7 @@ export async function POST() {
   // Fire the restart after the response has had time to reach the browser —
   // this command kills the very process handling this request.
   setTimeout(() => {
-    exec('sudo systemctl restart docuview', (err) => {
+    exec('sudo systemctl restart weavarr', (err) => {
       if (err) console.error('[settings/restart] failed:', err.message);
     });
   }, 500);

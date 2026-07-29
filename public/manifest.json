@@ -1,6 +1,6 @@
 {
-  "name": "DocuView",
-  "short_name": "DocuView",
+  "name": "Weavarr",
+  "short_name": "Weavarr",
   "description": "Discover, sort, and filter the best documentaries across every genre.",
   "start_url": "/",
   "display": "standalone",

@@ -131,7 +131,7 @@ export default async function Home({ searchParams }: PageProps) {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              Docu<span className="text-amber-400">View</span>
+              Weav<span className="text-amber-400">arr</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">
               {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isReality ? 'Reality TV discovery engine' : isUpcoming ? 'Documentaries coming soon' : 'The documentary discovery engine'}
