@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, readdir, unlink } from 'fs/promises';
 import path from 'path';
+import { GENRE_CATALOG, DEFAULT_GENRE_IDS, type GenreDef } from '@/lib/genreCatalog';
 
 const ENV_FILE = path.join(process.cwd(), '.env.local');
 const BACKUP_DIR = path.join(process.cwd(), 'data', 'env-backups');
@@ -33,8 +34,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false — Pi only)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
-  { key: 'MENU_SHOW_DOCUMENTARIES', label: 'Documentaries tab', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_REALITY', label: 'Reality TV tab', group: 'Menu', secret: false },
+  { key: 'MENU_GENRES', label: 'Genre tabs (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'MENU_SHOW_UPCOMING', label: 'Coming Soon tab', group: 'Menu', secret: false },
   { key: 'MENU_SHOW_SEARCH', label: 'Search tab', group: 'Menu', secret: false },
   { key: 'MENU_SHOW_STATUS', label: 'Status link', group: 'Menu', secret: false },
@@ -43,9 +43,8 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'MENU_SHOW_SONARR_LIBRARY', label: 'TV (Sonarr) link', group: 'Menu', secret: false },
 ];
 
-export interface MenuVisibility {
-  documentaries: boolean;
-  reality: boolean;
+export interface MenuConfig {
+  genres: GenreDef[];
   upcoming: boolean;
   search: boolean;
   status: boolean;
@@ -54,13 +53,19 @@ export interface MenuVisibility {
   sonarrLibrary: boolean;
 }
 
-/** Reads menu toggle flags straight off disk (not cached process.env), so changes apply without a restart. Unset = visible. */
-export async function getMenuVisibility(): Promise<MenuVisibility> {
+/** Reads menu config straight off disk (not cached process.env), so changes apply without a restart. */
+export async function getMenuConfig(): Promise<MenuConfig> {
   const lines = await readEnvLines();
   const flag = (key: string) => parseEnvValue(lines, key) !== 'false';
+  const genresRaw = parseEnvValue(lines, 'MENU_GENRES');
+  const ids = genresRaw !== null && genresRaw.trim() !== ''
+    ? genresRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_GENRE_IDS;
+  const genres = ids
+    .map((id) => GENRE_CATALOG.find((g) => g.id === id))
+    .filter((g): g is GenreDef => Boolean(g));
   return {
-    documentaries: flag('MENU_SHOW_DOCUMENTARIES'),
-    reality: flag('MENU_SHOW_REALITY'),
+    genres,
     upcoming: flag('MENU_SHOW_UPCOMING'),
     search: flag('MENU_SHOW_SEARCH'),
     status: flag('MENU_SHOW_STATUS'),

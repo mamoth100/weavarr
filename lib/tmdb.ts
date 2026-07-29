@@ -33,7 +33,7 @@ export async function enrichWithLanguage<T extends { id: number; spoken_language
   return items.map((item, i) => ({ ...item, spoken_language: languages[i] ?? undefined }));
 }
 
-export async function discoverDocumentaries({
+export async function discoverMovies({
   page = 1,
   sortBy = 'vote_average.desc',
   keywordIds = [],
@@ -41,6 +41,7 @@ export async function discoverDocumentaries({
   dateGte,
   dateLte,
   language = 'en',
+  genre = 99,
 }: {
   page?: number;
   sortBy?: string;
@@ -49,9 +50,10 @@ export async function discoverDocumentaries({
   dateGte?: string;
   dateLte?: string;
   language?: string;
+  genre?: number | string;
 }): Promise<TmdbDiscoverResponse> {
   const params = new URLSearchParams({
-    with_genres: '99',
+    with_genres: String(genre),
     sort_by: sortBy,
     'vote_count.gte': String(minVotes),
     page: String(page),
@@ -84,7 +86,7 @@ export async function getDocumentaryDetail(id: number): Promise<TmdbDetailRespon
   return res.json();
 }
 
-export async function searchDocumentaries(
+export async function searchMovies(
   query: string,
   page = 1
 ): Promise<TmdbDiscoverResponse> {
@@ -209,7 +211,7 @@ export async function discoverTv({
   dateGte?: string;
   dateLte?: string;
   language?: string;
-  genre?: number;
+  genre?: number | string;
   keywordIds?: number[];
 }): Promise<TmdbDiscoverResponse> {
   // TV discover uses first_air_date, movies use release_date — translate
