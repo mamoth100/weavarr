@@ -2,30 +2,35 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { MenuVisibility } from '@/lib/settings';
 
-const GENRES = [
-  { value: 'documentary', label: 'Documentaries' },
-  { value: 'reality', label: 'Reality TV' },
-  { value: 'upcoming', label: 'Coming Soon' },
-  { value: 'search', label: 'Search' },
+const ALL_GENRES = [
+  { value: 'documentary', label: 'Documentaries', flag: 'documentaries' as const },
+  { value: 'reality', label: 'Reality TV', flag: 'reality' as const },
+  { value: 'upcoming', label: 'Coming Soon', flag: 'upcoming' as const },
+  { value: 'search', label: 'Search', flag: 'search' as const },
 ];
 
-const VISIBLE_LINKS = [
-  { href: '/status', label: 'Status' },
-  { href: '/ready-to-watch', label: 'Ready to Watch' },
+const ALL_VISIBLE_LINKS = [
+  { href: '/status', label: 'Status', flag: 'status' as const },
+  { href: '/ready-to-watch', label: 'Ready to Watch', flag: 'readyToWatch' as const },
 ];
 
-const ADMIN_LINKS = [
-  { href: '/radarr-library', label: 'Movies (Radarr)' },
-  { href: '/sonarr-library', label: 'TV (Sonarr)' },
+const ALL_ADMIN_LINKS = [
+  { href: '/radarr-library', label: 'Movies (Radarr)', flag: 'radarrLibrary' as const },
+  { href: '/sonarr-library', label: 'TV (Sonarr)', flag: 'sonarrLibrary' as const },
 ];
 
-export default function GenreSwitcher() {
+export default function GenreSwitcher({ visibility }: { visibility: MenuVisibility }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const current = searchParams.get('genre') ?? 'documentary';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const GENRES = ALL_GENRES.filter((g) => visibility[g.flag]);
+  const VISIBLE_LINKS = ALL_VISIBLE_LINKS.filter((l) => visibility[l.flag]);
+  const ADMIN_LINKS = ALL_ADMIN_LINKS.filter((l) => visibility[l.flag]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -65,6 +70,7 @@ export default function GenreSwitcher() {
         ))}
       </div>
 
+      {ADMIN_LINKS.length > 0 && (
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((o) => !o)}
@@ -92,6 +98,7 @@ export default function GenreSwitcher() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

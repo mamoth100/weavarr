@@ -16,3 +16,6 @@ Thumbs.db
 
 # Runtime state — not source, shouldn't be committed
 /data/
+
+# Claude Code local session config — personal, not shared
+.claude/settings.local.json
