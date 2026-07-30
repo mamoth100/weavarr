@@ -6,6 +6,8 @@ export interface DraggableItem {
   id: string;
   label: string;
   checked: boolean;
+  /** Greys out the checkbox and blocks toggling — used when unchecking it isn't a valid state. */
+  disabled?: boolean;
 }
 
 function GripIcon() {
@@ -87,12 +89,13 @@ export default function DraggableCheckList({
           >
             <GripIcon />
           </span>
-          <label className="flex items-center gap-3 flex-1 cursor-pointer">
+          <label className={`flex items-center gap-3 flex-1 ${item.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
               checked={item.checked}
+              disabled={item.disabled}
               onChange={() => onToggle(item.id)}
-              className="w-4 h-4 rounded accent-amber-500"
+              className="w-4 h-4 rounded accent-amber-500 disabled:cursor-not-allowed"
             />
             <span className="text-sm font-medium">{item.label}</span>
           </label>
