@@ -14,9 +14,9 @@ async function testRadarr(url?: string, key?: string): Promise<TestResult> {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status} — check URL and key` };
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    return { ok: true, message: `Connected — Radarr v${data.version ?? '?'}` };
+    return { ok: true, message: `Connected - Radarr v${data.version ?? '?'}` };
   } catch (err) {
     return fail(err);
   }
@@ -29,9 +29,9 @@ async function testSonarr(url?: string, key?: string): Promise<TestResult> {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status} — check URL and key` };
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    return { ok: true, message: `Connected — Sonarr v${data.version ?? '?'}` };
+    return { ok: true, message: `Connected - Sonarr v${data.version ?? '?'}` };
   } catch (err) {
     return fail(err);
   }
@@ -43,10 +43,10 @@ async function testSABnzbd(url?: string, key?: string): Promise<TestResult> {
     const res = await fetch(`${url.replace(/\/$/, '')}/api?mode=version&apikey=${encodeURIComponent(key)}&output=json`, {
       cache: 'no-store',
     });
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status} — check URL and key` };
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    if (!data.version) return { ok: false, message: 'Unexpected response — check API key' };
-    return { ok: true, message: `Connected — SABnzbd v${data.version}` };
+    if (!data.version) return { ok: false, message: 'Unexpected response - check API key' };
+    return { ok: true, message: `Connected - SABnzbd v${data.version}` };
   } catch (err) {
     return fail(err);
   }
@@ -59,11 +59,11 @@ async function testPlex(url?: string, token?: string): Promise<TestResult> {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
     });
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status} — check URL and token` };
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and token` };
     const data = await res.json();
     const version = data.MediaContainer?.version;
-    if (!version) return { ok: false, message: 'Unexpected response — check token' };
-    return { ok: true, message: `Connected — Plex v${version}` };
+    if (!version) return { ok: false, message: 'Unexpected response - check token' };
+    return { ok: true, message: `Connected - Plex v${version}` };
   } catch (err) {
     return fail(err);
   }
@@ -103,7 +103,7 @@ async function testPushover(userKey?: string, apiToken?: string): Promise<TestRe
     const res = await fetch('https://api.pushover.net/1/users/validate.json', { method: 'POST', body, cache: 'no-store' });
     const data = await res.json();
     if (data.status !== 1) return { ok: false, message: (data.errors ?? []).join(', ') || 'Invalid credentials' };
-    return { ok: true, message: `Valid — ${(data.devices ?? []).length} device(s)` };
+    return { ok: true, message: `Valid - ${(data.devices ?? []).length} device(s)` };
   } catch (err) {
     return fail(err);
   }
@@ -113,13 +113,13 @@ async function testSupabase(url?: string, anonKey?: string): Promise<TestResult>
   if (!url || !anonKey) return { ok: false, message: 'URL and anon key required' };
   try {
     // The bare /rest/v1/ root rejects publishable/anon keys ("secret key
-    // required") on newer Supabase projects — query an actual table
+    // required") on newer Supabase projects - query an actual table
     // Weavarr uses instead, which is what the anon key is really for.
     const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/favorites?select=id&limit=1`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
       cache: 'no-store',
     });
-    if (res.status === 401 || res.status === 403) return { ok: false, message: 'Rejected — check anon key' };
+    if (res.status === 401 || res.status === 403) return { ok: false, message: 'Rejected - check anon key' };
     if (!res.ok) return { ok: false, message: `HTTP ${res.status}` };
     return { ok: true, message: 'Reachable' };
   } catch (err) {

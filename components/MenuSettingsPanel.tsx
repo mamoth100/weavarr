@@ -14,6 +14,12 @@ interface SettingStatus {
   value: string | null;
 }
 
+/** null (never saved) means "not configured yet" -> use defaults. An explicit empty string means the user deliberately chose zero items. */
+function parseSavedIds(value: string | null | undefined, defaults: string[]): string[] {
+  if (value === null || value === undefined) return defaults;
+  return value.trim() === '' ? [] : value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 /** Builds the full working order: saved (checked) ids first in their saved order, then every remaining catalog item in catalog order. */
 function buildWorkingOrder(
   catalog: { id: string; label: string }[],
@@ -49,10 +55,8 @@ export default function MenuSettingsPanel() {
           return;
         }
         const menuFields = (data.settings as SettingStatus[]).filter((s) => s.group === 'Menu');
-        const genresRaw = menuFields.find((f) => f.key === 'MENU_GENRES')?.value?.trim();
-        const linksRaw = menuFields.find((f) => f.key === 'MENU_LINKS')?.value?.trim();
-        const genreIds = genresRaw ? genresRaw.split(',').filter(Boolean) : DEFAULT_GENRE_IDS;
-        const linkIds = linksRaw ? linksRaw.split(',').filter(Boolean) : DEFAULT_LINK_IDS;
+        const genreIds = parseSavedIds(menuFields.find((f) => f.key === 'MENU_GENRES')?.value, DEFAULT_GENRE_IDS);
+        const linkIds = parseSavedIds(menuFields.find((f) => f.key === 'MENU_LINKS')?.value, DEFAULT_LINK_IDS);
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
         setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
@@ -117,8 +121,8 @@ export default function MenuSettingsPanel() {
   return (
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
-        <p>Drag the grip on the left to reorder. Order here is the order in the dashboard&apos;s top menu — the first genre is what the dashboard shows by default.</p>
-        <p>Items that don&apos;t fit in the menu bar automatically fall into a &quot;More&quot; dropdown. Takes effect immediately — no restart needed.</p>
+        <p>Drag the grip on the left to reorder. Order here is the order in the dashboard&apos;s top menu - the first genre is what the dashboard shows by default.</p>
+        <p>Items that don&apos;t fit in the menu bar automatically fall into a &quot;More&quot; dropdown. Takes effect immediately - no restart needed.</p>
       </div>
 
       <div className="space-y-2">

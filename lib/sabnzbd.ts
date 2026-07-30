@@ -4,7 +4,7 @@ const SAB_KEY = process.env.SABNZBD_API_KEY;
 export interface SabSlot {
   filename: string;
   status: string;
-  // Only meaningful for active downloads — post-processing entries (from
+  // Only meaningful for active downloads - post-processing entries (from
   // history) don't have a download percentage, their status string already
   // carries its own progress (e.g. "Unpacking: 65/82 - 2:06 left").
   mb?: string;
@@ -49,18 +49,18 @@ export async function getSabQueue(): Promise<SabQueue> {
     mbleft: s.mbleft,
     percentage: s.percentage,
     // SAB's own API reports "Downloading" for every queued slot, even ones
-    // that haven't started — index 0 is the only one actually receiving
-    // bytes. Anything else hasn't started downloading yet — it's Queued.
+    // that haven't started - index 0 is the only one actually receiving
+    // bytes. Anything else hasn't started downloading yet - it's Queued.
     status: Number(s.index) > 0 && s.status === 'Downloading' ? 'Queued' : s.status,
     timeleft: s.timeleft,
   }));
 
   // Once a download finishes, SAB moves it out of the queue entirely and
-  // into history for post-processing (repair/extract/verify) — "Completed"
+  // into history for post-processing (repair/extract/verify) - "Completed"
   // and "Failed" are both terminal/dead-end states (Radarr/Sonarr has
   // already moved on to trying something else) and not worth showing here.
   // SAB's own web UI displays its raw "Queued" history status as "Waiting"
-  // — match that wording.
+  // - match that wording.
   const postProcessingSlots: SabSlot[] = (historyData.history?.slots ?? [])
     .filter((s: Record<string, unknown>) => s.status !== 'Completed' && s.status !== 'Failed')
     .map((s: Record<string, unknown>) => ({

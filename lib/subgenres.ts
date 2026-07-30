@@ -92,7 +92,7 @@ export const SUBGENRES: Subgenre[] = [
       6496,  // basketball
       13042, // football (soccer)
       352822,// football
-      9882,  // (old — keep as fallback)
+      9882,  // (old - keep as fallback)
     ],
   },
   {

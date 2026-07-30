@@ -70,7 +70,7 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
   const hiddenFavCount = !showFav ? items.filter((d) => snapshotFavorites.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
 
   // Wait until Supabase has loaded before rendering so the filter is
-  // applied on the very first paint — no flash of unfiltered items.
+  // applied on the very first paint - no flash of unfiltered items.
   if (!snapped.current && !loaded) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

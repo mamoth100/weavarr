@@ -11,7 +11,7 @@ export default function SonarrLibraryPage() {
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Weav<span className="text-amber-400">arr</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-0.5">Sonarr library — delete any show, any time</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Sonarr library - delete any show, any time</p>
           </div>
           <BackLink />
         </div>

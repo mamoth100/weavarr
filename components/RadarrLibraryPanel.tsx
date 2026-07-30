@@ -12,7 +12,7 @@ interface RadarrMovie {
 }
 
 function formatBytes(bytes: number): string {
-  if (!bytes) return '—';
+  if (!bytes) return '-';
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 }
@@ -73,7 +73,7 @@ function DeleteButton({ movieId }: { movieId: number }) {
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete'}
+        {status === 'error' ? 'Failed - retry' : 'Delete'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>

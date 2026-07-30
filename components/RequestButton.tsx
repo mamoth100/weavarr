@@ -73,7 +73,7 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete from Radarr'}
+        {status === 'error' ? 'Failed - retry' : 'Delete from Radarr'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -136,7 +136,7 @@ function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete from Sonarr'}
+        {status === 'error' ? 'Failed - retry' : 'Delete from Sonarr'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -155,7 +155,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  // Card-grid callers (search results) don't have the season list yet — fetch
+  // Card-grid callers (search results) don't have the season list yet - fetch
   // it lazily so the picker still defaults to the latest season instead of "All"
   const [fetchedSeasons, setFetchedSeasons] = useState<TmdbSeason[] | null>(null);
   useEffect(() => {
@@ -166,7 +166,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       .catch(() => {});
   }, [mediaType, seasons, id]);
 
-  // Real seasons from TMDB, numbered and with episodes — excludes Specials (season 0)
+  // Real seasons from TMDB, numbered and with episodes - excludes Specials (season 0)
   const realSeasons = (seasons ?? fetchedSeasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
   const latestSeason = realSeasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
 
@@ -215,7 +215,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
     status === 'loading' ? 'Requesting…' :
     status === 'added' ? 'Requested' :
     status === 'already' ? 'Already in ' + (mediaType === 'movie' ? 'Radarr' : 'Sonarr') :
-    status === 'error' ? 'Failed — retry' :
+    status === 'error' ? 'Failed - retry' :
     mediaType === 'movie' ? 'Request (Radarr)' : 'Request (Sonarr)';
 
   if (mediaType === 'movie' && radarrMovieId) {

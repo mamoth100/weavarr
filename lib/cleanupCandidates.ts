@@ -42,7 +42,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   ]);
 
   // Two independent signals, either one qualifies: Plex's own watch state
-  // (viewCount/lastViewedAt — set by either real playback OR a manual
+  // (viewCount/lastViewedAt - set by either real playback OR a manual
   // "mark watched", cross-referenced against the session-history log to
   // tell which one it was), or an in-progress episode already at/above
   // CLEANUP_WATCHED_PERCENT per Plex's raw viewOffset/duration.
@@ -89,7 +89,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       episodeCache.set(cacheKey, findSonarrEpisodeFile(matchedSeries.id, watched.seasonNumber, watched.episodeNumber));
     }
     const episodeFile = await episodeCache.get(cacheKey);
-    if (!episodeFile) continue; // no file on disk — already cleaned up, or never had one
+    if (!episodeFile) continue; // no file on disk - already cleaned up, or never had one
 
     candidates.push({
       showTitle: watched.showTitle,

@@ -31,7 +31,7 @@ export type RecentlyWatchedItem = RecentlyWatchedMovie | RecentlyWatchedEpisode;
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'dismissed-watched.json');
 
-// Keyed by stable item identity (movieId, or seriesId+season+episode) — NOT by
+// Keyed by stable item identity (movieId, or seriesId+season+episode) - NOT by
 // watchedAt, since an in-progress item's watchedAt is recomputed fresh on
 // every request and would never match a previously-saved dismissal.
 let dismissed: Set<string> | null = null;
@@ -54,7 +54,7 @@ export async function dismissRecentlyWatched(key: string): Promise<void> {
   await writeFile(STATE_FILE, JSON.stringify(Array.from(seen)), 'utf8');
 }
 
-/** Movie-side equivalent of getCleanupCandidates — same "watched or ≥threshold% in" signal, matched to Radarr for delete. */
+/** Movie-side equivalent of getCleanupCandidates - same "watched or ≥threshold% in" signal, matched to Radarr for delete. */
 async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedMovie[]> {
   const threshold = getWatchedPercentThreshold();
   const [movies, watched, inProgress] = await Promise.all([
@@ -82,7 +82,7 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
     seenTitles.add(titleKey);
 
     const matched = movies.find((m) => m.hasFile && titleFuzzyMatch(m.title, s.title));
-    if (!matched) continue; // no file — already gone, or never had one
+    if (!matched) continue; // no file - already gone, or never had one
 
     results.push({
       type: 'movie',

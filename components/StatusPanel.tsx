@@ -81,12 +81,12 @@ function timeAgo(dateStr: string): string {
 
 function formatMb(mbStr: string | undefined): string {
   const mb = parseFloat(mbStr ?? '0');
-  if (isNaN(mb)) return '—';
+  if (isNaN(mb)) return '-';
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 }
 
 function formatBytes(bytes: number | undefined): string {
-  if (bytes === undefined || isNaN(bytes)) return '—';
+  if (bytes === undefined || isNaN(bytes)) return '-';
   const mb = bytes / (1024 * 1024);
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 }
@@ -101,7 +101,7 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
 
 // Downloading has a direct percentage; post-processing entries (e.g.
 // "Unpacking: 52/56 - 0:22 left") only have a fraction embedded in the text.
-// "Queued" items always sit at 0% (haven't started downloading) — not worth a bar.
+// "Queued" items always sit at 0% (haven't started downloading) - not worth a bar.
 function extractProgressPercent(slot: SabSlot): number | null {
   if (slot.status === 'Queued') return null;
   if (slot.percentage !== undefined) return Number(slot.percentage);
@@ -122,7 +122,7 @@ function ProgressBar({ percent }: { percent: number }) {
 }
 
 // "importPending" / "importing" are normal transient states that resolve on
-// their own within seconds — only offer manual import for genuinely stuck ones.
+// their own within seconds - only offer manual import for genuinely stuck ones.
 const STUCK_STATES = ['importBlocked', 'importFailed', 'failedPending', 'failed'];
 function needsManualImport(trackedDownloadState: string): boolean {
   return STUCK_STATES.includes(trackedDownloadState);
@@ -165,7 +165,7 @@ function ImportButton({ service, downloadId }: { service: 'radarr' | 'sonarr'; d
             : 'bg-amber-500 text-black hover:bg-amber-400'
         }`}
       >
-        {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered' : status === 'error' ? 'Failed — retry' : 'Import'}
+        {status === 'loading' ? 'Importing…' : status === 'done' ? 'Import triggered' : status === 'error' ? 'Failed - retry' : 'Import'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -228,7 +228,7 @@ function CleanupButton({ episodeId, episodeFileId }: { episodeId: number; episod
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete episode'}
+        {status === 'error' ? 'Failed - retry' : 'Delete episode'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -332,7 +332,7 @@ export default function StatusPanel() {
           <div className="space-y-2">
             {data.sonarr.map((item, i) => (
               <div key={item.downloadId ?? `${item.title}-${item.episode}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                <p className="text-sm font-medium truncate">{item.title}{item.episode ? ` — ${item.episode}` : ''}</p>
+                <p className="text-sm font-medium truncate">{item.title}{item.episode ? ` - ${item.episode}` : ''}</p>
                 <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
                   <span>{formatBytes(item.sizeleft)} left{formatTimeleft(item.timeleft)}</span>
@@ -372,7 +372,7 @@ export default function StatusPanel() {
       </section>
     </div>
 
-    {/* Ready to Clean Up — episodes watched (per Plex) that still have a file in Sonarr */}
+    {/* Ready to Clean Up - episodes watched (per Plex) that still have a file in Sonarr */}
     {data.readyToCleanup && !isCleanupError(data.readyToCleanup) && data.readyToCleanup.length > 0 && (
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Ready to Clean Up</h2>
@@ -381,7 +381,7 @@ export default function StatusPanel() {
             <div key={item.episodeId} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">
-                  {item.showTitle} — S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
+                  {item.showTitle} - S{String(item.seasonNumber).padStart(2, '0')}E{String(item.episodeNumber).padStart(2, '0')}
                 </p>
                 <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
               </div>
@@ -393,7 +393,7 @@ export default function StatusPanel() {
       </section>
     )}
 
-    {/* Recently Imported — cross-checked against Plex */}
+    {/* Recently Imported - cross-checked against Plex */}
     {data.recentImports && data.recentImports.length > 0 && (
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recently Imported</h2>
@@ -401,7 +401,7 @@ export default function StatusPanel() {
           {data.recentImports.map((item) => (
             <div key={`${item.title}-${item.episode ?? ''}-${item.date}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <div>
-                <p className="text-sm font-medium">{item.title}{item.episode ? ` — ${item.episode}` : ''}</p>
+                <p className="text-sm font-medium">{item.title}{item.episode ? ` - ${item.episode}` : ''}</p>
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
               </div>
               {item.inPlex === null ? (

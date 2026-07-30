@@ -56,7 +56,7 @@ export default function SettingsPanel() {
     try {
       await fetch('/api/settings/restart', { method: 'POST' });
     } catch {
-      // Expected — the request can fail right as the process dies mid-response.
+      // Expected - the request can fail right as the process dies mid-response.
     }
     // Poll until the app answers again, then confirm.
     const deadline = Date.now() + 30000;
@@ -79,7 +79,7 @@ export default function SettingsPanel() {
     setTestStates((prev) => ({ ...prev, [group]: { status: 'testing' } }));
 
     // Trakt's Cloudflare protection blocks server-side requests (confirmed
-    // live — same reason TraktScore already runs client-side elsewhere in
+    // live - same reason TraktScore already runs client-side elsewhere in
     // this app). Has to run from the browser, not through /api/settings/test.
     if (group === 'Trakt') {
       const clientId =
@@ -95,7 +95,7 @@ export default function SettingsPanel() {
         const res = await fetch('https://api.trakt.tv/shows/trending?limit=1', {
           headers: { 'trakt-api-version': '2', 'trakt-api-key': clientId },
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status} — check Client ID`);
+        if (!res.ok) throw new Error(`HTTP ${res.status} - check Client ID`);
         setTestStates((prev) => ({ ...prev, Trakt: { status: 'ok', message: 'Client ID valid' } }));
       } catch (err) {
         setTestStates((prev) => ({
@@ -157,9 +157,9 @@ export default function SettingsPanel() {
   return (
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
-        <p>Secret fields (API keys, tokens) never show their current value — leave blank to keep it unchanged.</p>
+        <p>Secret fields (API keys, tokens) never show their current value - leave blank to keep it unchanged.</p>
         <p>Every save is backed up first (last 10 kept), so a bad value can always be rolled back.</p>
-        <p className="text-amber-400">Changes need a restart to apply — use the Restart App button below after saving.</p>
+        <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
       </div>
 
       {groups.map((group) => {
@@ -199,7 +199,7 @@ export default function SettingsPanel() {
                     type={s.secret ? 'password' : 'text'}
                     value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
                     onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                    placeholder={s.secret ? (s.isSet ? 'Set — leave blank to keep' : 'Not set') : ''}
+                    placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
                     className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
                   />
                   {s.secret && (
@@ -235,7 +235,7 @@ export default function SettingsPanel() {
           {restartStatus === 'restarting' ? 'Restarting…' : 'Restart App'}
         </button>
         {restartStatus === 'back' && <span className="text-sm text-green-400">Back up</span>}
-        {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s — check on the Pi</span>}
+        {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s - check on the Pi</span>}
       </div>
     </div>
   );

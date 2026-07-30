@@ -123,7 +123,7 @@ export default async function Home({ searchParams }: PageProps) {
         ]);
         const movieResults = p2 ? [...p1.results, ...p2.results] : p1.results;
         const tvResults = tvP2 ? [...tvP1.results, ...tvP2.results] : tvP1.results;
-        // Movies first (already sorted by TMDb), TV appended after — guarantees movies always appear
+        // Movies first (already sorted by TMDb), TV appended after - guarantees movies always appear
         const merged = [...movieResults, ...tvResults];
         return {
           ...p1,
@@ -145,7 +145,7 @@ export default async function Home({ searchParams }: PageProps) {
               Weav<span className="text-amber-400">arr</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">
-              {isGlobalSearch ? 'Search anything — movies, TV, any genre' : isUpcoming ? 'Documentaries coming soon' : `${activeGenre.label} discovery engine`}
+              {isGlobalSearch ? 'Search anything - movies, TV, any genre' : isUpcoming ? 'Documentaries coming soon' : `${activeGenre.label} discovery engine`}
             </p>
           </div>
           <div className="flex items-center flex-wrap gap-4 sm:mt-1">
@@ -215,7 +215,7 @@ export default async function Home({ searchParams }: PageProps) {
 
         {isGlobalSearch && !query ? (
           <div className="text-center text-zinc-500 py-24">
-            Type something above to search everything — movies, TV, any genre.
+            Type something above to search everything - movies, TV, any genre.
           </div>
         ) : data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">

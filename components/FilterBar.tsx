@@ -161,13 +161,13 @@ export default function FilterBar({
       {isSearching ? (
         <p className="text-xs text-zinc-500">
           Showing results for <span className="text-amber-400">&ldquo;{currentQuery}&rdquo;</span>
-          {' — '}
+          {' - '}
           <button onClick={clearSearch} className="underline hover:text-white transition">
             clear search
           </button>
         </p>
       ) : isGlobalSearch ? (
-        <p className="text-xs text-zinc-600 py-2">Search across everything — any movie or show, any genre.</p>
+        <p className="text-xs text-zinc-600 py-2">Search across everything - any movie or show, any genre.</p>
       ) : (
         <div className="relative" ref={panelRef}>
           {/* Filters trigger + active chips */}
@@ -351,7 +351,7 @@ export default function FilterBar({
               </div>
             </div>
 
-            {/* Subgenre chips — documentary only */}
+            {/* Subgenre chips - documentary only */}
             {isDocumentaryGenre && (
               <div className="flex gap-2 flex-wrap items-center">
                 <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Genre</span>
