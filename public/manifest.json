@@ -1,7 +1,7 @@
 {
   "name": "Weavarr",
   "short_name": "Weavarr",
-  "description": "Discover, sort, and filter the best documentaries across every genre.",
+  "description": "Discover, sort, and filter movies and TV across every genre.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

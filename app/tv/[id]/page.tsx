@@ -64,7 +64,7 @@ export default async function TvPage({ params }: Props) {
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Nav */}
       <header className="border-b border-zinc-800 px-6 py-5">
-        <Link href="/?genre=reality" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
+        <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
           Weav<span className="text-amber-400">arr</span>
         </Link>
       </header>
@@ -314,10 +314,10 @@ export default async function TvPage({ params }: Props) {
             )}
 
             <Link
-              href="/?genre=reality"
+              href="/"
               className="inline-block mt-8 text-sm text-zinc-500 hover:text-amber-400 transition"
             >
-              Back to Reality TV
+              Back to Browse
             </Link>
           </div>
         </div>

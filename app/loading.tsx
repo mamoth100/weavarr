@@ -6,7 +6,7 @@ export default function Loading() {
           Weav<span className="text-amber-400">arr</span>
         </h1>
         <p className="text-zinc-500 text-sm mt-0.5">
-          The documentary discovery engine
+          The discovery engine
         </p>
       </header>
       <div className="max-w-7xl mx-auto px-4 py-6">
