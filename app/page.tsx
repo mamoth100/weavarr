@@ -16,9 +16,10 @@ interface PageProps {
 
 export default async function Home({ searchParams }: PageProps) {
   const config = await getMenuConfig();
+  const defaultGenre = config.genres[0] ?? GENRE_CATALOG[0];
   const isUpcoming = searchParams.genre === 'upcoming';
   const isGlobalSearch = searchParams.genre === 'search';
-  const activeGenre = isUpcoming || isGlobalSearch ? GENRE_CATALOG[0] : getGenre(searchParams.genre);
+  const activeGenre = isUpcoming || isGlobalSearch ? defaultGenre : getGenre(searchParams.genre, defaultGenre);
   const genre = isUpcoming ? 'upcoming' : isGlobalSearch ? 'search' : activeGenre.id;
   const hasMovies = Boolean(activeGenre.movieGenreId);
   const hasTv = Boolean(activeGenre.tvGenreId);
@@ -208,6 +209,7 @@ export default async function Home({ searchParams }: PageProps) {
             currentQuery={query}
             currentLang={searchParams.lang ?? 'en'}
             currentYear={searchParams.year ?? ''}
+            defaultGenreId={defaultGenre.id}
           />
         </Suspense>
 
@@ -240,6 +242,7 @@ export default async function Home({ searchParams }: PageProps) {
               decade={searchParams.decade}
               query={query}
               genre={genre}
+              defaultGenre={defaultGenre.id}
               lang={searchParams.lang}
               year={searchParams.year}
               show={searchParams.show}
@@ -268,6 +271,7 @@ export default async function Home({ searchParams }: PageProps) {
               decade={searchParams.decade}
               query={query}
               genre={genre}
+              defaultGenre={defaultGenre.id}
               lang={searchParams.lang}
               year={searchParams.year}
               show={searchParams.show}

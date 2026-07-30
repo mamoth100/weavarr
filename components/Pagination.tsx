@@ -6,6 +6,7 @@ interface Props {
   decade?: string;
   query?: string;
   genre?: string;
+  defaultGenre?: string;
   lang?: string;
   year?: string;
   show?: string;
@@ -13,7 +14,7 @@ interface Props {
   fav?: string;
 }
 
-export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, lang, year, show, sucks, fav }: Props) {
+export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, defaultGenre, lang, year, show, sucks, fav }: Props) {
   const capped = Math.min(totalPages, 500);
 
   function buildHref(p: number) {
@@ -21,7 +22,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
     if (subgenres) params.set('subgenres', subgenres);
     if (decade) params.set('decade', decade);
     if (query) params.set('q', query);
-    if (genre && genre !== 'documentary') params.set('genre', genre);
+    if (genre && genre !== defaultGenre) params.set('genre', genre);
     if (lang && lang !== 'en') params.set('lang', lang);
     if (year) params.set('year', year);
     if (show) params.set('show', show);

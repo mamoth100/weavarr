@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, readdir, unlink } from 'fs/promises';
 import path from 'path';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS, type GenreDef } from '@/lib/genreCatalog';
+import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/menuLinks';
 
 const ENV_FILE = path.join(process.cwd(), '.env.local');
 const BACKUP_DIR = path.join(process.cwd(), 'data', 'env-backups');
@@ -34,45 +35,34 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false — Pi only)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
-  { key: 'MENU_GENRES', label: 'Genre tabs (comma-separated ids)', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_UPCOMING', label: 'Coming Soon tab', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_SEARCH', label: 'Search tab', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_STATUS', label: 'Status link', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_READY_TO_WATCH', label: 'Ready to Watch link', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_RADARR_LIBRARY', label: 'Movies (Radarr) link', group: 'Menu', secret: false },
-  { key: 'MENU_SHOW_SONARR_LIBRARY', label: 'TV (Sonarr) link', group: 'Menu', secret: false },
+  { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
+  { key: 'MENU_LINKS', label: 'Other menu items, in order (comma-separated ids)', group: 'Menu', secret: false },
 ];
 
 export interface MenuConfig {
   genres: GenreDef[];
-  upcoming: boolean;
-  search: boolean;
-  status: boolean;
-  readyToWatch: boolean;
-  radarrLibrary: boolean;
-  sonarrLibrary: boolean;
+  links: MenuLinkDef[];
+}
+
+function parseOrderedIds(lines: string[], key: string, defaults: string[]): string[] {
+  const raw = parseEnvValue(lines, key);
+  return raw !== null && raw.trim() !== ''
+    ? raw.split(',').map((s) => s.trim()).filter(Boolean)
+    : defaults;
 }
 
 /** Reads menu config straight off disk (not cached process.env), so changes apply without a restart. */
 export async function getMenuConfig(): Promise<MenuConfig> {
   const lines = await readEnvLines();
-  const flag = (key: string) => parseEnvValue(lines, key) !== 'false';
-  const genresRaw = parseEnvValue(lines, 'MENU_GENRES');
-  const ids = genresRaw !== null && genresRaw.trim() !== ''
-    ? genresRaw.split(',').map((s) => s.trim()).filter(Boolean)
-    : DEFAULT_GENRE_IDS;
-  const genres = ids
+  const genreIds = parseOrderedIds(lines, 'MENU_GENRES', DEFAULT_GENRE_IDS);
+  const linkIds = parseOrderedIds(lines, 'MENU_LINKS', DEFAULT_LINK_IDS);
+  const genres = genreIds
     .map((id) => GENRE_CATALOG.find((g) => g.id === id))
     .filter((g): g is GenreDef => Boolean(g));
-  return {
-    genres,
-    upcoming: flag('MENU_SHOW_UPCOMING'),
-    search: flag('MENU_SHOW_SEARCH'),
-    status: flag('MENU_SHOW_STATUS'),
-    readyToWatch: flag('MENU_SHOW_READY_TO_WATCH'),
-    radarrLibrary: flag('MENU_SHOW_RADARR_LIBRARY'),
-    sonarrLibrary: flag('MENU_SHOW_SONARR_LIBRARY'),
-  };
+  const links = linkIds
+    .map((id) => MENU_LINK_CATALOG.find((l) => l.id === id))
+    .filter((l): l is MenuLinkDef => Boolean(l));
+  return { genres, links };
 }
 
 async function readEnvLines(): Promise<string[]> {

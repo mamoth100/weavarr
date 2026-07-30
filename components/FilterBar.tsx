@@ -12,6 +12,7 @@ interface Props {
   currentQuery: string;
   currentLang: string;
   currentYear: string;
+  defaultGenreId: string;
 }
 
 export default function FilterBar({
@@ -21,6 +22,7 @@ export default function FilterBar({
   currentQuery,
   currentLang,
   currentYear,
+  defaultGenreId,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,7 +103,7 @@ export default function FilterBar({
   }
 
   const isSearching = !!currentQuery;
-  const genre = searchParams.get('genre') ?? 'documentary';
+  const genre = searchParams.get('genre') ?? defaultGenreId;
   const isUpcoming = genre === 'upcoming';
   const isGlobalSearch = genre === 'search';
   const isDocumentaryGenre = genre === 'documentary';
