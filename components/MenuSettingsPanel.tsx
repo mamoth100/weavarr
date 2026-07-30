@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS } from '@/lib/genreCatalog';
+import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS } from '@/lib/menuLinks';
+import DraggableCheckList, { type DraggableItem } from '@/components/DraggableCheckList';
 
 interface SettingStatus {
   key: string;
@@ -12,38 +14,29 @@ interface SettingStatus {
   value: string | null;
 }
 
-const TOGGLE_FIELDS = [
-  { key: 'MENU_SHOW_UPCOMING', label: 'Coming Soon tab' },
-  { key: 'MENU_SHOW_SEARCH', label: 'Search tab' },
-  { key: 'MENU_SHOW_STATUS', label: 'Status link' },
-  { key: 'MENU_SHOW_READY_TO_WATCH', label: 'Ready to Watch link' },
-  { key: 'MENU_SHOW_RADARR_LIBRARY', label: 'Movies (Radarr) link' },
-  { key: 'MENU_SHOW_SONARR_LIBRARY', label: 'TV (Sonarr) link' },
-];
-
-function Switch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-amber-500' : 'bg-zinc-700'}`}
-    >
-      <span
-        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-          checked ? 'translate-x-4' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  );
+/** Builds the full working order: saved (checked) ids first in their saved order, then every remaining catalog item in catalog order. */
+function buildWorkingOrder(
+  catalog: { id: string; label: string }[],
+  savedIds: string[]
+): DraggableItem[] {
+  const savedSet = new Set(savedIds);
+  const byId = new Map(catalog.map((c) => [c.id, c.label]));
+  const ordered: DraggableItem[] = savedIds
+    .filter((id) => byId.has(id))
+    .map((id) => ({ id, label: byId.get(id)!, checked: true }));
+  for (const c of catalog) {
+    if (!savedSet.has(c.id)) ordered.push({ id: c.id, label: c.label, checked: false });
+  }
+  return ordered;
 }
 
 export default function MenuSettingsPanel() {
-  const [settings, setSettings] = useState<SettingStatus[] | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [toggles, setToggles] = useState<Record<string, boolean>>({});
+  const [genreItems, setGenreItems] = useState<DraggableItem[]>([]);
+  const [linkItems, setLinkItems] = useState<DraggableItem[]>([]);
+  const [originalGenres, setOriginalGenres] = useState<string[]>([]);
+  const [originalLinks, setOriginalLinks] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -56,18 +49,15 @@ export default function MenuSettingsPanel() {
           return;
         }
         const menuFields = (data.settings as SettingStatus[]).filter((s) => s.group === 'Menu');
-        setSettings(menuFields);
-        const genresField = menuFields.find((f) => f.key === 'MENU_GENRES');
-        const genresRaw = genresField?.value?.trim();
-        setSelectedGenres(genresRaw ? genresRaw.split(',').filter(Boolean) : DEFAULT_GENRE_IDS);
-        setToggles(
-          Object.fromEntries(
-            TOGGLE_FIELDS.map((t) => {
-              const field = menuFields.find((f) => f.key === t.key);
-              return [t.key, field?.value !== 'false'];
-            })
-          )
-        );
+        const genresRaw = menuFields.find((f) => f.key === 'MENU_GENRES')?.value?.trim();
+        const linksRaw = menuFields.find((f) => f.key === 'MENU_LINKS')?.value?.trim();
+        const genreIds = genresRaw ? genresRaw.split(',').filter(Boolean) : DEFAULT_GENRE_IDS;
+        const linkIds = linksRaw ? linksRaw.split(',').filter(Boolean) : DEFAULT_LINK_IDS;
+        setOriginalGenres(genreIds);
+        setOriginalLinks(linkIds);
+        setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
+        setLinkItems(buildWorkingOrder(MENU_LINK_CATALOG, linkIds));
+        setLoaded(true);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
@@ -76,7 +66,7 @@ export default function MenuSettingsPanel() {
     return <p className="text-red-400 text-sm">Failed to load menu settings: {error}</p>;
   }
 
-  if (!settings) {
+  if (!loaded) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
@@ -86,30 +76,27 @@ export default function MenuSettingsPanel() {
     );
   }
 
-  function toggleGenre(id: string) {
-    setSelectedGenres((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
+  function reorder(list: DraggableItem[], setList: (items: DraggableItem[]) => void, orderedIds: string[]) {
+    const byId = new Map(list.map((it) => [it.id, it]));
+    setList(orderedIds.map((id) => byId.get(id)!));
   }
 
-  const originalGenresRaw = settings.find((f) => f.key === 'MENU_GENRES')?.value?.trim();
-  const originalGenres = originalGenresRaw ? originalGenresRaw.split(',').filter(Boolean) : DEFAULT_GENRE_IDS;
-  const genresChanged =
-    selectedGenres.length !== originalGenres.length ||
-    !selectedGenres.every((id) => originalGenres.includes(id));
-  const togglesChangedCount = TOGGLE_FIELDS.filter((t) => {
-    const field = settings.find((f) => f.key === t.key);
-    return toggles[t.key] !== (field?.value !== 'false');
-  }).length;
-  const changedCount = togglesChangedCount + (genresChanged ? 1 : 0);
+  function toggle(list: DraggableItem[], setList: (items: DraggableItem[]) => void, id: string) {
+    setList(list.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it)));
+  }
+
+  const currentGenreIds = genreItems.filter((it) => it.checked).map((it) => it.id);
+  const currentLinkIds = linkItems.filter((it) => it.checked).map((it) => it.id);
+  const genresChanged = currentGenreIds.join(',') !== originalGenres.join(',');
+  const linksChanged = currentLinkIds.join(',') !== originalLinks.join(',');
+  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0);
 
   async function handleSave() {
     setSaveStatus('saving');
     setSaveError(null);
     const updates: Record<string, string> = {};
-    if (genresChanged) updates.MENU_GENRES = selectedGenres.join(',');
-    for (const t of TOGGLE_FIELDS) {
-      const field = settings!.find((f) => f.key === t.key);
-      if (toggles[t.key] !== (field?.value !== 'false')) updates[t.key] = String(toggles[t.key]);
-    }
+    if (genresChanged) updates.MENU_GENRES = currentGenreIds.join(',');
+    if (linksChanged) updates.MENU_LINKS = currentLinkIds.join(',');
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -119,10 +106,8 @@ export default function MenuSettingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
       setSaveStatus('saved');
-      const refreshed = await fetch('/api/settings', { cache: 'no-store' }).then((r) => r.json());
-      if (!refreshed.error) {
-        setSettings((refreshed.settings as SettingStatus[]).filter((s) => s.group === 'Menu'));
-      }
+      setOriginalGenres(currentGenreIds);
+      setOriginalLinks(currentLinkIds);
     } catch (err) {
       setSaveStatus('error');
       setSaveError(err instanceof Error ? err.message : String(err));
@@ -132,34 +117,26 @@ export default function MenuSettingsPanel() {
   return (
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
-        <p>Choose what shows up in the dashboard&apos;s top menu. Takes effect immediately — no restart needed.</p>
+        <p>Drag the grip on the left to reorder. Order here is the order in the dashboard&apos;s top menu — the first genre is what the dashboard shows by default.</p>
+        <p>Items that don&apos;t fit in the menu bar automatically fall into a &quot;More&quot; dropdown. Takes effect immediately — no restart needed.</p>
       </div>
 
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Genre tabs</h2>
-        <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
-          {GENRE_CATALOG.map((g) => (
-            <label key={g.id} className="p-3 flex items-center justify-between gap-3 cursor-pointer">
-              <span className="text-sm font-medium">{g.label}</span>
-              <Switch checked={selectedGenres.includes(g.id)} onChange={() => toggleGenre(g.id)} />
-            </label>
-          ))}
-        </div>
+        <DraggableCheckList
+          items={genreItems}
+          onReorder={(ids) => reorder(genreItems, setGenreItems, ids)}
+          onToggle={(id) => toggle(genreItems, setGenreItems, id)}
+        />
       </div>
 
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Other menu items</h2>
-        <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
-          {TOGGLE_FIELDS.map((t) => (
-            <label key={t.key} className="p-3 flex items-center justify-between gap-3 cursor-pointer">
-              <span className="text-sm font-medium">{t.label}</span>
-              <Switch
-                checked={toggles[t.key]}
-                onChange={() => setToggles((prev) => ({ ...prev, [t.key]: !prev[t.key] }))}
-              />
-            </label>
-          ))}
-        </div>
+        <DraggableCheckList
+          items={linkItems}
+          onReorder={(ids) => reorder(linkItems, setLinkItems, ids)}
+          onToggle={(id) => toggle(linkItems, setLinkItems, id)}
+        />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap sticky bottom-4">

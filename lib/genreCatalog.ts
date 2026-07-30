@@ -34,6 +34,6 @@ export const GENRE_CATALOG: GenreDef[] = [
 
 export const DEFAULT_GENRE_IDS = ['documentary', 'reality'];
 
-export function getGenre(id: string | undefined): GenreDef {
-  return GENRE_CATALOG.find((g) => g.id === id) ?? GENRE_CATALOG[0];
+export function getGenre(id: string | undefined, fallback: GenreDef = GENRE_CATALOG[0]): GenreDef {
+  return GENRE_CATALOG.find((g) => g.id === id) ?? fallback;
 }

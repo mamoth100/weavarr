@@ -4,20 +4,58 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { MenuConfig } from '@/lib/settings';
 
-const ALL_EXTRA_TABS = [
-  { value: 'upcoming', label: 'Coming Soon', flag: 'upcoming' as const },
-  { value: 'search', label: 'Search', flag: 'search' as const },
-];
+interface NavItem {
+  key: string;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
 
-const ALL_VISIBLE_LINKS = [
-  { href: '/status', label: 'Status', flag: 'status' as const },
-  { href: '/ready-to-watch', label: 'Ready to Watch', flag: 'readyToWatch' as const },
-];
+/** Measures actual rendered item widths (via a hidden clone row) and returns how many items fit before a "More" button is needed. */
+function useOverflowCount(items: NavItem[], containerRef: React.RefObject<HTMLDivElement>, measureRef: React.RefObject<HTMLDivElement>) {
+  const [visibleCount, setVisibleCount] = useState(items.length);
 
-const ALL_ADMIN_LINKS = [
-  { href: '/radarr-library', label: 'Movies (Radarr)', flag: 'radarrLibrary' as const },
-  { href: '/sonarr-library', label: 'TV (Sonarr)', flag: 'sonarrLibrary' as const },
-];
+  useEffect(() => {
+    function recalc() {
+      const container = containerRef.current;
+      const measure = measureRef.current;
+      if (!container || !measure) return;
+      const containerWidth = container.clientWidth;
+      const children = Array.from(measure.children) as HTMLElement[];
+      if (children.length === 0) return;
+      const gap = 4;
+      // Last child in the measuring row is the hidden "More" button clone
+      const moreWidth = children[children.length - 1].offsetWidth + gap;
+      const widths = children.slice(0, -1).map((c) => c.offsetWidth + gap);
+
+      let total = 0;
+      let count = 0;
+      for (let i = 0; i < widths.length; i++) {
+        total += widths[i];
+        const remaining = widths.length - (i + 1);
+        const budget = remaining > 0 ? containerWidth - moreWidth : containerWidth;
+        if (total <= budget) {
+          count = i + 1;
+        } else {
+          break;
+        }
+      }
+      setVisibleCount(count);
+    }
+
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener('resize', recalc);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', recalc);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length]);
+
+  return visibleCount;
+}
 
 export default function GenreSwitcher({ config }: { config: MenuConfig }) {
   const router = useRouter();
@@ -25,13 +63,36 @@ export default function GenreSwitcher({ config }: { config: MenuConfig }) {
   const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'documentary';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
-  const GENRES = [
-    ...config.genres.map((g) => ({ value: g.id, label: g.label })),
-    ...ALL_EXTRA_TABS.filter((t) => config[t.flag]),
+  const items: NavItem[] = [
+    ...config.genres.map((g) => ({
+      key: `genre:${g.id}`,
+      label: g.label,
+      isActive: current === g.id,
+      onClick: () => router.push(`/?genre=${g.id}`),
+    })),
+    ...config.links.map((l) =>
+      l.kind === 'tab'
+        ? {
+            key: `tab:${l.id}`,
+            label: l.label,
+            isActive: current === l.id,
+            onClick: () => router.push(`/?genre=${l.id}`),
+          }
+        : {
+            key: `link:${l.id}`,
+            label: l.label,
+            isActive: false,
+            onClick: () => router.push(l.href!),
+          }
+    ),
   ];
-  const VISIBLE_LINKS = ALL_VISIBLE_LINKS.filter((l) => config[l.flag]);
-  const ADMIN_LINKS = ALL_ADMIN_LINKS.filter((l) => config[l.flag]);
+
+  const visibleCount = useOverflowCount(items, containerRef, measureRef);
+  const visibleItems = items.slice(0, visibleCount);
+  const overflowItems = items.slice(visibleCount);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -44,61 +105,69 @@ export default function GenreSwitcher({ config }: { config: MenuConfig }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [menuOpen]);
 
+  function tabClass(active: boolean) {
+    return `px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+      active ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400 hover:text-white'
+    }`;
+  }
+
   return (
     <div className="flex items-center gap-1 p-1 bg-zinc-900 rounded-xl border border-zinc-800 max-w-full">
-      <div className="flex flex-wrap gap-1 flex-1 min-w-0">
-        {GENRES.map((g) => (
-          <button
-            key={g.value}
-            onClick={() => router.push(`/?genre=${g.value}`)}
-            className={`px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-              current === g.value
-                ? 'bg-amber-400 text-zinc-950'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            {g.label}
-          </button>
-        ))}
-        {VISIBLE_LINKS.map((link) => (
-          <button
-            key={link.href}
-            onClick={() => router.push(link.href)}
-            className="px-3 sm:px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap text-zinc-400 hover:text-white"
-          >
-            {link.label}
+      <div ref={containerRef} className="flex flex-1 min-w-0 gap-1 overflow-hidden">
+        {visibleItems.map((item) => (
+          <button key={item.key} onClick={item.onClick} className={tabClass(item.isActive)}>
+            {item.label}
           </button>
         ))}
       </div>
 
-      {ADMIN_LINKS.length > 0 && (
-      <div className="relative" ref={menuRef}>
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="More pages"
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            menuOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'
-          }`}
-        >
+      {/* Hidden measuring row: every item unwrapped, plus a "More" button clone last — used only to read natural widths */}
+      <div
+        ref={measureRef}
+        className="flex gap-1 fixed opacity-0 pointer-events-none"
+        style={{ top: -9999, left: -9999 }}
+        aria-hidden
+      >
+        {items.map((item) => (
+          <button key={item.key} className={tabClass(item.isActive)} tabIndex={-1}>
+            {item.label}
+          </button>
+        ))}
+        <button className="px-3 py-2 rounded-lg text-sm font-medium" tabIndex={-1}>
           More
         </button>
-        {menuOpen && (
-          <div className="absolute right-0 mt-1 z-20 min-w-[190px] bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-1">
-            {ADMIN_LINKS.map((link) => (
-              <button
-                key={link.href}
-                onClick={() => {
-                  setMenuOpen(false);
-                  router.push(link.href);
-                }}
-                className="w-full text-left px-3.5 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors whitespace-nowrap"
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {overflowItems.length > 0 && (
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="More pages"
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              menuOpen ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            More
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-1 z-20 min-w-[190px] bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl py-1">
+              {overflowItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    item.onClick();
+                  }}
+                  className={`w-full text-left px-3.5 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                    item.isActive ? 'text-amber-400' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
