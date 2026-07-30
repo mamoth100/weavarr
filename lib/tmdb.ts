@@ -10,12 +10,22 @@ function authHeaders() {
   };
 }
 
+/** TMDb occasionally times out or drops the connection transiently - retry once before giving up, so a passing network blip doesn't crash the page. */
+async function tmdbFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    await new Promise((r) => setTimeout(r, 400));
+    return fetch(url, init);
+  }
+}
+
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 /** Fetch the primary spoken language for a single movie/TV item. Cached 24h. */
 async function fetchSpokenLanguage(id: number, mediaType: 'movie' | 'tv'): Promise<string | null> {
   try {
-    const res = await fetch(`${BASE_URL}/${mediaType}/${id}?fields=spoken_languages`, {
+    const res = await tmdbFetch(`${BASE_URL}/${mediaType}/${id}?fields=spoken_languages`, {
       headers: authHeaders(),
       next: { revalidate: 86400 },
     });
@@ -68,7 +78,7 @@ export async function discoverMovies({
   if (dateGte) params.set('primary_release_date.gte', dateGte);
   if (dateLte) params.set('primary_release_date.lte', dateLte);
 
-  const res = await fetch(`${BASE_URL}/discover/movie?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -78,7 +88,7 @@ export async function discoverMovies({
 }
 
 export async function getDocumentaryDetail(id: number): Promise<TmdbDetailResponse> {
-  const res = await fetch(
+  const res = await tmdbFetch(
     `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
@@ -96,7 +106,7 @@ export async function searchMovies(
     include_adult: 'false',
   });
 
-  const res = await fetch(`${BASE_URL}/search/movie?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/search/movie?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -114,7 +124,7 @@ export async function searchTv(
     include_adult: 'false',
   });
 
-  const res = await fetch(`${BASE_URL}/search/tv?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/search/tv?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -136,7 +146,7 @@ export async function getWatchProviders(
   mediaType: MediaType = 'movie',
   country = 'US'
 ): Promise<WatchProviders | null> {
-  const res = await fetch(`${BASE_URL}/${mediaType}/${id}/watch/providers`, {
+  const res = await tmdbFetch(`${BASE_URL}/${mediaType}/${id}/watch/providers`, {
     headers: authHeaders(),
     next: { revalidate: 86400 },
   });
@@ -158,7 +168,7 @@ export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> 
     page: String(page),
     include_adult: 'false',
   });
-  const res = await fetch(`${BASE_URL}/discover/movie?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -178,7 +188,7 @@ export async function discoverUpcomingTv(page = 1): Promise<TmdbDiscoverResponse
     page: String(page),
     include_adult: 'false',
   });
-  const res = await fetch(`${BASE_URL}/discover/tv?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/discover/tv?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -232,7 +242,7 @@ export async function discoverTv({
   if (dateGte) params.set('first_air_date.gte', dateGte);
   if (dateLte) params.set('first_air_date.lte', dateLte);
 
-  const res = await fetch(`${BASE_URL}/discover/tv?${params}`, {
+  const res = await tmdbFetch(`${BASE_URL}/discover/tv?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -251,7 +261,7 @@ export async function discoverTv({
 }
 
 export async function getTvSeasons(id: number): Promise<{ season_number: number; name: string; episode_count: number }[]> {
-  const res = await fetch(`${BASE_URL}/tv/${id}`, {
+  const res = await tmdbFetch(`${BASE_URL}/tv/${id}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -261,7 +271,7 @@ export async function getTvSeasons(id: number): Promise<{ season_number: number;
 }
 
 export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
-  const res = await fetch(
+  const res = await tmdbFetch(
     `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
