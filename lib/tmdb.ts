@@ -214,7 +214,7 @@ export async function discoverTv({
   genre?: number | string;
   keywordIds?: number[];
 }): Promise<TmdbDiscoverResponse> {
-  // TV discover uses first_air_date, movies use release_date — translate
+  // TV discover uses first_air_date, movies use release_date - translate
   const tvSortBy = sortBy
     .replace('release_date.desc', 'first_air_date.desc')
     .replace('release_date.asc', 'first_air_date.asc');

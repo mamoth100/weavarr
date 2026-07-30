@@ -11,7 +11,7 @@ export default function SettingsPage() {
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Weav<span className="text-amber-400">arr</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-0.5">Settings — configuration stored in .env.local</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Settings - configuration stored in .env.local</p>
           </div>
           <BackLink />
         </div>

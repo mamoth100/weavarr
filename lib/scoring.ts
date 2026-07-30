@@ -54,7 +54,7 @@ export function computeCompositeScore(
     score = weightedSum / totalWeight;
     confidence = imdbVotes >= 5000 ? 'high' : imdbVotes >= 500 ? 'medium' : 'low';
   } else {
-    // No IMDb — fall back to Bayesian TMDb
+    // No IMDb - fall back to Bayesian TMDb
     score = bayesian(tmdbRating, tmdbVotes);
     confidence = tmdbVotes >= 500 ? 'medium' : 'low';
   }

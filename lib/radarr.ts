@@ -9,7 +9,7 @@ function headers() {
 }
 
 /**
- * The Radarr movie id if this TMDB movie is already added, otherwise null —
+ * The Radarr movie id if this TMDB movie is already added, otherwise null -
  * used both to swap Request for Delete on the detail page and to check
  * "already added" before submitting a new request. Deliberately queries the
  * actual movie list (not /movie/lookup/tmdb, which doesn't reliably return
@@ -95,7 +95,7 @@ export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
   })).sort((a: RadarrQueueItem, b: RadarrQueueItem) => trackedStatePriority(a.trackedDownloadState) - trackedStatePriority(b.trackedDownloadState));
 }
 
-/** Accepts whatever Radarr's own manual-import suggestion is for this download — the same result you'd get clicking "Import" in the Radarr UI without changing anything. */
+/** Accepts whatever Radarr's own manual-import suggestion is for this download - the same result you'd get clicking "Import" in the Radarr UI without changing anything. */
 export async function forceImportRadarr(downloadId: string) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 

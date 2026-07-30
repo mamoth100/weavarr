@@ -32,7 +32,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'PLEX_TOKEN', label: 'Plex Token', group: 'Plex', secret: true },
   { key: 'PUSHOVER_USER_KEY', label: 'Pushover User Key', group: 'Pushover', secret: true },
   { key: 'PUSHOVER_API_TOKEN', label: 'Pushover API Token', group: 'Pushover', secret: true },
-  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false — Pi only)', group: 'App Behavior', secret: false },
+  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false - Pi only)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
@@ -44,11 +44,11 @@ export interface MenuConfig {
   links: MenuLinkDef[];
 }
 
+/** null (key never saved) means "not configured yet" -> use defaults. An explicit empty string means the user deliberately chose zero items. */
 function parseOrderedIds(lines: string[], key: string, defaults: string[]): string[] {
   const raw = parseEnvValue(lines, key);
-  return raw !== null && raw.trim() !== ''
-    ? raw.split(',').map((s) => s.trim()).filter(Boolean)
-    : defaults;
+  if (raw === null) return defaults;
+  return raw.trim() === '' ? [] : raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
 /** Reads menu config straight off disk (not cached process.env), so changes apply without a restart. */
@@ -94,7 +94,7 @@ export interface SettingStatus {
   value: string | null; // only populated for non-secret fields
 }
 
-/** Server-internal only — the real value, including secrets. Never return this from an API route directly. */
+/** Server-internal only - the real value, including secrets. Never return this from an API route directly. */
 export async function getRawEnvValue(key: string): Promise<string | null> {
   const lines = await readEnvLines();
   return parseEnvValue(lines, key);

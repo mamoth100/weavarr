@@ -35,7 +35,7 @@ export async function addSeriesToSonarr({
   // Sonarr's imdb: lookup uses a separate, less complete index than its
   // title search and can come back empty even for a show it knows by title
   // (confirmed live: it has no imdb: entry for its own reported imdbId on
-  // some shows) — fall back to a plain title search when that happens.
+  // some shows) - fall back to a plain title search when that happens.
   let results = imdbId ? await lookup(`imdb:${imdbId}`) : [];
   if (results.length === 0) results = await lookup(title);
   const series = results[0];
@@ -114,7 +114,7 @@ export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
   }).sort((a: SonarrQueueItem, b: SonarrQueueItem) => trackedStatePriority(a.trackedDownloadState) - trackedStatePriority(b.trackedDownloadState));
 }
 
-/** Accepts whatever Sonarr's own manual-import suggestion is for this download — same as clicking "Import" in the Sonarr UI without changing anything. */
+/** Accepts whatever Sonarr's own manual-import suggestion is for this download - same as clicking "Import" in the Sonarr UI without changing anything. */
 export async function forceImportSonarr(downloadId: string) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
@@ -245,7 +245,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
 
 /**
  * The Sonarr series id if this IMDb-identified show is already added, otherwise
- * null — used to swap Request for Delete on the detail page. Deliberately scans
+ * null - used to swap Request for Delete on the detail page. Deliberately scans
  * the actual series list rather than series/lookup?term=imdb:X, which (per
  * getRadarrMovieIdByTmdbId's Radarr equivalent, and confirmed live for Sonarr
  * too) can miss shows Sonarr already has.
@@ -270,7 +270,7 @@ export interface SonarrEpisodeFileInfo {
   episodeFileId: number;
 }
 
-/** Finds the episode + file IDs for a specific season/episode of an already-added series — null if not found or no file on disk. */
+/** Finds the episode + file IDs for a specific season/episode of an already-added series - null if not found or no file on disk. */
 export async function findSonarrEpisodeFile(
   seriesId: number,
   seasonNumber: number,
@@ -292,7 +292,7 @@ export async function findSonarrEpisodeFile(
   return { episodeId: match.id as number, episodeFileId: episodeFile.id };
 }
 
-/** Deletes just this episode's file and unmonitors that single episode — leaves the series and every other episode untouched. */
+/** Deletes just this episode's file and unmonitors that single episode - leaves the series and every other episode untouched. */
 export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: number): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     try {
       await refreshPlexMovieLibrary();
     } catch {
-      // Deletion already succeeded — a failed Plex refresh just means it'll
+      // Deletion already succeeded - a failed Plex refresh just means it'll
       // notice on its own next scheduled scan instead of immediately.
     }
     return NextResponse.json({ deleted: true });

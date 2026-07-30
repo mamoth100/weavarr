@@ -86,7 +86,7 @@ export default function WatchedPage() {
                         Watched
                       </div>
 
-                      {/* Remove from watched — top-right on hover */}
+                      {/* Remove from watched - top-right on hover */}
                       <button
                         onClick={() => toggleWatched(item)}
                         className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-200"

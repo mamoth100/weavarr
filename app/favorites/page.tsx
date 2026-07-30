@@ -76,7 +76,7 @@ export default function FavoritesPage() {
                         )}
                       </Link>
 
-                      {/* Upcoming release date badge — top-right */}
+                      {/* Upcoming release date badge - top-right */}
                       {isUpcoming && releaseDateLabel && (
                         <div className="absolute top-2 right-2 bg-amber-400 text-zinc-950 text-xs font-semibold px-2 py-1 rounded-md">
                           {releaseDateLabel}
@@ -138,7 +138,7 @@ export default function FavoritesPage() {
                         )}
                       </button>
 
-                      {/* Thumbs down — move to sucks */}
+                      {/* Thumbs down - move to sucks */}
                       <button
                         onClick={() => {
                           addSucks({ ...item, addedAt: Date.now() });
@@ -157,7 +157,7 @@ export default function FavoritesPage() {
                         </svg>
                       </button>
 
-                      {/* Remove button — top-right on hover */}
+                      {/* Remove button - top-right on hover */}
                       <button
                         onClick={() => removeFavorite(item.id, item.mediaType)}
                         className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-200"
@@ -178,7 +178,7 @@ export default function FavoritesPage() {
                         </svg>
                       </button>
 
-                      {/* Language badge — bottom-right */}
+                      {/* Language badge - bottom-right */}
                       {item.original_language && (
                         <div className="absolute bottom-2 right-2 bg-zinc-900/80 text-zinc-300 text-xs px-1.5 py-0.5 rounded">
                           {(() => { try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(item.original_language) ?? item.original_language; } catch { return item.original_language; } })()}

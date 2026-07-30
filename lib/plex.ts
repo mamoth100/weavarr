@@ -6,7 +6,7 @@ interface PlexHub {
   Metadata?: { title?: string; ratingKey?: string }[];
 }
 
-// Plex's search doesn't fuzzy-match extra tokens — a query like
+// Plex's search doesn't fuzzy-match extra tokens - a query like
 // "The 1% Club (US)" returns zero results even though Plex has it stored
 // as just "The 1% Club". Strip the trailing disambiguator Sonarr/Radarr
 // append (country, year) before searching.
@@ -20,7 +20,7 @@ function titleMatches(itemTitle: string, normalized: string): boolean {
 }
 
 async function searchPlex(query: string): Promise<PlexHub[]> {
-  // /search only returns the list of search categories, not actual matches —
+  // /search only returns the list of search categories, not actual matches -
   // /hubs/search (what Plex's own apps use) returns real results, grouped
   // into per-type Hub entries (movie, show, episode, ...).
   const res = await fetch(`${PLEX_URL}/hubs/search?query=${encodeURIComponent(query)}&X-Plex-Token=${PLEX_TOKEN}`, {
@@ -43,7 +43,7 @@ export async function plexHasTitle(title: string): Promise<boolean> {
   return items.some((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
 }
 
-/** True if this specific season/episode of the show has actually been scanned into Plex — not just the show existing. */
+/** True if this specific season/episode of the show has actually been scanned into Plex - not just the show existing. */
 export async function plexHasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number): Promise<boolean> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
@@ -208,7 +208,7 @@ export interface InProgressMovie {
   duration: number;
 }
 
-/** Movies currently mid-playback per Plex's "on deck" list — the movie-side equivalent of getPlexInProgressEpisodes. */
+/** Movies currently mid-playback per Plex's "on deck" list - the movie-side equivalent of getPlexInProgressEpisodes. */
 export async function getPlexInProgressMovies(): Promise<InProgressMovie[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
@@ -232,7 +232,7 @@ export async function getPlexInProgressMovies(): Promise<InProgressMovie[]> {
 /**
  * Recently watched episodes, queried directly by viewCount/lastViewedAt on
  * the TV library section. Deliberately NOT using Plex's session-history log
- * (/status/sessions/history/all) — that only records actual playback
+ * (/status/sessions/history/all) - that only records actual playback
  * sessions, so manually marking an episode "watched" (no playback involved)
  * never shows up there even though it does set viewCount/lastViewedAt.
  */
@@ -262,7 +262,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
 
 /**
  * Set of "showTitle:season:episode" keys with an actual logged playback
- * session — used only to tell "really watched" apart from "manually marked
+ * session - used only to tell "really watched" apart from "manually marked
  * watched" (which sets viewCount/lastViewedAt but never hits this log).
  */
 export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>> {
@@ -293,7 +293,7 @@ export interface InProgressEpisode {
   duration: number;
 }
 
-/** Episodes currently mid-playback per Plex's "on deck" list, with the raw viewOffset/duration Plex itself tracks — no history-log event required. */
+/** Episodes currently mid-playback per Plex's "on deck" list, with the raw viewOffset/duration Plex itself tracks - no history-log event required. */
 export async function getPlexInProgressEpisodes(): Promise<InProgressEpisode[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 

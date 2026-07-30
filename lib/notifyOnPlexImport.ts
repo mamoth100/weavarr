@@ -7,7 +7,7 @@ import { sendPushoverNotification } from './pushover';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'notified-imports.json');
 
-// Keyed by "title:importDate" — a redownload gets a new import date, so it's
+// Keyed by "title:importDate" - a redownload gets a new import date, so it's
 // treated as a distinct, notification-worthy event rather than a duplicate.
 let notified: Set<string> | null = null;
 

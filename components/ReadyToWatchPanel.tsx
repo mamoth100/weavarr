@@ -12,7 +12,7 @@ interface ReadyToWatchItem {
 }
 
 function formatBytes(bytes: number): string {
-  if (!bytes) return '—';
+  if (!bytes) return '-';
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 }
@@ -90,7 +90,7 @@ function MovieDeleteButton({ item }: { item: ReadyToWatchItem }) {
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete'}
+        {status === 'error' ? 'Failed - retry' : 'Delete'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -152,7 +152,7 @@ function ShowDeleteDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed — retry' : 'Delete ▾'}
+        {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed - retry' : 'Delete ▾'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
@@ -231,7 +231,7 @@ function MovieWatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWat
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched'}
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Watched'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -284,7 +284,7 @@ function ShowWatchedDropdown({
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
       >
-        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed — retry' : 'Watched ▾'}
+        {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Watched ▾'}
       </button>
       {open && (
         <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
@@ -399,7 +399,7 @@ function RecentlyWatchedDeleteButton({ item, onDeleted }: { item: RecentlyWatche
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
-        {status === 'error' ? 'Failed — retry' : 'Delete'}
+        {status === 'error' ? 'Failed - retry' : 'Delete'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -437,7 +437,7 @@ function ClearButton({ itemKey, onCleared }: { itemKey: string; onCleared: () =>
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
         }`}
       >
-        {status === 'loading' ? 'Clearing…' : status === 'error' ? 'Failed — retry' : 'Clear'}
+        {status === 'loading' ? 'Clearing…' : status === 'error' ? 'Failed - retry' : 'Clear'}
       </button>
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
@@ -607,7 +607,7 @@ export default function ReadyToWatchPanel() {
         />
       </div>
       {filtered.length === 0 && (
-        <p className="text-zinc-600 text-sm">Nothing unwatched right now — you're all caught up.</p>
+        <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
       {tvItems.length > 0 && (
         <div className="space-y-2">

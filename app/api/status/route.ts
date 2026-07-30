@@ -29,7 +29,7 @@ export async function GET() {
     ...(sonarrHistory.status === 'fulfilled' ? sonarrHistory.value : []),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
-  // Radarr/Sonarr history is permanent — deleting a movie or episode doesn't
+  // Radarr/Sonarr history is permanent - deleting a movie or episode doesn't
   // remove its import event, so without this check a deleted title would sit
   // in this list forever, stuck as "Not in Plex yet" since Plex will never
   // pick it up. Drop anything whose file is confirmed gone; on lookup failure
@@ -79,10 +79,10 @@ export async function GET() {
     })
   );
 
-  // Items already in Plex roll off after the 10 most recent — movies and
+  // Items already in Plex roll off after the 10 most recent - movies and
   // shows both, whichever's actually most recent wins. Anything NOT yet in
   // Plex (or that failed the check) stays visible no matter how old or how
-  // many there are — those are the ones that need attention.
+  // many there are - those are the ones that need attention.
   const resolved = checked.filter((item) => item.inPlex === true).slice(0, RESOLVED_LIMIT);
   const unresolved = checked.filter((item) => item.inPlex !== true);
   const recentImports = [...resolved, ...unresolved].sort((a, b) => b.date.localeCompare(a.date));

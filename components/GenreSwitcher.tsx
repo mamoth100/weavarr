@@ -121,7 +121,7 @@ export default function GenreSwitcher({ config }: { config: MenuConfig }) {
         ))}
       </div>
 
-      {/* Hidden measuring row: every item unwrapped, plus a "More" button clone last — used only to read natural widths */}
+      {/* Hidden measuring row: every item unwrapped, plus a "More" button clone last - used only to read natural widths */}
       <div
         ref={measureRef}
         className="flex gap-1 fixed opacity-0 pointer-events-none"

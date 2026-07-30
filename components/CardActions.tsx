@@ -64,7 +64,7 @@ export default function CardActions({
 
   return (
     <>
-      {/* Favorite (heart) — top-left; always visible when favorited, hover otherwise */}
+      {/* Favorite (heart) - top-left; always visible when favorited, hover otherwise */}
       <button
         onClick={handleFavorite}
         className={`absolute top-2 left-2 z-10 p-1.5 rounded-full transition-all duration-200
@@ -90,7 +90,7 @@ export default function CardActions({
         </svg>
       </button>
 
-      {/* Thumbs down (sucks) — above watched, bottom-left */}
+      {/* Thumbs down (sucks) - above watched, bottom-left */}
       <button
         onClick={handleSucks}
         className={`absolute bottom-12 left-2 z-10 p-1.5 rounded-full transition-all duration-200
@@ -106,7 +106,7 @@ export default function CardActions({
         </svg>
       </button>
 
-      {/* Watched badge — bottom-left */}
+      {/* Watched badge - bottom-left */}
       <button
           onClick={handleWatched}
           className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all duration-200

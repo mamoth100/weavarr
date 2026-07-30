@@ -11,7 +11,7 @@ export default function ReadyToWatchPage() {
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Weav<span className="text-amber-400">arr</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-0.5">Ready to Watch — downloaded, unwatched, movies and shows</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Ready to Watch - downloaded, unwatched, movies and shows</p>
           </div>
           <BackLink />
         </div>
