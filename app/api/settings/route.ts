@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSettingsStatus, updateSettings } from '@/lib/settings';
 
+// Reads .env.local from disk on every request - forced dynamic so Next.js never
+// statically caches a stale snapshot of it.
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const status = await getSettingsStatus();
