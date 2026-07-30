@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, searchMovies, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
-import { GENRE_CATALOG, getGenre } from '@/lib/genreCatalog';
+import { ALL_GENRE, ALL_GENRES_ID, getGenre } from '@/lib/genreCatalog';
 import { getMenuConfig } from '@/lib/settings';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
@@ -16,7 +16,7 @@ interface PageProps {
 
 export default async function Home({ searchParams }: PageProps) {
   const config = await getMenuConfig();
-  const defaultGenre = config.genres[0] ?? GENRE_CATALOG[0];
+  const defaultGenre = config.genres[0] ?? ALL_GENRE;
   const isUpcoming = searchParams.genre === 'upcoming';
   const isGlobalSearch = searchParams.genre === 'search';
   const activeGenre = isUpcoming || isGlobalSearch ? defaultGenre : getGenre(searchParams.genre, defaultGenre);
@@ -219,7 +219,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">
-            {isGlobalSearch ? 'No results found.' : isUpcoming ? 'No upcoming documentaries found.' : `No ${activeGenre.label.toLowerCase()} found.`}
+            {isGlobalSearch || activeGenre.id === ALL_GENRES_ID ? 'No results found.' : isUpcoming ? 'No upcoming documentaries found.' : `No ${activeGenre.label.toLowerCase()} found.`}
           </div>
         ) : isGlobalSearch ? (
           <>

@@ -53,12 +53,12 @@ export async function discoverMovies({
   genre?: number | string;
 }): Promise<TmdbDiscoverResponse> {
   const params = new URLSearchParams({
-    with_genres: String(genre),
     sort_by: sortBy,
     'vote_count.gte': String(minVotes),
     page: String(page),
     include_adult: 'false',
   });
+  if (genre !== 'all') params.set('with_genres', String(genre));
 
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) {
@@ -220,12 +220,12 @@ export async function discoverTv({
     .replace('release_date.asc', 'first_air_date.asc');
 
   const params = new URLSearchParams({
-    with_genres: String(genre),
     sort_by: tvSortBy,
     'vote_count.gte': String(minVotes),
     page: String(page),
     include_adult: 'false',
   });
+  if (genre !== 'all') params.set('with_genres', String(genre));
 
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
