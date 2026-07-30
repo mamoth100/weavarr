@@ -22,7 +22,7 @@ export default function SettingsLayout() {
             key={s.id}
             onClick={() => setSection(s.id)}
             className={`text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              section === s.id ? 'bg-amber-400 text-zinc-950' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              section === s.id ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
             }`}
           >
             {s.label}
