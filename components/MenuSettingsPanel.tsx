@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { GENRE_CATALOG, DEFAULT_GENRE_IDS } from '@/lib/genreCatalog';
+import { GENRE_CATALOG, DEFAULT_GENRE_IDS, ALL_GENRES_ID } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS } from '@/lib/menuLinks';
 import DraggableCheckList, { type DraggableItem } from '@/components/DraggableCheckList';
 
@@ -18,6 +18,11 @@ interface SettingStatus {
 function parseSavedIds(value: string | null | undefined, defaults: string[]): string[] {
   if (value === null || value === undefined) return defaults;
   return value.trim() === '' ? [] : value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/** Genres must never be fully empty — All Genres steps in as the fallback. */
+function enforceAtLeastOneGenre(ids: string[]): string[] {
+  return ids.length === 0 ? [ALL_GENRES_ID] : ids;
 }
 
 /** Builds the full working order: saved (checked) ids first in their saved order, then every remaining catalog item in catalog order. */
@@ -55,7 +60,7 @@ export default function MenuSettingsPanel() {
           return;
         }
         const menuFields = (data.settings as SettingStatus[]).filter((s) => s.group === 'Menu');
-        const genreIds = parseSavedIds(menuFields.find((f) => f.key === 'MENU_GENRES')?.value, DEFAULT_GENRE_IDS);
+        const genreIds = enforceAtLeastOneGenre(parseSavedIds(menuFields.find((f) => f.key === 'MENU_GENRES')?.value, DEFAULT_GENRE_IDS));
         const linkIds = parseSavedIds(menuFields.find((f) => f.key === 'MENU_LINKS')?.value, DEFAULT_LINK_IDS);
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
@@ -88,6 +93,23 @@ export default function MenuSettingsPanel() {
   function toggle(list: DraggableItem[], setList: (items: DraggableItem[]) => void, id: string) {
     setList(list.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it)));
   }
+
+  /** Same as toggle, but genres may never all end up unchecked -> All Genres steps back in automatically. */
+  function toggleGenre(id: string) {
+    setGenreItems((prev) => {
+      let next = prev.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it));
+      if (!next.some((it) => it.checked)) {
+        next = next.map((it) => (it.id === ALL_GENRES_ID ? { ...it, checked: true } : it));
+      }
+      return next;
+    });
+  }
+
+  const genreCheckedCount = genreItems.filter((it) => it.checked).length;
+  const onlyAllGenresChecked = genreCheckedCount === 1 && genreItems.find((it) => it.checked)?.id === ALL_GENRES_ID;
+  const displayGenreItems = genreItems.map((it) =>
+    it.id === ALL_GENRES_ID ? { ...it, disabled: onlyAllGenresChecked } : it
+  );
 
   const currentGenreIds = genreItems.filter((it) => it.checked).map((it) => it.id);
   const currentLinkIds = linkItems.filter((it) => it.checked).map((it) => it.id);
@@ -128,9 +150,9 @@ export default function MenuSettingsPanel() {
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Genre tabs</h2>
         <DraggableCheckList
-          items={genreItems}
+          items={displayGenreItems}
           onReorder={(ids) => reorder(genreItems, setGenreItems, ids)}
-          onToggle={(id) => toggle(genreItems, setGenreItems, id)}
+          onToggle={toggleGenre}
         />
       </div>
 
