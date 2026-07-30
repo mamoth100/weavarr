@@ -7,7 +7,11 @@ export interface GenreDef {
   tvGenreId?: number | string;
 }
 
+/** Sentinel genre id meaning "no genre filter" — matched specially in discoverMovies/discoverTv. */
+export const ALL_GENRES_ID = 'all';
+
 export const GENRE_CATALOG: GenreDef[] = [
+  { id: ALL_GENRES_ID, label: 'All Genres', movieGenreId: ALL_GENRES_ID, tvGenreId: ALL_GENRES_ID },
   { id: 'documentary', label: 'Documentaries', movieGenreId: 99, tvGenreId: 99 },
   { id: 'reality', label: 'Reality TV', tvGenreId: 10764 },
   { id: 'action-adventure', label: 'Action & Adventure', movieGenreId: '28|12', tvGenreId: 10759 },
@@ -34,6 +38,8 @@ export const GENRE_CATALOG: GenreDef[] = [
 
 export const DEFAULT_GENRE_IDS = ['documentary', 'reality'];
 
-export function getGenre(id: string | undefined, fallback: GenreDef = GENRE_CATALOG[0]): GenreDef {
+export const ALL_GENRE: GenreDef = GENRE_CATALOG.find((g) => g.id === ALL_GENRES_ID)!;
+
+export function getGenre(id: string | undefined, fallback: GenreDef = ALL_GENRE): GenreDef {
   return GENRE_CATALOG.find((g) => g.id === id) ?? fallback;
 }

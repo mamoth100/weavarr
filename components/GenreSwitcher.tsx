@@ -60,7 +60,7 @@ function useOverflowCount(items: NavItem[], containerRef: React.RefObject<HTMLDi
 export default function GenreSwitcher({ config }: { config: MenuConfig }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'documentary';
+  const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'all';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
