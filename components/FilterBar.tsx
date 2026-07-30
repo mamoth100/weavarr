@@ -109,6 +109,7 @@ export default function FilterBar({
   const isGlobalSearch = genre === 'search';
   const showSubgenreChips = genre === 'documentary';
   const showGenreChips = !isGlobalSearch;
+  const activeGenreLabel = GENRE_CATALOG.find((g) => g.id === genre)?.label ?? 'All Genres';
 
   if (isUpcoming) {
     return (
@@ -147,7 +148,7 @@ export default function FilterBar({
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={handleSearchKey}
-          placeholder={isGlobalSearch ? 'Search anything… press Enter' : 'Search documentaries… press Enter'}
+          placeholder={isGlobalSearch ? 'Search anything… press Enter' : `Search ${activeGenreLabel.toLowerCase()}… press Enter`}
           className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-3 pr-14 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
         {searchInput && (
