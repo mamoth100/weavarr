@@ -108,7 +108,7 @@ export default function FilterBar({
   const isUpcoming = genre === 'upcoming';
   const isGlobalSearch = genre === 'search';
   const showSubgenreChips = genre === 'documentary';
-  const showGenreChips = !isGlobalSearch && genre !== 'documentary';
+  const showGenreChips = !isGlobalSearch;
 
   if (isUpcoming) {
     return (
@@ -376,7 +376,7 @@ export default function FilterBar({
             {/* Subgenre chips - documentary only */}
             {showSubgenreChips && (
               <div className="flex gap-2 flex-wrap items-center">
-                <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Genre</span>
+                <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Category</span>
                 <button
                   onClick={() => navigate({ subgenres: undefined }, 'subgenre-all')}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('subgenre-all')} ${
