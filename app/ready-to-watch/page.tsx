@@ -19,7 +19,7 @@ export default function ReadyToWatchPage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 pt-5 pb-2">
+      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
         <Suspense>
           <GlobalGenreNav />
         </Suspense>
