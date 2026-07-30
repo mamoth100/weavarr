@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { MenuConfig } from '@/lib/settings';
 
 interface NavItem {
@@ -59,7 +59,9 @@ function useOverflowCount(items: NavItem[], containerRef: React.RefObject<HTMLDi
 
 export default function GenreSwitcher({ config }: { config: MenuConfig }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const onDashboard = pathname === '/';
   const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'all';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -70,7 +72,7 @@ export default function GenreSwitcher({ config }: { config: MenuConfig }) {
     ...config.genres.map((g) => ({
       key: `genre:${g.id}`,
       label: g.label,
-      isActive: current === g.id,
+      isActive: onDashboard && current === g.id,
       onClick: () => router.push(`/?genre=${g.id}`),
     })),
     ...config.links.map((l) =>
@@ -78,13 +80,13 @@ export default function GenreSwitcher({ config }: { config: MenuConfig }) {
         ? {
             key: `tab:${l.id}`,
             label: l.label,
-            isActive: current === l.id,
+            isActive: onDashboard && current === l.id,
             onClick: () => router.push(`/?genre=${l.id}`),
           }
         : {
             key: `link:${l.id}`,
             label: l.label,
-            isActive: false,
+            isActive: pathname === l.href,
             onClick: () => router.push(l.href!),
           }
     ),
