@@ -2,9 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import BackLink from '@/components/BackLink';
+import GlobalGenreNav from '@/components/GlobalGenreNav';
 
 export default function WatchedPage() {
   const { watchedItems, toggleWatched } = useWatchlist();
@@ -22,6 +24,12 @@ export default function WatchedPage() {
           <BackLink />
         </div>
       </header>
+
+      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
+        <Suspense>
+          <GlobalGenreNav />
+        </Suspense>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {watchedItems.length === 0 ? (

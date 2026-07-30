@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import BackLink from '@/components/BackLink';
 import SonarrLibraryPanel from '@/components/SonarrLibraryPanel';
+import GlobalGenreNav from '@/components/GlobalGenreNav';
 
 export default function SonarrLibraryPage() {
   return (
@@ -16,6 +18,12 @@ export default function SonarrLibraryPage() {
           <BackLink />
         </div>
       </header>
+
+      <div className="max-w-4xl mx-auto px-4 pt-5 pb-2">
+        <Suspense>
+          <GlobalGenreNav />
+        </Suspense>
+      </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <SonarrLibraryPanel />
