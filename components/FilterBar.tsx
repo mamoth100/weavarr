@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { SUBGENRES, SORT_OPTIONS, DECADES, STREAMING_PROVIDERS } from '@/lib/subgenres';
+import { GENRE_CATALOG } from '@/lib/genreCatalog';
 import type { SortOption } from '@/types';
 
 interface Props {
@@ -106,7 +107,8 @@ export default function FilterBar({
   const genre = searchParams.get('genre') ?? defaultGenreId;
   const isUpcoming = genre === 'upcoming';
   const isGlobalSearch = genre === 'search';
-  const isDocumentaryGenre = genre === 'documentary';
+  const showSubgenreChips = genre === 'documentary';
+  const showGenreChips = !isGlobalSearch && genre !== 'documentary';
 
   if (isUpcoming) {
     return (
@@ -130,7 +132,7 @@ export default function FilterBar({
   if (langAll) chips.push({ key: 'lang', label: 'All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
   if (!sortIsDefault && sortOpt) chips.push({ key: 'sort', label: sortOpt.label, onClear: () => navigate({ sort: undefined }) });
   if (eraLabel) chips.push({ key: 'era', label: eraLabel, onClear: () => { setYearInput(''); navigate({ decade: undefined, year: undefined }); } });
-  if (isDocumentaryGenre) {
+  if (showSubgenreChips) {
     SUBGENRES.filter((sg) => activeSubgenres.includes(sg.id)).forEach((sg) =>
       chips.push({ key: `sg-${sg.id}`, label: sg.label, onClear: () => toggleSubgenre(sg.id) })
     );
@@ -351,8 +353,28 @@ export default function FilterBar({
               </div>
             </div>
 
+            {/* Genre chips - which broad genre to browse; hidden once inside Documentaries, where the subgenre chips below take over */}
+            {showGenreChips && (
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Genre</span>
+                {GENRE_CATALOG.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => navigate({ genre: g.id, subgenres: undefined }, `genre-${g.id}`)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`genre-${g.id}`)} ${
+                      genre === g.id
+                        ? 'bg-amber-500 text-black'
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Subgenre chips - documentary only */}
-            {isDocumentaryGenre && (
+            {showSubgenreChips && (
               <div className="flex gap-2 flex-wrap items-center">
                 <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Genre</span>
                 <button
