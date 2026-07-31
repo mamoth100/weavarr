@@ -9,6 +9,7 @@ export interface MenuLinkDef {
 export const MENU_LINK_CATALOG: MenuLinkDef[] = [
   { id: 'upcoming', label: 'Coming Soon', kind: 'tab' },
   { id: 'search', label: 'Search', kind: 'tab' },
+  { id: 'library', label: 'Library', kind: 'link', href: '/library' },
   { id: 'status', label: 'Status', kind: 'link', href: '/status' },
   { id: 'readyToWatch', label: 'Ready to Watch', kind: 'link', href: '/ready-to-watch' },
   { id: 'radarrLibrary', label: 'Movies (Radarr)', kind: 'link', href: '/radarr-library' },
