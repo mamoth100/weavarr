@@ -265,6 +265,39 @@ export async function deleteSonarrSeries(seriesId: number): Promise<void> {
   if (!res.ok) throw new Error(`Sonarr series delete failed: ${await res.text()}`);
 }
 
+export interface SonarrEpisode {
+  id: number;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  hasFile: boolean;
+  sizeOnDisk: number;
+}
+
+/** Every episode of a series, with file status - used for the per-episode management view (as opposed to getSonarrEpisodeFileSet's bare id set, used only for cleanup matching). */
+export async function getSonarrSeriesEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  return episodes
+    .map((e) => {
+      const file = e.episodeFile as Record<string, unknown> | undefined;
+      return {
+        id: e.id as number,
+        seasonNumber: e.seasonNumber as number,
+        episodeNumber: e.episodeNumber as number,
+        title: (e.title as string) ?? `Episode ${e.episodeNumber as number}`,
+        hasFile: Boolean(e.hasFile),
+        sizeOnDisk: (file?.size as number) ?? 0,
+      };
+    })
+    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
+}
+
 export interface SonarrEpisodeFileInfo {
   episodeId: number;
   episodeFileId: number;
