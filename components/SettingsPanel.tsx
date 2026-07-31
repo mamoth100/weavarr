@@ -9,6 +9,7 @@ interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null;
+  type?: 'boolean';
 }
 
 const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'Plex', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
@@ -195,13 +196,24 @@ export default function SettingsPanel() {
                     <p className="text-sm font-medium">{s.label}</p>
                     <p className="text-xs text-zinc-600">{s.key}</p>
                   </div>
-                  <input
-                    type={s.secret ? 'password' : 'text'}
-                    value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
-                    onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                    placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
-                    className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
-                  />
+                  {s.type === 'boolean' ? (
+                    <select
+                      value={edits[s.key] ?? s.value ?? 'false'}
+                      onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                      className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="true">Enable</option>
+                      <option value="false">Disable</option>
+                    </select>
+                  ) : (
+                    <input
+                      type={s.secret ? 'password' : 'text'}
+                      value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
+                      onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                      placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
+                      className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+                    />
+                  )}
                   {s.secret && (
                     <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
                       {s.isSet ? 'set' : 'not set'}
