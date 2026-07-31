@@ -12,6 +12,7 @@ export interface SettingField {
   label: string;
   group: string;
   secret: boolean; // if true, never echo the actual value back to the client
+  type?: 'boolean'; // renders as an Enable/Disable dropdown instead of a text input
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
@@ -32,7 +33,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'PLEX_TOKEN', label: 'Plex Token', group: 'Plex', secret: true },
   { key: 'PUSHOVER_USER_KEY', label: 'Pushover User Key', group: 'Pushover', secret: true },
   { key: 'PUSHOVER_API_TOKEN', label: 'Pushover API Token', group: 'Pushover', secret: true },
-  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Enable Import Notifications (true/false - Pi only)', group: 'App Behavior', secret: false },
+  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications (Pi only)', group: 'App Behavior', secret: false, type: 'boolean' },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
@@ -92,6 +93,7 @@ export interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null; // only populated for non-secret fields
+  type?: 'boolean';
 }
 
 /** Server-internal only - the real value, including secrets. Never return this from an API route directly. */
@@ -111,6 +113,7 @@ export async function getSettingsStatus(): Promise<SettingStatus[]> {
       secret: field.secret,
       isSet: raw !== null && raw !== '',
       value: field.secret ? null : raw,
+      type: field.type,
     };
   });
 }
