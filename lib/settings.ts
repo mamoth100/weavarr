@@ -41,7 +41,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'JELLYFIN_URL', label: 'Jellyfin URL', group: 'Jellyfin', secret: false },
   { key: 'JELLYFIN_API_KEY', label: 'Jellyfin API Key', group: 'Jellyfin', secret: true },
   { key: 'JELLYFIN_USER_ID', label: 'Jellyfin Username', group: 'Jellyfin', secret: false },
-  { key: 'ENABLE_WATCHED_SYNC', label: 'Sync Watched Between Plex & Jellyfin', group: 'Watched Sync', secret: false, type: 'boolean' },
+  { key: 'ENABLE_WATCHED_SYNC', label: 'Sync Watched Between Media Players', group: 'Watched Sync', secret: false, type: 'boolean' },
   { key: 'PUSHOVER_USER_KEY', label: 'Pushover User Key', group: 'Pushover', secret: true },
   { key: 'PUSHOVER_API_TOKEN', label: 'Pushover API Token', group: 'Pushover', secret: true },
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications (Pi only)', group: 'App Behavior', secret: false, type: 'boolean' },
