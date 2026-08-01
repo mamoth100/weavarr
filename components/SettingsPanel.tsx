@@ -24,6 +24,16 @@ export default function SettingsPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  function toggleGroup(group: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  }
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -165,10 +175,17 @@ export default function SettingsPanel() {
 
       {groups.map((group) => {
         const testState = testStates[group] ?? { status: 'idle' as const };
+        const isCollapsed = collapsedGroups.has(group);
         return (
         <div key={group} className="space-y-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">{group}</h2>
+            <button
+              onClick={() => toggleGroup(group)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-zinc-400 uppercase tracking-wider hover:text-zinc-200"
+            >
+              <span className={`inline-block transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
+              {group}
+            </button>
             {TESTABLE_GROUPS.has(group) && (
               <>
                 <button
@@ -187,41 +204,43 @@ export default function SettingsPanel() {
               </>
             )}
           </div>
-          <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
-            {settings
-              .filter((s) => s.group === group)
-              .map((s) => (
-                <div key={s.key} className="p-3 flex items-center gap-3">
-                  <div className="w-52 flex-shrink-0">
-                    <p className="text-sm font-medium">{s.label}</p>
-                    <p className="text-xs text-zinc-600">{s.key}</p>
+          {!isCollapsed && (
+            <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
+              {settings
+                .filter((s) => s.group === group)
+                .map((s) => (
+                  <div key={s.key} className="p-3 flex items-center gap-3">
+                    <div className="w-52 flex-shrink-0">
+                      <p className="text-sm font-medium">{s.label}</p>
+                      <p className="text-xs text-zinc-600">{s.key}</p>
+                    </div>
+                    {s.type === 'boolean' ? (
+                      <select
+                        value={edits[s.key] ?? s.value ?? 'false'}
+                        onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                        className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="true">Enable</option>
+                        <option value="false">Disable</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={s.secret ? 'password' : 'text'}
+                        value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
+                        onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                        placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
+                        className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+                      />
+                    )}
+                    {s.secret && (
+                      <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
+                        {s.isSet ? 'set' : 'not set'}
+                      </span>
+                    )}
                   </div>
-                  {s.type === 'boolean' ? (
-                    <select
-                      value={edits[s.key] ?? s.value ?? 'false'}
-                      onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                      className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
-                    >
-                      <option value="true">Enable</option>
-                      <option value="false">Disable</option>
-                    </select>
-                  ) : (
-                    <input
-                      type={s.secret ? 'password' : 'text'}
-                      value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
-                      onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                      placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
-                      className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
-                    />
-                  )}
-                  {s.secret && (
-                    <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
-                      {s.isSet ? 'set' : 'not set'}
-                    </span>
-                  )}
-                </div>
-              ))}
-          </div>
+                ))}
+            </div>
+          )}
         </div>
         );
       })}
