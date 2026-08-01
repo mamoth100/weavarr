@@ -13,4 +13,20 @@ export async function register() {
       checkForNewPlexImports().catch(() => {});
     }, POLL_INTERVAL_MS);
   }
+
+  // Only meaningful with both media servers configured - same untracked
+  // data/watched-sync-state.json caveat as above applies here too.
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_WATCHED_SYNC === 'true') {
+    const { plexEnabled, jellyfinEnabled } = await import('./lib/mediaServer');
+    if (plexEnabled() && jellyfinEnabled()) {
+      const { syncWatchedBetweenServers } = await import('./lib/watchedSync');
+
+      syncWatchedBetweenServers().catch(() => {});
+
+      const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+      setInterval(() => {
+        syncWatchedBetweenServers().catch(() => {});
+      }, SYNC_INTERVAL_MS);
+    }
+  }
 }

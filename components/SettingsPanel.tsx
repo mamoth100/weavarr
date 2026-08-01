@@ -28,6 +28,7 @@ const GROUP_TO_SECTION: Record<string, string> = {
   NZBGet: 'Downloaders',
   Plex: 'Media Players',
   Jellyfin: 'Media Players',
+  'Watched Sync': 'Media Players',
   Pushover: 'Notifications',
   'App Behavior': 'Misc',
 };
