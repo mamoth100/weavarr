@@ -52,6 +52,26 @@ async function testSABnzbd(url?: string, key?: string): Promise<TestResult> {
   }
 }
 
+async function testNzbget(url?: string, username?: string, password?: string): Promise<TestResult> {
+  if (!url || !username || !password) return { ok: false, message: 'URL, username, and password required' };
+  try {
+    const auth = Buffer.from(`${username}:${password}`).toString('base64');
+    const res = await fetch(`${url.replace(/\/$/, '')}/jsonrpc`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: 'version' }),
+      cache: 'no-store',
+    });
+    if (res.status === 401) return { ok: false, message: 'Rejected - check username and password' };
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL` };
+    const data = await res.json();
+    if (data.error) return { ok: false, message: data.error.message ?? 'Unexpected response' };
+    return { ok: true, message: `Connected - NZBGet v${data.result}` };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 async function testPlex(url?: string, token?: string): Promise<TestResult> {
   if (!url || !token) return { ok: false, message: 'URL and token required' };
   try {
@@ -162,6 +182,8 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testSonarr(values.SONARR_URL, values.SONARR_KEY);
     case 'SABnzbd':
       return testSABnzbd(values.SABNZBD_URL, values.SABNZBD_API_KEY);
+    case 'NZBGet':
+      return testNzbget(values.NZBGET_URL, values.NZBGET_USERNAME, values.NZBGET_PASSWORD);
     case 'Plex':
       return testPlex(values.PLEX_URL, values.PLEX_TOKEN);
     case 'Jellyfin':
