@@ -12,7 +12,7 @@ interface SettingStatus {
   type?: 'boolean';
 }
 
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'Plex', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
 
 type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string };
 

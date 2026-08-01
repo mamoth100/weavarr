@@ -1,6 +1,6 @@
 import { getAllRadarrMovies } from './radarr';
 import { getAllSonarrSeries, getSonarrEpisodeFileSet } from './sonarr';
-import { getPlexWatchedMovies, getPlexEpisodeWatchHistory, plexHasTitle } from './plex';
+import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServer';
 
 export interface ReadyToWatchMovie {
   type: 'movie';
@@ -31,15 +31,15 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   const [movies, series, watchedMovies, watchedEpisodes] = await Promise.all([
     getAllRadarrMovies(),
     getAllSonarrSeries(),
-    getPlexWatchedMovies(),
-    getPlexEpisodeWatchHistory(1000),
+    getWatchedMovies(),
+    getEpisodeWatchHistory(1000),
   ]);
 
   const downloadedMovies = movies.filter((m) => m.hasFile);
-  const inPlexFlags = await Promise.all(downloadedMovies.map((m) => plexHasTitle(m.title).catch(() => false)));
+  const inLibraryFlags = await Promise.all(downloadedMovies.map((m) => hasTitle(m.title).catch(() => false)));
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
-    .filter((m, i) => inPlexFlags[i] && !watchedMovies.some((w) => titleFuzzyMatch(w.title, m.title)))
+    .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titleFuzzyMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk }));
 
   const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);

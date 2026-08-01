@@ -40,7 +40,7 @@ interface RecentImport {
   title: string;
   date: string;
   episode?: string | null;
-  inPlex: boolean | null;
+  inLibrary: boolean | null;
 }
 
 interface CleanupCandidateItem {
@@ -393,7 +393,7 @@ export default function StatusPanel() {
       </section>
     )}
 
-    {/* Recently Imported - cross-checked against Plex */}
+    {/* Recently Imported - cross-checked against your media server(s) */}
     {data.recentImports && data.recentImports.length > 0 && (
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recently Imported</h2>
@@ -404,12 +404,12 @@ export default function StatusPanel() {
                 <p className="text-sm font-medium">{item.title}{item.episode ? ` - ${item.episode}` : ''}</p>
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
               </div>
-              {item.inPlex === null ? (
-                <span className="text-xs text-zinc-600">Plex not checked</span>
-              ) : item.inPlex ? (
-                <span className="text-xs font-medium text-green-400">In Plex</span>
+              {item.inLibrary === null ? (
+                <span className="text-xs text-zinc-600">Not checked</span>
+              ) : item.inLibrary ? (
+                <span className="text-xs font-medium text-green-400">In library</span>
               ) : (
-                <span className="text-xs font-medium text-amber-400">Not in Plex yet</span>
+                <span className="text-xs font-medium text-amber-400">Not in library yet</span>
               )}
             </div>
           ))}
