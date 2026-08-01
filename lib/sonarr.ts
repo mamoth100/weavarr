@@ -273,6 +273,8 @@ export interface SonarrEpisode {
   title: string;
   hasFile: boolean;
   sizeOnDisk: number;
+  /** null when Sonarr has no air date yet (TBA) - only aired episodes are worth searching for. */
+  airDateUtc: string | null;
 }
 
 /** Every episode of a series, with file status - used for the per-episode management view (as opposed to getSonarrEpisodeFileSet's bare id set, used only for cleanup matching). */
@@ -294,6 +296,7 @@ export async function getSonarrSeriesEpisodes(seriesId: number): Promise<SonarrE
         title: (e.title as string) ?? `Episode ${e.episodeNumber as number}`,
         hasFile: Boolean(e.hasFile),
         sizeOnDisk: (file?.size as number) ?? 0,
+        airDateUtc: (e.airDateUtc as string) ?? null,
       };
     })
     .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
@@ -324,6 +327,25 @@ export async function findSonarrEpisodeFile(
   const episodeFile = match.episodeFile as { id?: number } | undefined;
   if (!episodeFile?.id) return null;
   return { episodeId: match.id as number, episodeFileId: episodeFile.id };
+}
+
+/** Monitors this episode and triggers an indexer search for it, same as clicking the search icon in Sonarr's own UI. */
+export async function searchSonarrEpisode(episodeId: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ episodeIds: [episodeId], monitored: true }),
+  });
+  if (!monitorRes.ok) throw new Error(`Sonarr monitor failed: ${await monitorRes.text()}`);
+
+  const searchRes = await fetch(`${SONARR_URL}/api/v3/command`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name: 'EpisodeSearch', episodeIds: [episodeId] }),
+  });
+  if (!searchRes.ok) throw new Error(`Sonarr episode search failed: ${await searchRes.text()}`);
 }
 
 /** Deletes just this episode's file and unmonitors that single episode - leaves the series and every other episode untouched. */

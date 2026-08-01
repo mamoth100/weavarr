@@ -19,6 +19,7 @@ interface SonarrEpisode {
   title: string;
   hasFile: boolean;
   sizeOnDisk: number;
+  airDateUtc: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -163,6 +164,48 @@ function DeleteEpisodeButton({
   );
 }
 
+function SearchEpisodeButton({ episodeId }: { episodeId: number }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/search-episode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Search failed');
+      setStatus('done');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'done') {
+    return <span className="text-xs font-medium text-green-400">Searching…</span>;
+  }
+
+  return (
+    <div>
+      <button
+        onClick={handleClick}
+        disabled={status === 'loading'}
+        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
+        }`}
+      >
+        {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Download'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 function EpisodeList({ seriesId }: { seriesId: number }) {
   const [episodes, setEpisodes] = useState<SonarrEpisode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,8 +265,10 @@ function EpisodeList({ seriesId }: { seriesId: number }) {
                         onDeleted={() => markDeleted(e.id)}
                       />
                     </div>
+                  ) : e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now() ? (
+                    <SearchEpisodeButton episodeId={e.id} />
                   ) : (
-                    <span className="text-xs text-zinc-700 flex-shrink-0">No file</span>
+                    <span className="text-xs text-zinc-700 flex-shrink-0">{e.airDateUtc ? 'Not aired yet' : 'TBA'}</span>
                   )}
                 </div>
               ))}
