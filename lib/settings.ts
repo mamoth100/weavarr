@@ -35,7 +35,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_JELLYFIN', label: 'Enable Jellyfin', group: 'Jellyfin', secret: false, type: 'boolean' },
   { key: 'JELLYFIN_URL', label: 'Jellyfin URL', group: 'Jellyfin', secret: false },
   { key: 'JELLYFIN_API_KEY', label: 'Jellyfin API Key', group: 'Jellyfin', secret: true },
-  { key: 'JELLYFIN_USER_ID', label: 'Jellyfin User ID (Dashboard > Users)', group: 'Jellyfin', secret: false },
+  { key: 'JELLYFIN_USER_ID', label: 'Jellyfin Username', group: 'Jellyfin', secret: false },
   { key: 'PUSHOVER_USER_KEY', label: 'Pushover User Key', group: 'Pushover', secret: true },
   { key: 'PUSHOVER_API_TOKEN', label: 'Pushover API Token', group: 'Pushover', secret: true },
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications (Pi only)', group: 'App Behavior', secret: false, type: 'boolean' },
