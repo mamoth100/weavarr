@@ -11,7 +11,7 @@ import SearchResultCard from '@/components/SearchResultCard';
 import type { SortOption } from '@/types';
 
 interface PageProps {
-  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; lang?: string; year?: string; show?: string; sucks?: string; fav?: string };
+  searchParams: { subgenres?: string; sort?: string; page?: string; q?: string; decade?: string; genre?: string; upcomingGenre?: string; lang?: string; year?: string; show?: string; sucks?: string; fav?: string };
 }
 
 export default async function Home({ searchParams }: PageProps) {
@@ -21,6 +21,9 @@ export default async function Home({ searchParams }: PageProps) {
   const isGlobalSearch = searchParams.genre === 'search';
   const activeGenre = isUpcoming || isGlobalSearch ? defaultGenre : getGenre(searchParams.genre, defaultGenre);
   const genre = isUpcoming ? 'upcoming' : isGlobalSearch ? 'search' : activeGenre.id;
+  // Coming Soon has its own genre selection (defaults to All Genres) - 'genre'
+  // itself has to stay the literal 'upcoming' sentinel to signal this view.
+  const upcomingGenre = isUpcoming ? getGenre(searchParams.upcomingGenre) : activeGenre;
   const hasMovies = Boolean(activeGenre.movieGenreId);
   const hasTv = Boolean(activeGenre.tvGenreId);
   const query = searchParams.q?.trim() ?? '';
@@ -64,9 +67,14 @@ export default async function Home({ searchParams }: PageProps) {
       })()
     : isUpcoming
     ? await (async () => {
+        const emptyPage = { page: 1, results: [], total_pages: 1, total_results: 0 };
         const [movieData, tvData] = await Promise.all([
-          discoverUpcoming(page),
-          discoverUpcomingTv(page),
+          upcomingGenre.movieGenreId
+            ? discoverUpcoming({ page, genre: upcomingGenre.movieGenreId, language, keywordIds })
+            : Promise.resolve(emptyPage),
+          upcomingGenre.tvGenreId
+            ? discoverUpcomingTv({ page, genre: upcomingGenre.tvGenreId, language, keywordIds })
+            : Promise.resolve(emptyPage),
         ]);
         const merged = [...movieData.results, ...tvData.results].sort(
           (a, b) => (a.release_date ?? '').localeCompare(b.release_date ?? '')
@@ -145,7 +153,13 @@ export default async function Home({ searchParams }: PageProps) {
               Weav<span className="text-amber-400">arr</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-0.5">
-              {isGlobalSearch ? 'Search anything - movies, TV, any genre' : isUpcoming ? 'Documentaries coming soon' : `${activeGenre.label} discovery engine`}
+              {isGlobalSearch
+                ? 'Search anything - movies, TV, any genre'
+                : isUpcoming
+                ? upcomingGenre.id === ALL_GENRES_ID
+                  ? 'Coming soon - every genre'
+                  : `${upcomingGenre.label} coming soon`
+                : `${activeGenre.label} discovery engine`}
             </p>
           </div>
           <div className="flex items-center flex-wrap gap-4 sm:mt-1">
@@ -210,6 +224,7 @@ export default async function Home({ searchParams }: PageProps) {
             currentLang={searchParams.lang ?? 'en'}
             currentYear={searchParams.year ?? ''}
             defaultGenreId={defaultGenre.id}
+            currentUpcomingGenre={searchParams.upcomingGenre ?? ''}
           />
         </Suspense>
 
@@ -219,7 +234,13 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">
-            {isGlobalSearch || activeGenre.id === ALL_GENRES_ID ? 'No results found.' : isUpcoming ? 'No upcoming documentaries found.' : `No ${activeGenre.label.toLowerCase()} found.`}
+            {isGlobalSearch
+              ? 'No results found.'
+              : isUpcoming
+              ? `No upcoming ${upcomingGenre.id === ALL_GENRES_ID ? 'releases' : upcomingGenre.label.toLowerCase()} found.`
+              : activeGenre.id === ALL_GENRES_ID
+              ? 'No results found.'
+              : `No ${activeGenre.label.toLowerCase()} found.`}
           </div>
         ) : isGlobalSearch ? (
           <>
@@ -277,6 +298,7 @@ export default async function Home({ searchParams }: PageProps) {
               show={searchParams.show}
               sucks={searchParams.sucks}
               fav={searchParams.fav}
+              upcomingGenre={searchParams.upcomingGenre}
             />
           </>
         )}

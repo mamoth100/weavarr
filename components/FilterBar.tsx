@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { SUBGENRES, SORT_OPTIONS, DECADES, STREAMING_PROVIDERS } from '@/lib/subgenres';
-import { GENRE_CATALOG } from '@/lib/genreCatalog';
+import { GENRE_CATALOG, ALL_GENRES_ID } from '@/lib/genreCatalog';
 import type { SortOption } from '@/types';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   currentLang: string;
   currentYear: string;
   defaultGenreId: string;
+  currentUpcomingGenre: string;
 }
 
 export default function FilterBar({
@@ -24,6 +25,7 @@ export default function FilterBar({
   currentLang,
   currentYear,
   defaultGenreId,
+  currentUpcomingGenre,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -112,8 +114,158 @@ export default function FilterBar({
   const activeGenreLabel = GENRE_CATALOG.find((g) => g.id === genre)?.label ?? 'All Genres';
 
   if (isUpcoming) {
+    const upcomingGenreId = currentUpcomingGenre || ALL_GENRES_ID;
+    const showUpcomingSubgenreChips = upcomingGenreId === 'documentary';
+    const langAllUpcoming = currentLang === 'all';
+
+    const upcomingChips: { key: string; label: string; onClear: () => void }[] = [];
+    if (langAllUpcoming) upcomingChips.push({ key: 'lang', label: 'All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
+    if (showUpcomingSubgenreChips) {
+      SUBGENRES.filter((sg) => activeSubgenres.includes(sg.id)).forEach((sg) =>
+        upcomingChips.push({ key: `sg-${sg.id}`, label: sg.label, onClear: () => toggleSubgenre(sg.id) })
+      );
+    }
+
     return (
-      <p className="text-xs text-zinc-600 py-2">Sorted by release date · next 6 months · documentaries only</p>
+      <div className="space-y-2">
+        <p className="text-xs text-zinc-600">Sorted by release date · next 6 months</p>
+        <div className="relative" ref={panelRef}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                filtersOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+              }`}
+            >
+              Filters
+              {upcomingChips.length > 0 && (
+                <span className="bg-amber-500 text-black rounded-full text-xs font-bold px-1.5 leading-4">
+                  {upcomingChips.length}
+                </span>
+              )}
+            </button>
+            {upcomingChips.map((chip) => (
+              <button
+                key={chip.key}
+                onClick={chip.onClear}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+              >
+                {chip.label}
+              </button>
+            ))}
+            {upcomingChips.length > 0 && (
+              <button
+                onClick={() => navigate({ lang: undefined, subgenres: undefined })}
+                className="text-sm font-medium text-zinc-500 hover:text-white underline underline-offset-2 transition-colors"
+              >
+                Reset all
+              </button>
+            )}
+          </div>
+
+          {filtersOpen && (
+            <div
+              className="md:hidden fixed inset-0 bg-black/60 z-40"
+              onClick={() => setFiltersOpen(false)}
+            />
+          )}
+
+          <div
+            className={`
+              ${filtersOpen ? 'flex' : 'hidden'}
+              flex-col gap-5 z-50 bg-zinc-900 border-zinc-800
+              fixed inset-x-0 bottom-0 rounded-t-2xl border-t p-4 max-h-[78vh]
+              md:absolute md:inset-x-auto md:bottom-auto md:top-full md:left-0 md:mt-2
+              md:w-[560px] md:max-w-[90vw] md:rounded-xl md:border md:p-5 md:max-h-[70vh]
+              overflow-y-auto
+            `}
+          >
+            <div className="md:hidden w-10 h-1 rounded-full bg-zinc-700 mx-auto -mt-1" />
+
+            {/* Language */}
+            <div className="flex gap-2 flex-wrap items-center">
+              <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Language</span>
+              <button
+                onClick={() => navigate({ lang: undefined }, 'lang-en')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('lang-en')} ${
+                  currentLang !== 'all'
+                    ? 'bg-amber-500 text-black'
+                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                English only
+              </button>
+              <button
+                onClick={() => navigate({ lang: 'all' }, 'lang-all')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('lang-all')} ${
+                  currentLang === 'all'
+                    ? 'bg-amber-500 text-black'
+                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                All languages
+              </button>
+            </div>
+
+            {/* Genre chips */}
+            <div className="flex gap-2 flex-wrap items-center">
+              <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Genre</span>
+              {GENRE_CATALOG.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => navigate({ upcomingGenre: g.id === ALL_GENRES_ID ? undefined : g.id, subgenres: undefined }, `ugenre-${g.id}`)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`ugenre-${g.id}`)} ${
+                    upcomingGenreId === g.id
+                      ? 'bg-amber-500 text-black'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Subgenre chips - documentary only */}
+            {showUpcomingSubgenreChips && (
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs text-zinc-500 uppercase tracking-wider mr-1 w-full sm:w-auto">Category</span>
+                <button
+                  onClick={() => navigate({ subgenres: undefined }, 'subgenre-all')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('subgenre-all')} ${
+                    activeSubgenres.length === 0
+                      ? 'bg-amber-500 text-black'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  }`}
+                >
+                  All
+                </button>
+                {SUBGENRES.map((sg) => (
+                  <button
+                    key={sg.id}
+                    onClick={() => toggleSubgenre(sg.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass(`subgenre-${sg.id}`)} ${
+                      activeSubgenres.includes(sg.id)
+                        ? 'bg-amber-500 text-black'
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {sg.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="md:hidden pt-1">
+              <button
+                onClick={() => setFiltersOpen(false)}
+                className="w-full py-2.5 rounded-lg bg-amber-500 text-black font-semibold text-sm"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 

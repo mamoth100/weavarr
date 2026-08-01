@@ -156,11 +156,20 @@ export async function getWatchProviders(
   return data.results?.[country] ?? null;
 }
 
-export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> {
+export async function discoverUpcoming({
+  page = 1,
+  genre = 'all',
+  language = 'en',
+  keywordIds = [],
+}: {
+  page?: number;
+  genre?: number | string;
+  language?: string;
+  keywordIds?: number[];
+} = {}): Promise<TmdbDiscoverResponse> {
   const today = new Date().toISOString().slice(0, 10);
   const sixMonths = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10);
   const params = new URLSearchParams({
-    with_genres: '99',
     sort_by: 'primary_release_date.asc',
     'primary_release_date.gte': today,
     'primary_release_date.lte': sixMonths,
@@ -168,6 +177,10 @@ export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> 
     page: String(page),
     include_adult: 'false',
   });
+  if (genre !== 'all') params.set('with_genres', String(genre));
+  if (language) params.set('with_original_language', language);
+  if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
+
   const res = await tmdbFetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
@@ -176,11 +189,20 @@ export async function discoverUpcoming(page = 1): Promise<TmdbDiscoverResponse> 
   return res.json();
 }
 
-export async function discoverUpcomingTv(page = 1): Promise<TmdbDiscoverResponse> {
+export async function discoverUpcomingTv({
+  page = 1,
+  genre = 'all',
+  language = 'en',
+  keywordIds = [],
+}: {
+  page?: number;
+  genre?: number | string;
+  language?: string;
+  keywordIds?: number[];
+} = {}): Promise<TmdbDiscoverResponse> {
   const today = new Date().toISOString().slice(0, 10);
   const sixMonths = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10);
   const params = new URLSearchParams({
-    with_genres: '99',
     sort_by: 'first_air_date.asc',
     'first_air_date.gte': today,
     'first_air_date.lte': sixMonths,
@@ -188,6 +210,10 @@ export async function discoverUpcomingTv(page = 1): Promise<TmdbDiscoverResponse
     page: String(page),
     include_adult: 'false',
   });
+  if (genre !== 'all') params.set('with_genres', String(genre));
+  if (language) params.set('with_original_language', language);
+  if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
+
   const res = await tmdbFetch(`${BASE_URL}/discover/tv?${params}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
