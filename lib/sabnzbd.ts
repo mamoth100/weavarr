@@ -2,6 +2,12 @@
 const SAB_URL = process.env.SABNZBD_URL?.replace(/\/$/, '');
 const SAB_KEY = process.env.SABNZBD_API_KEY;
 
+// Defaults on (unset !== 'false') to preserve existing behavior from before
+// this toggle existed - same convention as ENABLE_PLEX.
+export function sabnzbdEnabled(): boolean {
+  return process.env.ENABLE_SABNZBD !== 'false' && Boolean(SAB_URL && SAB_KEY);
+}
+
 export interface SabSlot {
   filename: string;
   status: string;
