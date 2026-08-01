@@ -1,7 +1,8 @@
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 
-const SONARR_URL = process.env.SONARR_URL;
+// Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
+const SONARR_URL = process.env.SONARR_URL?.replace(/\/$/, '');
 const SONARR_KEY = process.env.SONARR_KEY;
 
 function headers() {
