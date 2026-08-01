@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSabQueue } from '@/lib/sabnzbd';
 import { getRadarrQueue, getRadarrRecentImports, getAllRadarrMovies } from '@/lib/radarr';
 import { getSonarrQueue, getSonarrRecentImports, getAllSonarrSeries, getSonarrEpisodeFileSet } from '@/lib/sonarr';
-import { plexHasTitle, plexHasEpisode } from '@/lib/plex';
+import { hasTitle, hasEpisode } from '@/lib/mediaServer';
 import { getCleanupCandidates } from '@/lib/cleanupCandidates';
 
 const RESOLVED_LIMIT = 10;
@@ -69,22 +69,22 @@ export async function GET() {
   const checked = await Promise.all(
     stillPresent.map(async (item) => {
       try {
-        const inPlex = item.seasonNumber !== undefined && item.episodeNumber !== undefined
-          ? await plexHasEpisode(item.title, item.seasonNumber, item.episodeNumber)
-          : await plexHasTitle(item.title);
-        return { ...item, inPlex };
+        const inLibrary = item.seasonNumber !== undefined && item.episodeNumber !== undefined
+          ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber)
+          : await hasTitle(item.title);
+        return { ...item, inLibrary };
       } catch {
-        return { ...item, inPlex: null };
+        return { ...item, inLibrary: null };
       }
     })
   );
 
-  // Items already in Plex roll off after the 10 most recent - movies and
-  // shows both, whichever's actually most recent wins. Anything NOT yet in
-  // Plex (or that failed the check) stays visible no matter how old or how
-  // many there are - those are the ones that need attention.
-  const resolved = checked.filter((item) => item.inPlex === true).slice(0, RESOLVED_LIMIT);
-  const unresolved = checked.filter((item) => item.inPlex !== true);
+  // Items already in the library roll off after the 10 most recent - movies
+  // and shows both, whichever's actually most recent wins. Anything NOT yet
+  // in the library (or that failed the check) stays visible no matter how
+  // old or how many there are - those are the ones that need attention.
+  const resolved = checked.filter((item) => item.inLibrary === true).slice(0, RESOLVED_LIMIT);
+  const unresolved = checked.filter((item) => item.inLibrary !== true);
   const recentImports = [...resolved, ...unresolved].sort((a, b) => b.date.localeCompare(a.date));
 
   return NextResponse.json({

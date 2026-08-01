@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { findSonarrEpisodeFile, deleteSonarrEpisodeFile } from '@/lib/sonarr';
-import { refreshPlexTvLibrary } from '@/lib/plex';
+import { refreshTvLibrary } from '@/lib/mediaServer';
 
 export async function POST(request: Request) {
   const { seriesId, seasonNumber, episodeNumber } = await request.json();
@@ -14,9 +14,9 @@ export async function POST(request: Request) {
 
     await deleteSonarrEpisodeFile(file.episodeId, file.episodeFileId);
     try {
-      await refreshPlexTvLibrary();
+      await refreshTvLibrary();
     } catch {
-      // Deletion already succeeded - a failed Plex refresh just means it'll
+      // Deletion already succeeded - a failed library refresh just means it'll
       // notice on its own next scheduled scan instead of immediately.
     }
     return NextResponse.json({ deleted: true });

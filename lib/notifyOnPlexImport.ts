@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { getRadarrRecentImports } from './radarr';
 import { getSonarrRecentImports } from './sonarr';
-import { plexHasTitle, plexHasEpisode } from './plex';
+import { hasTitle, hasEpisode } from './mediaServer';
 import { sendPushoverNotification } from './pushover';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'notified-imports.json');
@@ -48,11 +48,11 @@ export async function checkForNewPlexImports(): Promise<void> {
 
     const label = item.episode ? `${item.title} ${item.episode}` : item.title;
     try {
-      const inPlex = item.seasonNumber !== undefined && item.episodeNumber !== undefined
-        ? await plexHasEpisode(item.title, item.seasonNumber, item.episodeNumber)
-        : await plexHasTitle(item.title);
-      if (inPlex) {
-        await sendPushoverNotification('Ready to watch', `${label} is now in Plex.`);
+      const inLibrary = item.seasonNumber !== undefined && item.episodeNumber !== undefined
+        ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber)
+        : await hasTitle(item.title);
+      if (inLibrary) {
+        await sendPushoverNotification('Ready to watch', `${label} is ready to watch.`);
         seen.add(key);
         changed = true;
         console.log(`[notifyOnPlexImport] sent notification for "${label}"`);

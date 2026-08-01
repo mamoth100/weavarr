@@ -69,6 +69,29 @@ async function testPlex(url?: string, token?: string): Promise<TestResult> {
   }
 }
 
+async function testJellyfin(url?: string, apiKey?: string, userId?: string): Promise<TestResult> {
+  if (!url || !apiKey) return { ok: false, message: 'URL and API key required' };
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/System/Info`, {
+      headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and API key` };
+    const data = await res.json();
+    if (!data.Version) return { ok: false, message: 'Unexpected response - check API key' };
+    if (userId) {
+      const userRes = await fetch(`${url.replace(/\/$/, '')}/Users/${userId}`, {
+        headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      if (!userRes.ok) return { ok: false, message: `Connected to Jellyfin v${data.Version}, but User ID not found` };
+    }
+    return { ok: true, message: `Connected - Jellyfin v${data.Version}${userId ? '' : ' (no User ID set yet)'}` };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 async function testTMDB(token?: string): Promise<TestResult> {
   if (!token) return { ok: false, message: 'Token required' };
   try {
@@ -137,6 +160,8 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testSABnzbd(values.SABNZBD_URL, values.SABNZBD_API_KEY);
     case 'Plex':
       return testPlex(values.PLEX_URL, values.PLEX_TOKEN);
+    case 'Jellyfin':
+      return testJellyfin(values.JELLYFIN_URL, values.JELLYFIN_API_KEY, values.JELLYFIN_USER_ID);
     case 'TMDB':
       return testTMDB(values.TMDB_TOKEN);
     case 'OMDb':

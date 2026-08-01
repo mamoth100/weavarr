@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { getCleanupCandidates, getWatchedPercentThreshold } from './cleanupCandidates';
 import { getAllRadarrMovies } from './radarr';
-import { getPlexWatchedMovies, getPlexInProgressMovies } from './plex';
+import { getWatchedMovies, getInProgressMovies } from './mediaServer';
 import { titleFuzzyMatch } from './readyToWatch';
 
 export interface RecentlyWatchedMovie {
@@ -59,8 +59,8 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
   const threshold = getWatchedPercentThreshold();
   const [movies, watched, inProgress] = await Promise.all([
     getAllRadarrMovies(),
-    getPlexWatchedMovies(),
-    getPlexInProgressMovies(),
+    getWatchedMovies(),
+    getInProgressMovies(),
   ]);
 
   const signals: { title: string; watchedAt: string; reason: string }[] = [

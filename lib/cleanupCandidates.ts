@@ -1,4 +1,4 @@
-import { getPlexEpisodeWatchHistory, getPlexInProgressEpisodes, getPlexPlayedSessionKeys } from './plex';
+import { getEpisodeWatchHistory, getInProgressEpisodes, getPlayedSessionKeys } from './mediaServer';
 import { getSonarrSeriesList, findSonarrEpisodeFile } from './sonarr';
 
 export interface CleanupCandidate {
@@ -35,10 +35,10 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   const excluded = getExcludedShows();
   const threshold = getWatchedPercentThreshold();
   const [history, inProgress, series, playedKeys] = await Promise.all([
-    getPlexEpisodeWatchHistory(limit),
-    getPlexInProgressEpisodes(),
+    getEpisodeWatchHistory(limit),
+    getInProgressEpisodes(),
     getSonarrSeriesList(),
-    getPlexPlayedSessionKeys(limit),
+    getPlayedSessionKeys(limit),
   ]);
 
   // Two independent signals, either one qualifies: Plex's own watch state
