@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from 'react';
 
-interface SabSlot {
+interface DownloadSlot {
   filename: string;
   status: string;
   mb?: string;
   mbleft?: string;
   percentage?: string;
   timeleft?: string;
+  source: 'SABnzbd' | 'NZBGet';
 }
 
-interface SabData {
-  speed?: string;
-  mbleft?: string;
+interface DownloaderData {
+  speedBps?: number;
+  mbleft?: number;
   noofslots?: number;
   paused?: boolean;
-  slots?: SabSlot[];
+  slots?: DownloadSlot[];
   error?: string;
 }
 
@@ -58,8 +59,7 @@ interface CleanupError {
 }
 
 interface StatusResponse {
-  sab: SabData | null;
-  nzbget: SabData | null;
+  downloader: DownloaderData | null;
   radarr: QueueItem[] | ArrData;
   sonarr: QueueItem[] | ArrData;
   recentImports?: RecentImport[];
@@ -92,6 +92,13 @@ function formatBytes(bytes: number | undefined): string {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 }
 
+function formatSpeed(bytesPerSec: number | undefined): string {
+  const v = bytesPerSec ?? 0;
+  if (v >= 1024 * 1024) return `${(v / (1024 * 1024)).toFixed(1)} MB/s`;
+  if (v >= 1024) return `${(v / 1024).toFixed(1)} KB/s`;
+  return `${v.toFixed(0)} B/s`;
+}
+
 function formatTimeleft(timeleft: string | undefined): string {
   return timeleft && timeleft !== '00:00:00' ? ` · ${timeleft}` : '';
 }
@@ -103,7 +110,7 @@ function isArrError(data: QueueItem[] | ArrData): data is ArrData {
 // Downloading has a direct percentage; post-processing entries (e.g.
 // "Unpacking: 52/56 - 0:22 left") only have a fraction embedded in the text.
 // "Queued" items always sit at 0% (haven't started downloading) - not worth a bar.
-function extractProgressPercent(slot: SabSlot): number | null {
+function extractProgressPercent(slot: DownloadSlot): number | null {
   if (slot.status === 'Queued') return null;
   if (slot.percentage !== undefined) return Number(slot.percentage);
   const match = slot.status.match(/(\d+)\/(\d+)/);
@@ -111,15 +118,15 @@ function extractProgressPercent(slot: SabSlot): number | null {
   return (Number(match[1]) / Number(match[2])) * 100;
 }
 
-// Shared by SABnzbd and NZBGet - both produce the same queue shape (see
-// lib/sabnzbd.ts and lib/nzbget.ts). Renders nothing when the client is
-// disabled (data is null).
-function DownloaderSection({ title, data }: { title: string; data: SabData | null }) {
+// Combines SABnzbd and NZBGet into one queue (see lib/downloaders.ts) - each
+// item keeps a "source" tag so it's clear which client is handling it.
+// Renders nothing when neither client is enabled (data is null).
+function DownloaderSection({ data }: { data: DownloaderData | null }) {
   if (!data) return null;
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{title}</h2>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Downloader</h2>
       {data.error ? (
         <p className="text-red-400 text-sm">{data.error}</p>
       ) : (
@@ -127,7 +134,7 @@ function DownloaderSection({ title, data }: { title: string; data: SabData | nul
           <div className="bg-zinc-900 rounded-lg p-4 ring-1 ring-white/5 mb-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-zinc-400">Speed</span>
-              <span className="font-medium">{data.paused ? 'Paused' : `${data.speed ?? '0'}B/s`}</span>
+              <span className="font-medium">{data.paused ? 'Paused' : formatSpeed(data.speedBps)}</span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
               <span className="text-zinc-400">Queue size</span>
@@ -135,18 +142,23 @@ function DownloaderSection({ title, data }: { title: string; data: SabData | nul
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
               <span className="text-zinc-400">Remaining</span>
-              <span className="font-medium">{formatMb(data.mbleft)}</span>
+              <span className="font-medium">{formatMb(String(data.mbleft ?? 0))}</span>
             </div>
           </div>
           {(!data.slots || data.slots.length === 0) ? (
             <p className="text-xs text-zinc-600">Queue is empty.</p>
           ) : (
             <div className="space-y-2">
-              {data.slots.map((slot) => {
+              {data.slots.map((slot, i) => {
                 const progress = extractProgressPercent(slot);
                 return (
-                  <div key={slot.filename} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                    <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
+                  <div key={`${slot.source}-${slot.filename}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
+                      <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide whitespace-nowrap px-1.5 py-0.5 bg-zinc-800 rounded">
+                        {slot.source}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                       <span className="text-amber-400">{slot.status}</span>
                       {slot.percentage !== undefined && (
@@ -329,9 +341,8 @@ export default function StatusPanel() {
 
   return (
     <div className="space-y-8">
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      <DownloaderSection title="SABnzbd" data={data.sab} />
-      <DownloaderSection title="NZBGet" data={data.nzbget} />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <DownloaderSection data={data.downloader} />
 
       {/* Sonarr */}
       <section>
