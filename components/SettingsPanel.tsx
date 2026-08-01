@@ -14,6 +14,24 @@ interface SettingStatus {
 
 const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
 
+// Groups each service's Settings fields into a broader category so the page
+// reads as ~7 sections instead of 12 flat, equally-weighted blocks.
+const SECTION_ORDER = ['Metadata', 'Database', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
+const GROUP_TO_SECTION: Record<string, string> = {
+  TMDB: 'Metadata',
+  OMDb: 'Metadata',
+  Trakt: 'Metadata',
+  Supabase: 'Database',
+  Radarr: 'Media Management',
+  Sonarr: 'Media Management',
+  SABnzbd: 'Downloaders',
+  NZBGet: 'Downloaders',
+  Plex: 'Media Players',
+  Jellyfin: 'Media Players',
+  Pushover: 'Notifications',
+  'App Behavior': 'Misc',
+};
+
 type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string };
 
 export default function SettingsPanel() {
@@ -24,13 +42,13 @@ export default function SettingsPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(SECTION_ORDER));
 
-  function toggleGroup(group: string) {
-    setCollapsedGroups((prev) => {
+  function toggleSection(section: string) {
+    setCollapsedSections((prev) => {
       const next = new Set(prev);
-      if (next.has(group)) next.delete(group);
-      else next.add(group);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
       return next;
     });
   }
@@ -173,75 +191,88 @@ export default function SettingsPanel() {
         <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
       </div>
 
-      {groups.map((group) => {
-        const testState = testStates[group] ?? { status: 'idle' as const };
-        const isCollapsed = collapsedGroups.has(group);
+      {SECTION_ORDER.map((section) => {
+        const sectionGroups = groups.filter((g) => (GROUP_TO_SECTION[g] ?? 'Misc') === section);
+        if (sectionGroups.length === 0) return null;
+        const sectionCollapsed = collapsedSections.has(section);
+
         return (
-        <div key={group} className="space-y-2">
-          <div className="flex items-center gap-3">
+          <div key={section} className="border border-zinc-800 rounded-lg overflow-hidden">
             <button
-              onClick={() => toggleGroup(group)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-zinc-400 uppercase tracking-wider hover:text-zinc-200"
+              onClick={() => toggleSection(section)}
+              className="w-full flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800/70 text-left"
             >
-              <span className={`inline-block transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
-              {group}
+              <span className={`inline-block transition-transform ${sectionCollapsed ? '-rotate-90' : ''}`}>▾</span>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">{section}</h2>
             </button>
-            {TESTABLE_GROUPS.has(group) && (
-              <>
-                <button
-                  onClick={() => handleTest(group)}
-                  disabled={testState.status === 'testing'}
-                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
-                >
-                  {testState.status === 'testing' ? 'Testing…' : 'Test'}
-                </button>
-                {testState.status === 'ok' && (
-                  <span className="text-xs font-medium text-green-400">{testState.message}</span>
-                )}
-                {testState.status === 'fail' && (
-                  <span className="text-xs font-medium text-red-400">{testState.message}</span>
-                )}
-              </>
+
+            {!sectionCollapsed && (
+              <div className="p-4 space-y-4">
+                {sectionGroups.map((group) => {
+                  const testState = testStates[group] ?? { status: 'idle' as const };
+                  return (
+                    <div key={group} className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">{group}</h3>
+                        {TESTABLE_GROUPS.has(group) && (
+                          <>
+                            <button
+                              onClick={() => handleTest(group)}
+                              disabled={testState.status === 'testing'}
+                              className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
+                            >
+                              {testState.status === 'testing' ? 'Testing…' : 'Test'}
+                            </button>
+                            {testState.status === 'ok' && (
+                              <span className="text-xs font-medium text-green-400">{testState.message}</span>
+                            )}
+                            {testState.status === 'fail' && (
+                              <span className="text-xs font-medium text-red-400">{testState.message}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
+                        {settings
+                          .filter((s) => s.group === group)
+                          .map((s) => (
+                            <div key={s.key} className="p-3 flex items-center gap-3">
+                              <div className="w-52 flex-shrink-0">
+                                <p className="text-sm font-medium">{s.label}</p>
+                                <p className="text-xs text-zinc-600">{s.key}</p>
+                              </div>
+                              {s.type === 'boolean' ? (
+                                <select
+                                  value={edits[s.key] ?? s.value ?? 'false'}
+                                  onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
+                                >
+                                  <option value="true">Enable</option>
+                                  <option value="false">Disable</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type={s.secret ? 'password' : 'text'}
+                                  value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
+                                  onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                                  placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
+                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+                                />
+                              )}
+                              {s.secret && (
+                                <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
+                                  {s.isSet ? 'set' : 'not set'}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
-          {!isCollapsed && (
-            <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
-              {settings
-                .filter((s) => s.group === group)
-                .map((s) => (
-                  <div key={s.key} className="p-3 flex items-center gap-3">
-                    <div className="w-52 flex-shrink-0">
-                      <p className="text-sm font-medium">{s.label}</p>
-                      <p className="text-xs text-zinc-600">{s.key}</p>
-                    </div>
-                    {s.type === 'boolean' ? (
-                      <select
-                        value={edits[s.key] ?? s.value ?? 'false'}
-                        onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                        className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
-                      >
-                        <option value="true">Enable</option>
-                        <option value="false">Disable</option>
-                      </select>
-                    ) : (
-                      <input
-                        type={s.secret ? 'password' : 'text'}
-                        value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
-                        onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                        placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
-                        className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
-                      />
-                    )}
-                    {s.secret && (
-                      <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
-                        {s.isSet ? 'set' : 'not set'}
-                      </span>
-                    )}
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
         );
       })}
 
