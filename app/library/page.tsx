@@ -13,7 +13,7 @@ export default function LibraryPage() {
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Weav<span className="text-amber-400">arr</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-0.5">Library - movies, shows, and activity, all in one place</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Library - movies and shows, all in one place</p>
           </div>
           <BackLink />
         </div>
