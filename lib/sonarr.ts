@@ -275,6 +275,12 @@ export interface SonarrEpisode {
   sizeOnDisk: number;
   /** null when Sonarr has no air date yet (TBA) - only aired episodes are worth searching for. */
   airDateUtc: string | null;
+  episodeFileId: number | null;
+}
+
+/** True if this episode is missing and its air date has already passed - the set "download season" actually searches for. */
+export function isSonarrEpisodeDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
+  return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();
 }
 
 /** Every episode of a series, with file status - used for the per-episode management view (as opposed to getSonarrEpisodeFileSet's bare id set, used only for cleanup matching). */
@@ -297,6 +303,7 @@ export async function getSonarrSeriesEpisodes(seriesId: number): Promise<SonarrE
         hasFile: Boolean(e.hasFile),
         sizeOnDisk: (file?.size as number) ?? 0,
         airDateUtc: (e.airDateUtc as string) ?? null,
+        episodeFileId: (file?.id as number) ?? null,
       };
     })
     .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
@@ -329,23 +336,38 @@ export async function findSonarrEpisodeFile(
   return { episodeId: match.id as number, episodeFileId: episodeFile.id };
 }
 
-/** Monitors this episode and triggers an indexer search for it, same as clicking the search icon in Sonarr's own UI. */
-export async function searchSonarrEpisode(episodeId: number): Promise<void> {
+/** Monitors and triggers one indexer search covering every given episode - same command Sonarr's own UI uses for a single episode or a whole season. */
+async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  if (episodeIds.length === 0) return;
 
   const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
     method: 'PUT',
     headers: headers(),
-    body: JSON.stringify({ episodeIds: [episodeId], monitored: true }),
+    body: JSON.stringify({ episodeIds, monitored: true }),
   });
   if (!monitorRes.ok) throw new Error(`Sonarr monitor failed: ${await monitorRes.text()}`);
 
   const searchRes = await fetch(`${SONARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ name: 'EpisodeSearch', episodeIds: [episodeId] }),
+    body: JSON.stringify({ name: 'EpisodeSearch', episodeIds }),
   });
   if (!searchRes.ok) throw new Error(`Sonarr episode search failed: ${await searchRes.text()}`);
+}
+
+/** Monitors this episode and triggers an indexer search for it, same as clicking the search icon in Sonarr's own UI. */
+export async function searchSonarrEpisode(episodeId: number): Promise<void> {
+  await triggerSonarrEpisodeSearch([episodeId]);
+}
+
+/** Searches for every missing, already-aired episode in one season in a single indexer search. */
+export async function searchSonarrSeason(seriesId: number, seasonNumber: number): Promise<void> {
+  const episodes = await getSonarrSeriesEpisodes(seriesId);
+  const episodeIds = episodes
+    .filter((e) => e.seasonNumber === seasonNumber && isSonarrEpisodeDownloadable(e))
+    .map((e) => e.id);
+  await triggerSonarrEpisodeSearch(episodeIds);
 }
 
 /** Deletes just this episode's file and unmonitors that single episode - leaves the series and every other episode untouched. */
@@ -364,4 +386,11 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
     body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
   });
   if (!monitorRes.ok) throw new Error(`Sonarr unmonitor failed: ${await monitorRes.text()}`);
+}
+
+/** Deletes the file for every episode in this season that has one - leaves the series and every other season untouched. */
+export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: number): Promise<void> {
+  const episodes = await getSonarrSeriesEpisodes(seriesId);
+  const withFiles = episodes.filter((e) => e.seasonNumber === seasonNumber && e.hasFile && e.episodeFileId);
+  await Promise.all(withFiles.map((e) => deleteSonarrEpisodeFile(e.id, e.episodeFileId as number)));
 }

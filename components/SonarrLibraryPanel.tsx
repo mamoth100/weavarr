@@ -28,6 +28,10 @@ function formatBytes(bytes: number): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 }
 
+function isDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
+  return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();
+}
+
 function DeleteButton({ seriesId }: { seriesId: number }) {
   const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +168,7 @@ function DeleteEpisodeButton({
   );
 }
 
-function SearchEpisodeButton({ episodeId }: { episodeId: number }) {
+function SearchEpisodeButton({ episodeId, disabled }: { episodeId: number; disabled?: boolean }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -190,6 +194,12 @@ function SearchEpisodeButton({ episodeId }: { episodeId: number }) {
     return <span className="text-xs font-medium text-green-400">Searching…</span>;
   }
 
+  // A season-level search already covered this episode - show the same
+  // muted state without a live click handler still wired up underneath.
+  if (disabled && status === 'idle') {
+    return <span className="text-xs font-medium text-zinc-600">Searching…</span>;
+  }
+
   return (
     <div>
       <button
@@ -206,9 +216,116 @@ function SearchEpisodeButton({ episodeId }: { episodeId: number }) {
   );
 }
 
+function SeasonActions({
+  seriesId,
+  seasonNumber,
+  hasDownloadable,
+  hasFiles,
+  onSearchStarted,
+  onSeasonDeleted,
+}: {
+  seriesId: number;
+  seasonNumber: number;
+  hasDownloadable: boolean;
+  hasFiles: boolean;
+  onSearchStarted: () => void;
+  onSeasonDeleted: () => void;
+}) {
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDownloadSeason() {
+    setDownloadStatus('loading');
+    setError(null);
+    onSearchStarted();
+    try {
+      const res = await fetch('/api/sonarr/search-season', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId, seasonNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Search failed');
+      setDownloadStatus('done');
+    } catch (err) {
+      setDownloadStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleConfirmDeleteSeason() {
+    setDeleteStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/delete-season', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId, seasonNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      onSeasonDeleted();
+    } catch (err) {
+      setDeleteStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {hasDownloadable && (
+        <button
+          onClick={handleDownloadSeason}
+          disabled={downloadStatus !== 'idle' && downloadStatus !== 'error'}
+          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+            downloadStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
+          }`}
+        >
+          {downloadStatus === 'loading' || downloadStatus === 'done'
+            ? 'Searching…'
+            : downloadStatus === 'error'
+            ? 'Failed - retry'
+            : 'Download Season'}
+        </button>
+      )}
+      {hasFiles && (deleteStatus === 'confirm' || deleteStatus === 'loading' ? (
+        <>
+          <span className="text-xs text-zinc-400">Delete season?</span>
+          <button
+            onClick={handleConfirmDeleteSeason}
+            disabled={deleteStatus === 'loading'}
+            className="px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
+          >
+            {deleteStatus === 'loading' ? 'Deleting…' : 'Yes, delete'}
+          </button>
+          <button
+            onClick={() => setDeleteStatus('idle')}
+            disabled={deleteStatus === 'loading'}
+            className="px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={() => setDeleteStatus('confirm')}
+          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+            deleteStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-red-600 hover:text-white'
+          }`}
+        >
+          {deleteStatus === 'error' ? 'Failed - retry' : 'Delete Season'}
+        </button>
+      ))}
+      {error && <span className="text-xs text-red-400">{error}</span>}
+    </div>
+  );
+}
+
 function EpisodeList({ seriesId }: { seriesId: number }) {
   const [episodes, setEpisodes] = useState<SonarrEpisode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetch(`/api/sonarr/episodes?seriesId=${seriesId}`, { cache: 'no-store' })
@@ -222,6 +339,10 @@ function EpisodeList({ seriesId }: { seriesId: number }) {
 
   function markDeleted(episodeId: number) {
     setEpisodes((prev) => prev?.map((e) => (e.id === episodeId ? { ...e, hasFile: false, sizeOnDisk: 0 } : e)) ?? null);
+  }
+
+  function markSeasonDeleted(seasonNumber: number) {
+    setEpisodes((prev) => prev?.map((e) => (e.seasonNumber === seasonNumber ? { ...e, hasFile: false, sizeOnDisk: 0 } : e)) ?? null);
   }
 
   if (error) return <p className="text-xs text-red-400 px-3 pb-3">Failed to load episodes: {error}</p>;
@@ -239,15 +360,26 @@ function EpisodeList({ seriesId }: { seriesId: number }) {
 
   return (
     <div className="px-3 pb-3 space-y-3">
-      {seasons.map((seasonNumber) => (
-        <div key={seasonNumber}>
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">
-            {seasonNumber === 0 ? 'Specials' : `Season ${seasonNumber}`}
-          </p>
-          <div className="space-y-1">
-            {episodes
-              .filter((e) => e.seasonNumber === seasonNumber)
-              .map((e) => (
+      {seasons.map((seasonNumber) => {
+        const seasonEpisodes = episodes.filter((e) => e.seasonNumber === seasonNumber);
+        const searching = searchingSeasons.has(seasonNumber);
+        return (
+          <div key={seasonNumber}>
+            <div className="flex items-center justify-between mb-1 gap-2">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                {seasonNumber === 0 ? 'Specials' : `Season ${seasonNumber}`}
+              </p>
+              <SeasonActions
+                seriesId={seriesId}
+                seasonNumber={seasonNumber}
+                hasDownloadable={seasonEpisodes.some((e) => isDownloadable(e))}
+                hasFiles={seasonEpisodes.some((e) => e.hasFile)}
+                onSearchStarted={() => setSearchingSeasons((prev) => new Set(prev).add(seasonNumber))}
+                onSeasonDeleted={() => markSeasonDeleted(seasonNumber)}
+              />
+            </div>
+            <div className="space-y-1">
+              {seasonEpisodes.map((e) => (
                 <div key={e.id} className="flex items-center justify-between bg-zinc-800/40 rounded px-2.5 py-1.5">
                   <p className="text-xs text-zinc-300 truncate pr-2">
                     <span className="text-zinc-500">
@@ -265,16 +397,17 @@ function EpisodeList({ seriesId }: { seriesId: number }) {
                         onDeleted={() => markDeleted(e.id)}
                       />
                     </div>
-                  ) : e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now() ? (
-                    <SearchEpisodeButton episodeId={e.id} />
+                  ) : isDownloadable(e) ? (
+                    <SearchEpisodeButton episodeId={e.id} disabled={searching} />
                   ) : (
                     <span className="text-xs text-zinc-700 flex-shrink-0">{e.airDateUtc ? 'Not aired yet' : 'TBA'}</span>
                   )}
                 </div>
               ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
