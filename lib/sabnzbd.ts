@@ -21,8 +21,8 @@ export interface SabSlot {
 }
 
 export interface SabQueue {
-  speed: string;
-  mbleft: string;
+  speedBps: number;
+  mbleftTotal: number;
   noofslots: number;
   paused: boolean;
   slots: SabSlot[];
@@ -80,8 +80,11 @@ export async function getSabQueue(): Promise<SabQueue> {
   );
 
   return {
-    speed: q.speed ?? '0',
-    mbleft: q.mbleft ?? '0',
+    // SAB's own "speed" field is pre-formatted with a unit letter (e.g.
+    // "1.2M") - "kbpersec" is the plain numeric value, needed to sum
+    // against NZBGet's raw bytes/sec in lib/downloaders.ts.
+    speedBps: parseFloat(q.kbpersec ?? '0') * 1024,
+    mbleftTotal: parseFloat(q.mbleft ?? '0'),
     noofslots: slots.length,
     paused: !!q.paused,
     slots,

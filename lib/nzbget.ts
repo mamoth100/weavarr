@@ -25,8 +25,8 @@ async function rpc<T>(method: string, params: unknown[] = []): Promise<T> {
   return data.result as T;
 }
 
-// Reuses the same shape SABnzbd's queue uses (see lib/sabnzbd.ts) so the
-// Status page can render both with one component.
+// Field names mirror SABnzbd's queue shape (see lib/sabnzbd.ts) so
+// lib/downloaders.ts can merge both into one combined queue.
 export interface NzbgetSlot {
   filename: string;
   status: string;
@@ -36,8 +36,8 @@ export interface NzbgetSlot {
 }
 
 export interface NzbgetQueue {
-  speed: string;
-  mbleft: string;
+  speedBps: number;
+  mbleftTotal: number;
   noofslots: number;
   paused: boolean;
   slots: NzbgetSlot[];
@@ -83,12 +83,6 @@ function humanizeStatus(group: NzbgetGroup): string {
   return group.ActiveDownloads > 0 ? 'Downloading' : 'Queued';
 }
 
-function formatSpeed(bytesPerSec: number): string {
-  if (bytesPerSec >= 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)}M`;
-  if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(1)}K`;
-  return `${bytesPerSec.toFixed(0)}`;
-}
-
 export async function getNzbgetQueue(): Promise<NzbgetQueue> {
   if (!nzbgetEnabled()) throw new Error('NZBGet is not configured');
 
@@ -108,8 +102,8 @@ export async function getNzbgetQueue(): Promise<NzbgetQueue> {
   }));
 
   return {
-    speed: formatSpeed(status.DownloadRate),
-    mbleft: String(status.RemainingSizeMB),
+    speedBps: status.DownloadRate,
+    mbleftTotal: status.RemainingSizeMB,
     noofslots: slots.length,
     paused: status.DownloadPaused,
     slots,
