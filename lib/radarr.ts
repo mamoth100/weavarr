@@ -1,7 +1,8 @@
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 
-const RADARR_URL = process.env.RADARR_URL;
+// Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
+const RADARR_URL = process.env.RADARR_URL?.replace(/\/$/, '');
 const RADARR_KEY = process.env.RADARR_KEY;
 
 function headers() {

@@ -1,4 +1,6 @@
-const PLEX_URL = process.env.PLEX_URL;
+// Stripped of any trailing slash - otherwise a URL saved as "http://host:32400/"
+// produces double-slash paths (".../hubs/search" -> "..//hubs/search") that 404.
+const PLEX_URL = process.env.PLEX_URL?.replace(/\/$/, '');
 const PLEX_TOKEN = process.env.PLEX_TOKEN;
 
 interface PlexHub {

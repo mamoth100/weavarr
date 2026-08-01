@@ -1,4 +1,5 @@
-const SAB_URL = process.env.SABNZBD_URL;
+// Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
+const SAB_URL = process.env.SABNZBD_URL?.replace(/\/$/, '');
 const SAB_KEY = process.env.SABNZBD_API_KEY;
 
 export interface SabSlot {
