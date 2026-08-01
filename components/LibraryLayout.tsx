@@ -3,12 +3,10 @@
 import { useState } from 'react';
 import RadarrLibraryPanel from '@/components/RadarrLibraryPanel';
 import SonarrLibraryPanel from '@/components/SonarrLibraryPanel';
-import StatusPanel from '@/components/StatusPanel';
 
 const SECTIONS = [
   { id: 'movies', label: 'Movies' },
   { id: 'tv', label: 'TV Shows' },
-  { id: 'activity', label: 'Activity' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -35,7 +33,6 @@ export default function LibraryLayout() {
       <div className="flex-1 min-w-0">
         {section === 'movies' && <RadarrLibraryPanel />}
         {section === 'tv' && <SonarrLibraryPanel />}
-        {section === 'activity' && <StatusPanel />}
       </div>
     </div>
   );
