@@ -12,9 +12,10 @@ interface Props {
   show?: string;
   sucks?: string;
   fav?: string;
+  upcomingGenre?: string;
 }
 
-export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, defaultGenre, lang, year, show, sucks, fav }: Props) {
+export default function Pagination({ page, totalPages, subgenres, sort, decade, query, genre, defaultGenre, lang, year, show, sucks, fav, upcomingGenre }: Props) {
   const capped = Math.min(totalPages, 500);
 
   function buildHref(p: number) {
@@ -28,6 +29,7 @@ export default function Pagination({ page, totalPages, subgenres, sort, decade, 
     if (show) params.set('show', show);
     if (sucks) params.set('sucks', sucks);
     if (fav) params.set('fav', fav);
+    if (upcomingGenre) params.set('upcomingGenre', upcomingGenre);
     return `?${params.toString()}`;
   }
 
