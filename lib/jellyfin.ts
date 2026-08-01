@@ -1,13 +1,31 @@
 const JELLYFIN_URL = process.env.JELLYFIN_URL;
 const JELLYFIN_API_KEY = process.env.JELLYFIN_API_KEY;
-const JELLYFIN_USER_ID = process.env.JELLYFIN_USER_ID;
+// Despite the env var's name, this is the Jellyfin *username* the user types in
+// Settings (not the internal GUID Jellyfin actually needs) - resolveUserId
+// looks that GUID up so nobody has to go dig it out of the dashboard/URLs.
+const JELLYFIN_USERNAME = process.env.JELLYFIN_USER_ID;
 
 function headers() {
   return { 'X-Emby-Token': JELLYFIN_API_KEY as string, Accept: 'application/json' };
 }
 
 function requireConfig(): void {
-  if (!JELLYFIN_URL || !JELLYFIN_API_KEY || !JELLYFIN_USER_ID) throw new Error('Jellyfin is not configured');
+  if (!JELLYFIN_URL || !JELLYFIN_API_KEY || !JELLYFIN_USERNAME) throw new Error('Jellyfin is not configured');
+}
+
+let cachedUserId: string | null = null;
+
+/** Resolves the configured Jellyfin username to its internal user id (a GUID), via the admin Users listing. Cached for the life of the process - matches every other setting here needing a restart to pick up changes. */
+async function resolveUserId(): Promise<string> {
+  if (cachedUserId) return cachedUserId;
+  const res = await fetch(`${JELLYFIN_URL}/Users`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Jellyfin user lookup failed: ${res.status}`);
+  const users: { Id?: string; Name?: string }[] = await res.json();
+  const normalized = (JELLYFIN_USERNAME as string).toLowerCase().trim();
+  const match = users.find((u) => (u.Name ?? '').toLowerCase().trim() === normalized);
+  if (!match?.Id) throw new Error(`No Jellyfin user named "${JELLYFIN_USERNAME}" - check the username in Settings`);
+  cachedUserId = match.Id;
+  return cachedUserId;
 }
 
 // Mirrors Plex's stripDisambiguator - Sonarr/Radarr title suffixes like
@@ -42,7 +60,7 @@ async function searchJellyfin(query: string, itemType: 'Movie' | 'Series' | 'Epi
     searchTerm: query,
     IncludeItemTypes: itemType,
     Recursive: 'true',
-    userId: JELLYFIN_USER_ID as string,
+    userId: await resolveUserId(),
     Fields: 'UserData',
   });
   const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
@@ -76,7 +94,7 @@ export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number
 
 async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
   const params = new URLSearchParams({
-    userId: JELLYFIN_USER_ID as string,
+    userId: await resolveUserId(),
     Fields: 'UserData',
   });
   const res = await fetch(`${JELLYFIN_URL}/Shows/${seriesId}/Episodes?${params}`, { headers: headers(), cache: 'no-store' });
@@ -86,7 +104,8 @@ async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
 }
 
 async function markPlayed(itemId: string): Promise<void> {
-  const res = await fetch(`${JELLYFIN_URL}/Users/${JELLYFIN_USER_ID}/PlayedItems/${itemId}`, {
+  const userId = await resolveUserId();
+  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/PlayedItems/${itemId}`, {
     method: 'POST',
     headers: headers(),
   });
@@ -142,7 +161,7 @@ export interface JellyfinWatchedMovie {
 export async function getJellyfinWatchedMovies(): Promise<JellyfinWatchedMovie[]> {
   requireConfig();
   const params = new URLSearchParams({
-    userId: JELLYFIN_USER_ID as string,
+    userId: await resolveUserId(),
     IncludeItemTypes: 'Movie',
     Filters: 'IsPlayed',
     Recursive: 'true',
@@ -167,7 +186,8 @@ export interface JellyfinInProgressMovie {
 export async function getJellyfinInProgressMovies(): Promise<JellyfinInProgressMovie[]> {
   requireConfig();
   const params = new URLSearchParams({ IncludeItemTypes: 'Movie', Recursive: 'true', Fields: 'UserData' });
-  const res = await fetch(`${JELLYFIN_URL}/Users/${JELLYFIN_USER_ID}/Items/Resume?${params}`, {
+  const userId = await resolveUserId();
+  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -194,7 +214,7 @@ export interface JellyfinWatchedEpisode {
 export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<JellyfinWatchedEpisode[]> {
   requireConfig();
   const params = new URLSearchParams({
-    userId: JELLYFIN_USER_ID as string,
+    userId: await resolveUserId(),
     IncludeItemTypes: 'Episode',
     Filters: 'IsPlayed',
     Recursive: 'true',
@@ -241,7 +261,8 @@ export interface JellyfinInProgressEpisode {
 export async function getJellyfinInProgressEpisodes(): Promise<JellyfinInProgressEpisode[]> {
   requireConfig();
   const params = new URLSearchParams({ IncludeItemTypes: 'Episode', Recursive: 'true', Fields: 'UserData' });
-  const res = await fetch(`${JELLYFIN_URL}/Users/${JELLYFIN_USER_ID}/Items/Resume?${params}`, {
+  const userId = await resolveUserId();
+  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
     headers: headers(),
     cache: 'no-store',
   });

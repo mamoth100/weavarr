@@ -69,7 +69,7 @@ async function testPlex(url?: string, token?: string): Promise<TestResult> {
   }
 }
 
-async function testJellyfin(url?: string, apiKey?: string, userId?: string): Promise<TestResult> {
+async function testJellyfin(url?: string, apiKey?: string, username?: string): Promise<TestResult> {
   if (!url || !apiKey) return { ok: false, message: 'URL and API key required' };
   try {
     const res = await fetch(`${url.replace(/\/$/, '')}/System/Info`, {
@@ -79,14 +79,18 @@ async function testJellyfin(url?: string, apiKey?: string, userId?: string): Pro
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and API key` };
     const data = await res.json();
     if (!data.Version) return { ok: false, message: 'Unexpected response - check API key' };
-    if (userId) {
-      const userRes = await fetch(`${url.replace(/\/$/, '')}/Users/${userId}`, {
+    if (username) {
+      const usersRes = await fetch(`${url.replace(/\/$/, '')}/Users`, {
         headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
         cache: 'no-store',
       });
-      if (!userRes.ok) return { ok: false, message: `Connected to Jellyfin v${data.Version}, but User ID not found` };
+      if (!usersRes.ok) return { ok: false, message: `Connected to Jellyfin v${data.Version}, but couldn't list users` };
+      const users: { Name?: string }[] = await usersRes.json();
+      const normalized = username.toLowerCase().trim();
+      const found = users.some((u) => (u.Name ?? '').toLowerCase().trim() === normalized);
+      if (!found) return { ok: false, message: `Connected to Jellyfin v${data.Version}, but no user named "${username}"` };
     }
-    return { ok: true, message: `Connected - Jellyfin v${data.Version}${userId ? '' : ' (no User ID set yet)'}` };
+    return { ok: true, message: `Connected - Jellyfin v${data.Version}${username ? '' : ' (no username set yet)'}` };
   } catch (err) {
     return fail(err);
   }
