@@ -11,6 +11,7 @@ import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
 import DetailActions from '@/components/DetailActions';
 import RequestButton from '@/components/RequestButton';
+import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
 import BackLink from '@/components/BackLink';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
@@ -166,6 +167,14 @@ export default async function TvPage({ params }: Props) {
                 sonarrSeriesId={sonarrSeriesId}
               />
             </DetailActions>
+
+            {/* Episode management - same per-episode/season download & delete as Library's TV Shows tab */}
+            {sonarrSeriesId && (
+              <div className="mt-5">
+                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Episodes</h2>
+                <SonarrEpisodeManager seriesId={sonarrSeriesId} />
+              </div>
+            )}
 
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
