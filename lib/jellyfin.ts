@@ -1,4 +1,7 @@
-const JELLYFIN_URL = process.env.JELLYFIN_URL;
+// Stripped of any trailing slash - a URL saved with one (e.g. "http://host:8096/")
+// would otherwise produce double-slash paths like ".../Users" -> "..//Users",
+// which Jellyfin 404s on.
+const JELLYFIN_URL = process.env.JELLYFIN_URL?.replace(/\/$/, '');
 const JELLYFIN_API_KEY = process.env.JELLYFIN_API_KEY;
 // Despite the env var's name, this is the Jellyfin *username* the user types in
 // Settings (not the internal GUID Jellyfin actually needs) - resolveUserId
