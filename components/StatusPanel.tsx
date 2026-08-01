@@ -58,7 +58,8 @@ interface CleanupError {
 }
 
 interface StatusResponse {
-  sab: SabData;
+  sab: SabData | null;
+  nzbget: SabData | null;
   radarr: QueueItem[] | ArrData;
   sonarr: QueueItem[] | ArrData;
   recentImports?: RecentImport[];
@@ -108,6 +109,63 @@ function extractProgressPercent(slot: SabSlot): number | null {
   const match = slot.status.match(/(\d+)\/(\d+)/);
   if (!match) return null;
   return (Number(match[1]) / Number(match[2])) * 100;
+}
+
+// Shared by SABnzbd and NZBGet - both produce the same queue shape (see
+// lib/sabnzbd.ts and lib/nzbget.ts). Renders nothing when the client is
+// disabled (data is null).
+function DownloaderSection({ title, data }: { title: string; data: SabData | null }) {
+  if (!data) return null;
+
+  return (
+    <section>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">{title}</h2>
+      {data.error ? (
+        <p className="text-red-400 text-sm">{data.error}</p>
+      ) : (
+        <>
+          <div className="bg-zinc-900 rounded-lg p-4 ring-1 ring-white/5 mb-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-zinc-400">Speed</span>
+              <span className="font-medium">{data.paused ? 'Paused' : `${data.speed ?? '0'}B/s`}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <span className="text-zinc-400">Queue size</span>
+              <span className="font-medium">{data.noofslots ?? 0} item{data.noofslots === 1 ? '' : 's'}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <span className="text-zinc-400">Remaining</span>
+              <span className="font-medium">{formatMb(data.mbleft)}</span>
+            </div>
+          </div>
+          {(!data.slots || data.slots.length === 0) ? (
+            <p className="text-xs text-zinc-600">Queue is empty.</p>
+          ) : (
+            <div className="space-y-2">
+              {data.slots.map((slot) => {
+                const progress = extractProgressPercent(slot);
+                return (
+                  <div key={slot.filename} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                    <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
+                    <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
+                      <span className="text-amber-400">{slot.status}</span>
+                      {slot.percentage !== undefined && (
+                        <span className="text-amber-400">
+                          {slot.status !== 'Queued' && `${slot.percentage}% · `}
+                          {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}
+                        </span>
+                      )}
+                    </div>
+                    {progress !== null && <ProgressBar percent={progress} />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 function ProgressBar({ percent }: { percent: number }) {
@@ -271,55 +329,9 @@ export default function StatusPanel() {
 
   return (
     <div className="space-y-8">
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* SABnzbd */}
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">SABnzbd</h2>
-        {data.sab.error ? (
-          <p className="text-red-400 text-sm">{data.sab.error}</p>
-        ) : (
-          <>
-            <div className="bg-zinc-900 rounded-lg p-4 ring-1 ring-white/5 mb-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Speed</span>
-                <span className="font-medium">{data.sab.paused ? 'Paused' : `${data.sab.speed ?? '0'}B/s`}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-zinc-400">Queue size</span>
-                <span className="font-medium">{data.sab.noofslots ?? 0} item{data.sab.noofslots === 1 ? '' : 's'}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-zinc-400">Remaining</span>
-                <span className="font-medium">{formatMb(data.sab.mbleft)}</span>
-              </div>
-            </div>
-            {(!data.sab.slots || data.sab.slots.length === 0) ? (
-              <p className="text-xs text-zinc-600">Queue is empty.</p>
-            ) : (
-              <div className="space-y-2">
-                {data.sab.slots.map((slot) => {
-                  const progress = extractProgressPercent(slot);
-                  return (
-                    <div key={slot.filename} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                      <p className="text-sm font-medium truncate" title={slot.filename}>{slot.filename}</p>
-                      <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
-                        <span className="text-amber-400">{slot.status}</span>
-                        {slot.percentage !== undefined && (
-                          <span className="text-amber-400">
-                            {slot.status !== 'Queued' && `${slot.percentage}% · `}
-                            {formatMb(slot.mbleft)} left{formatTimeleft(slot.timeleft)}
-                          </span>
-                        )}
-                      </div>
-                      {progress !== null && <ProgressBar percent={progress} />}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-      </section>
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <DownloaderSection title="SABnzbd" data={data.sab} />
+      <DownloaderSection title="NZBGet" data={data.nzbget} />
 
       {/* Sonarr */}
       <section>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSabQueue } from '@/lib/sabnzbd';
+import { getSabQueue, sabnzbdEnabled } from '@/lib/sabnzbd';
+import { getNzbgetQueue, nzbgetEnabled } from '@/lib/nzbget';
 import { getRadarrQueue, getRadarrRecentImports, getAllRadarrMovies } from '@/lib/radarr';
 import { getSonarrQueue, getSonarrRecentImports, getAllSonarrSeries, getSonarrEpisodeFileSet } from '@/lib/sonarr';
 import { hasTitle, hasEpisode } from '@/lib/mediaServer';
@@ -13,16 +14,30 @@ function errMessage(reason: unknown): string {
 }
 
 export async function GET() {
-  const [sab, radarr, sonarr, radarrHistory, sonarrHistory, cleanup, radarrMovies, sonarrSeries] = await Promise.allSettled([
-    getSabQueue(),
-    getRadarrQueue(),
-    getSonarrQueue(),
-    getRadarrRecentImports(POOL_SIZE),
-    getSonarrRecentImports(POOL_SIZE),
-    getCleanupCandidates(200),
-    getAllRadarrMovies(),
-    getAllSonarrSeries(),
+  // Both download clients are independently toggleable and shown as separate
+  // boxes (not merged) - only query the ones actually enabled.
+  const downloaders: { key: 'sab' | 'nzbget'; fn: () => Promise<unknown> }[] = [];
+  if (sabnzbdEnabled()) downloaders.push({ key: 'sab', fn: getSabQueue });
+  if (nzbgetEnabled()) downloaders.push({ key: 'nzbget', fn: getNzbgetQueue });
+
+  const [downloaderResults, [radarr, sonarr, radarrHistory, sonarrHistory, cleanup, radarrMovies, sonarrSeries]] = await Promise.all([
+    Promise.allSettled(downloaders.map((d) => d.fn())),
+    Promise.allSettled([
+      getRadarrQueue(),
+      getSonarrQueue(),
+      getRadarrRecentImports(POOL_SIZE),
+      getSonarrRecentImports(POOL_SIZE),
+      getCleanupCandidates(200),
+      getAllRadarrMovies(),
+      getAllSonarrSeries(),
+    ]),
   ]);
+
+  const downloadClients: Record<string, unknown> = {};
+  downloaders.forEach((d, i) => {
+    const r = downloaderResults[i];
+    downloadClients[d.key] = r.status === 'fulfilled' ? r.value : { error: errMessage(r.reason) };
+  });
 
   const importedTitles = [
     ...(radarrHistory.status === 'fulfilled' ? radarrHistory.value : []),
@@ -88,7 +103,8 @@ export async function GET() {
   const recentImports = [...resolved, ...unresolved].sort((a, b) => b.date.localeCompare(a.date));
 
   return NextResponse.json({
-    sab: sab.status === 'fulfilled' ? sab.value : { error: errMessage(sab.reason) },
+    sab: downloadClients.sab ?? null,
+    nzbget: downloadClients.nzbget ?? null,
     radarr: radarr.status === 'fulfilled' ? radarr.value : { error: errMessage(radarr.reason) },
     sonarr: sonarr.status === 'fulfilled' ? sonarr.value : { error: errMessage(sonarr.reason) },
     recentImports,
