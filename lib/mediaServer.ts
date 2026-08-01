@@ -9,11 +9,11 @@
 import * as plex from './plex';
 import * as jellyfin from './jellyfin';
 
-function plexEnabled(): boolean {
+export function plexEnabled(): boolean {
   return process.env.ENABLE_PLEX !== 'false' && Boolean(process.env.PLEX_URL && process.env.PLEX_TOKEN);
 }
 
-function jellyfinEnabled(): boolean {
+export function jellyfinEnabled(): boolean {
   return process.env.ENABLE_JELLYFIN === 'true' && Boolean(process.env.JELLYFIN_URL && process.env.JELLYFIN_API_KEY);
 }
 
