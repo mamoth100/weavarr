@@ -67,7 +67,7 @@ export async function addSeriesToSonarr({
   if (!folders?.length) throw new Error('Sonarr has no root folder configured');
 
   const preferredName = profileOverride || (highestQuality ? SONARR_HIGHEST_PROFILE : SONARR_DEFAULT_PROFILE);
-  const profile = pickQualityProfile(profiles, highestQuality, preferredName);
+  const profile = pickQualityProfile(profiles, preferredName);
 
   // A specific season number wins over the preset monitor strategy: hand-pick
   // which season is monitored and leave addOptions.monitor out so Sonarr
