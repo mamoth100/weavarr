@@ -353,10 +353,10 @@ export async function findSonarrEpisodeFile(
   return { episodeId: match.id as number, episodeFileId: episodeFile.id };
 }
 
-/** Monitors and triggers one indexer search covering every given episode - same command Sonarr's own UI uses for a single episode or a whole season. */
-async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<void> {
+/** Monitors and triggers one indexer search covering every given episode - same command Sonarr's own UI uses for a single episode or a whole season. Returns the command id so a caller can wait for it to finish. */
+async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<number | null> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  if (episodeIds.length === 0) return;
+  if (episodeIds.length === 0) return null;
 
   const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
     method: 'PUT',
@@ -371,20 +371,89 @@ async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<void> {
     body: JSON.stringify({ name: 'EpisodeSearch', episodeIds }),
   });
   if (!searchRes.ok) throw new Error(`Sonarr episode search failed: ${await searchRes.text()}`);
+  const command = await searchRes.json();
+  return (command?.id as number) ?? null;
 }
 
-/** Monitors this episode and triggers an indexer search for it, same as clicking the search icon in Sonarr's own UI. */
-export async function searchSonarrEpisode(episodeId: number): Promise<void> {
-  await triggerSonarrEpisodeSearch([episodeId]);
+/** Polls a Sonarr command until it leaves the queued/started state, so a temporary profile override (below) stays in place for the actual search+grab instead of reverting the instant the request is fired. Gives up after timeoutMs and lets the caller revert anyway. */
+async function waitForSonarrCommand(commandId: number, timeoutMs = 60000): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) return;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${SONARR_URL}/api/v3/command/${commandId}`, { headers: headers(), cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'completed' || data.status === 'failed') return;
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
 }
 
-/** Searches for every missing, already-aired episode in one season in a single indexer search. */
-export async function searchSonarrSeason(seriesId: number, seasonNumber: number): Promise<void> {
+/**
+ * Runs fn() with the series' quality profile temporarily switched to
+ * overrideProfileId, then switches it back afterward - Sonarr has no
+ * per-search quality option, the profile lives on the series itself, so a
+ * one-off "download this in a different quality" has to swap it there and
+ * restore it after. Callers should wait for the search command to reach a
+ * terminal state before returning from fn() (see waitForSonarrCommand),
+ * otherwise the revert can race Sonarr's own grab decision.
+ */
+async function withTemporaryQualityProfile<T>(
+  seriesId: number,
+  overrideProfileId: number,
+  fn: () => Promise<T>
+): Promise<T> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const seriesRes = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+  if (!seriesRes.ok) throw new Error(`Sonarr series lookup failed: ${seriesRes.status}`);
+  const series = await seriesRes.json();
+  const originalProfileId = series.qualityProfileId as number;
+  if (originalProfileId === overrideProfileId) return fn();
+
+  async function setProfile(profileId: number) {
+    const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ ...series, qualityProfileId: profileId }),
+    });
+    if (!res.ok) throw new Error(`Sonarr series update failed: ${await res.text()}`);
+  }
+
+  await setProfile(overrideProfileId);
+  try {
+    return await fn();
+  } finally {
+    await setProfile(originalProfileId);
+  }
+}
+
+/** Monitors this episode and triggers an indexer search for it, same as clicking the search icon in Sonarr's own UI. profileOverrideId temporarily switches the series to that profile for this one search. */
+export async function searchSonarrEpisode(episodeId: number, seriesId?: number, profileOverrideId?: number): Promise<void> {
+  if (profileOverrideId && seriesId) {
+    await withTemporaryQualityProfile(seriesId, profileOverrideId, async () => {
+      const commandId = await triggerSonarrEpisodeSearch([episodeId]);
+      if (commandId) await waitForSonarrCommand(commandId);
+    });
+  } else {
+    await triggerSonarrEpisodeSearch([episodeId]);
+  }
+}
+
+/** Searches for every missing, already-aired episode in one season in a single indexer search. profileOverrideId temporarily switches the series to that profile for this one search. */
+export async function searchSonarrSeason(seriesId: number, seasonNumber: number, profileOverrideId?: number): Promise<void> {
   const episodes = await getSonarrSeriesEpisodes(seriesId);
   const episodeIds = episodes
     .filter((e) => e.seasonNumber === seasonNumber && isSonarrEpisodeDownloadable(e))
     .map((e) => e.id);
-  await triggerSonarrEpisodeSearch(episodeIds);
+
+  if (profileOverrideId) {
+    await withTemporaryQualityProfile(seriesId, profileOverrideId, async () => {
+      const commandId = await triggerSonarrEpisodeSearch(episodeIds);
+      if (commandId) await waitForSonarrCommand(commandId);
+    });
+  } else {
+    await triggerSonarrEpisodeSearch(episodeIds);
+  }
 }
 
 /** Deletes just this episode's file and unmonitors that single episode - leaves the series and every other episode untouched. */
