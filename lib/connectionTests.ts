@@ -1,6 +1,13 @@
+export interface QualityProfileOption {
+  id: number;
+  name: string;
+}
+
 export interface TestResult {
   ok: boolean;
   message: string;
+  /** Only populated for Radarr/Sonarr - the profiles available to pick as default/highest in Settings. */
+  profiles?: QualityProfileOption[];
 }
 
 function fail(err: unknown): TestResult {
@@ -10,13 +17,16 @@ function fail(err: unknown): TestResult {
 async function testRadarr(url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/api/v3/system/status`, {
+    const base = url.replace(/\/$/, '');
+    const res = await fetch(`${base}/api/v3/system/status`, {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    return { ok: true, message: `Connected - Radarr v${data.version ?? '?'}` };
+    const profilesRes = await fetch(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
+    const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
+    return { ok: true, message: `Connected - Radarr v${data.version ?? '?'}`, profiles };
   } catch (err) {
     return fail(err);
   }
@@ -25,13 +35,16 @@ async function testRadarr(url?: string, key?: string): Promise<TestResult> {
 async function testSonarr(url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/api/v3/system/status`, {
+    const base = url.replace(/\/$/, '');
+    const res = await fetch(`${base}/api/v3/system/status`, {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    return { ok: true, message: `Connected - Sonarr v${data.version ?? '?'}` };
+    const profilesRes = await fetch(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
+    const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
+    return { ok: true, message: `Connected - Sonarr v${data.version ?? '?'}`, profiles };
   } catch (err) {
     return fail(err);
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SettingStatus {
   key: string;
@@ -9,10 +9,19 @@ interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null;
-  type?: 'boolean';
+  type?: 'boolean' | 'profile';
+}
+
+interface QualityProfileOption {
+  id: number;
+  name: string;
 }
 
 const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
+
+// Groups whose quality-profile dropdowns should auto-populate on load if
+// already configured, rather than staying greyed out until a manual Test.
+const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
 
 // Groups each service's Settings fields into a broader category so the page
 // reads as ~7 sections instead of 12 flat, equally-weighted blocks.
@@ -33,7 +42,7 @@ const GROUP_TO_SECTION: Record<string, string> = {
   'App Behavior': 'Misc',
 };
 
-type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string };
+type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string; profiles?: QualityProfileOption[] };
 
 export default function SettingsPanel() {
   const [settings, setSettings] = useState<SettingStatus[] | null>(null);
@@ -44,6 +53,7 @@ export default function SettingsPanel() {
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(SECTION_ORDER));
+  const autoTestedRef = useRef(false);
 
   function toggleSection(section: string) {
     setCollapsedSections((prev) => {
@@ -63,6 +73,20 @@ export default function SettingsPanel() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
+
+  // Quality-profile dropdowns need a live profile list from the service itself -
+  // if Radarr/Sonarr are already configured, silently re-run their Test so the
+  // dropdowns aren't stuck greyed out every time this page loads.
+  useEffect(() => {
+    if (!settings || autoTestedRef.current) return;
+    autoTestedRef.current = true;
+    for (const group of AUTO_TEST_GROUPS) {
+      const urlField = settings.find((s) => s.key === `${group.toUpperCase()}_URL`);
+      const keyField = settings.find((s) => s.key === `${group.toUpperCase()}_KEY`);
+      if (urlField?.isSet && keyField?.isSet) handleTest(group);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load settings: {error}</p>;
@@ -150,7 +174,10 @@ export default function SettingsPanel() {
         body: JSON.stringify({ group, values }),
       });
       const data = await res.json();
-      setTestStates((prev) => ({ ...prev, [group]: { status: data.ok ? 'ok' : 'fail', message: data.message } }));
+      setTestStates((prev) => ({
+        ...prev,
+        [group]: { status: data.ok ? 'ok' : 'fail', message: data.message, profiles: data.profiles },
+      }));
     } catch (err) {
       setTestStates((prev) => ({
         ...prev,
@@ -251,6 +278,32 @@ export default function SettingsPanel() {
                                   <option value="true">Enable</option>
                                   <option value="false">Disable</option>
                                 </select>
+                              ) : s.type === 'profile' ? (
+                                (() => {
+                                  const profileOptions = testState.profiles ?? [];
+                                  const currentValue = edits[s.key] ?? s.value ?? '';
+                                  const hasSavedButUnlisted = currentValue && !profileOptions.some((p) => p.name === currentValue);
+                                  return (
+                                    <div className="flex-1">
+                                      <select
+                                        value={currentValue}
+                                        onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                                        disabled={profileOptions.length === 0}
+                                        className="w-full bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        <option value="">
+                                          {profileOptions.length ? 'Select a profile…' : 'Test connection to load profiles'}
+                                        </option>
+                                        {hasSavedButUnlisted && <option value={currentValue}>{currentValue} (saved)</option>}
+                                        {profileOptions.map((p) => (
+                                          <option key={p.id} value={p.name}>
+                                            {p.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  );
+                                })()
                               ) : (
                                 <input
                                   type={s.secret ? 'password' : 'text'}
