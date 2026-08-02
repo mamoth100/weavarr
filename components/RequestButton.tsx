@@ -17,6 +17,26 @@ interface Props {
   sonarrSeriesId?: number | null;
 }
 
+interface QualityFlags {
+  radarrHighestConfigured: boolean;
+  sonarrHighestConfigured: boolean;
+}
+
+// Shared across every RequestButton on the page (e.g. a whole search grid) so
+// this fires once, not once per card.
+let qualityFlagsPromise: Promise<QualityFlags> | null = null;
+function getQualityFlags(): Promise<QualityFlags> {
+  if (!qualityFlagsPromise) {
+    qualityFlagsPromise = fetch('/api/settings/quality-flags', { cache: 'no-store' })
+      .then((res) => res.json())
+      .catch(() => {
+        qualityFlagsPromise = null; // let the next mount retry instead of caching a failure forever
+        return { radarrHighestConfigured: true, sonarrHighestConfigured: true };
+      });
+  }
+  return qualityFlagsPromise;
+}
+
 function DeleteMovieButton({ movieId }: { movieId: number }) {
   const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -185,6 +205,13 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   }, [latestSeason]);
 
   const [highestQuality, setHighestQuality] = useState(false);
+  // Assume configured until told otherwise, so the common (already-set-up) case never flickers.
+  const [highestConfigured, setHighestConfigured] = useState(true);
+  useEffect(() => {
+    getQualityFlags().then((flags) => {
+      setHighestConfigured(mediaType === 'movie' ? flags.radarrHighestConfigured : flags.sonarrHighestConfigured);
+    });
+  }, [mediaType]);
   const { addFavorite } = useWatchlist();
 
   // Advanced profile picker - collapsed by default so the one-click flow never changes;
@@ -211,6 +238,9 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   }
 
   const locked = status === 'loading' || status === 'added' || status === 'already';
+  // Guards against a stale `true` if the checkbox was checked before the
+  // Settings check resolved false out from under it.
+  const effectiveHighestQuality = highestQuality && highestConfigured;
 
   async function handleClick() {
     setStatus('loading');
@@ -224,8 +254,8 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           mediaType === 'movie'
-            ? { tmdbId: id, highestQuality, profileOverride: profileOverride || undefined }
-            : { imdbId, title, monitor, seasonNumber, highestQuality, profileOverride: profileOverride || undefined }
+            ? { tmdbId: id, highestQuality: effectiveHighestQuality, profileOverride: profileOverride || undefined }
+            : { imdbId, title, monitor, seasonNumber, highestQuality: effectiveHighestQuality, profileOverride: profileOverride || undefined }
         ),
       });
       const data = await res.json();
@@ -297,12 +327,17 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           </svg>
           {label}
         </button>
-        <label className={`flex items-center gap-1.5 text-xs select-none ${profileOverride ? 'text-zinc-700' : 'text-zinc-500'}`}>
+        <label
+          className={`flex items-center gap-1.5 text-xs select-none ${
+            profileOverride || !highestConfigured ? 'text-zinc-700' : 'text-zinc-500'
+          }`}
+          title={!highestConfigured ? 'Set a Highest Quality Profile in Settings to use this' : undefined}
+        >
           <input
             type="checkbox"
-            checked={highestQuality}
+            checked={highestQuality && highestConfigured}
             onChange={(e) => setHighestQuality(e.target.checked)}
-            disabled={locked || Boolean(profileOverride)}
+            disabled={locked || Boolean(profileOverride) || !highestConfigured}
             className="accent-amber-400"
           />
           Download highest quality
