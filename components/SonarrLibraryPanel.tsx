@@ -11,6 +11,26 @@ interface SonarrSeries {
   episodeFileCount: number;
   episodeCount: number;
   sizeOnDisk: number;
+  status: string;
+}
+
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  continuing: { label: 'Continuing', className: 'bg-green-500/15 text-green-400 ring-green-500/25' },
+  upcoming: { label: 'Upcoming', className: 'bg-sky-500/15 text-sky-400 ring-sky-500/25' },
+  ended: { label: 'Ended', className: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/25' },
+  deleted: { label: 'Deleted', className: 'bg-red-500/15 text-red-400 ring-red-500/25' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const style = STATUS_STYLES[status] ?? {
+    label: status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown',
+    className: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/25',
+  };
+  return (
+    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${style.className}`}>
+      {style.label}
+    </span>
+  );
 }
 
 function DeleteButton({ seriesId }: { seriesId: number }) {
@@ -140,7 +160,10 @@ export default function SonarrLibraryPanel() {
                   </p>
                 </div>
               </button>
-              <DeleteButton seriesId={show.id} />
+              <div className="flex items-center gap-3 shrink-0">
+                <StatusBadge status={show.status} />
+                <DeleteButton seriesId={show.id} />
+              </div>
             </div>
             {expanded === show.id && (
               <div className="px-3 pb-3">

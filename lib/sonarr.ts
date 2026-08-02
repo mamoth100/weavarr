@@ -223,6 +223,8 @@ export interface SonarrSeries {
   episodeFileCount: number;
   episodeCount: number;
   sizeOnDisk: number;
+  /** Sonarr production status: 'continuing' | 'ended' | 'upcoming' | 'deleted'. */
+  status: string;
 }
 
 export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
@@ -240,6 +242,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
       episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
       episodeCount: (stats?.episodeCount as number) ?? 0,
       sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
+      status: (s.status as string) ?? 'continuing',
     };
   });
 }
