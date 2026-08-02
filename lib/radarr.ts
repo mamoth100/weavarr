@@ -61,7 +61,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
   if (!folders?.length) throw new Error('Radarr has no root folder configured');
 
   const preferredName = profileOverride || (highestQuality ? RADARR_HIGHEST_PROFILE : RADARR_DEFAULT_PROFILE);
-  const profile = pickQualityProfile(profiles, highestQuality, preferredName);
+  const profile = pickQualityProfile(profiles, preferredName);
 
   const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
