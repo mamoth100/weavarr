@@ -145,6 +145,11 @@ function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
 
 type Status = 'idle' | 'loading' | 'added' | 'already' | 'error';
 
+interface QualityProfileOption {
+  id: number;
+  name: string;
+}
+
 const PRESET_OPTIONS = [
   { value: 'all', label: 'All Seasons' },
   { value: 'future', label: 'Future Only' },
@@ -182,6 +187,29 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   const [highestQuality, setHighestQuality] = useState(false);
   const { addFavorite } = useWatchlist();
 
+  // Advanced profile picker - collapsed by default so the one-click flow never changes;
+  // profiles are fetched lazily, only once the user actually opens it.
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [profiles, setProfiles] = useState<QualityProfileOption[] | null>(null);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [profileOverride, setProfileOverride] = useState('');
+
+  function toggleAdvanced() {
+    setShowAdvanced((prev) => {
+      const next = !prev;
+      if (next && profiles === null) {
+        fetch(mediaType === 'movie' ? '/api/radarr/profiles' : '/api/sonarr/profiles', { cache: 'no-store' })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) setProfilesError(data.error);
+            else setProfiles(data.profiles);
+          })
+          .catch((err) => setProfilesError(err instanceof Error ? err.message : String(err)));
+      }
+      return next;
+    });
+  }
+
   const locked = status === 'loading' || status === 'added' || status === 'already';
 
   async function handleClick() {
@@ -196,8 +224,8 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           mediaType === 'movie'
-            ? { tmdbId: id, highestQuality }
-            : { imdbId, title, monitor, seasonNumber, highestQuality }
+            ? { tmdbId: id, highestQuality, profileOverride: profileOverride || undefined }
+            : { imdbId, title, monitor, seasonNumber, highestQuality, profileOverride: profileOverride || undefined }
         ),
       });
       const data = await res.json();
@@ -269,16 +297,45 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           </svg>
           {label}
         </button>
-        <label className="flex items-center gap-1.5 text-xs text-zinc-500 select-none">
+        <label className={`flex items-center gap-1.5 text-xs select-none ${profileOverride ? 'text-zinc-700' : 'text-zinc-500'}`}>
           <input
             type="checkbox"
             checked={highestQuality}
             onChange={(e) => setHighestQuality(e.target.checked)}
-            disabled={locked}
+            disabled={locked || Boolean(profileOverride)}
             className="accent-amber-400"
           />
           Download highest quality
         </label>
+        <button
+          type="button"
+          onClick={toggleAdvanced}
+          disabled={locked}
+          className="text-[11px] text-zinc-600 hover:text-zinc-400 underline decoration-dotted self-start disabled:opacity-60"
+        >
+          {showAdvanced ? 'Hide advanced' : 'Advanced: pick profile'}
+        </button>
+        {showAdvanced && (
+          <div className="space-y-1">
+            {profilesError && <p className="text-xs text-red-400 max-w-xs">{profilesError}</p>}
+            {!profilesError && (
+              <select
+                value={profileOverride}
+                onChange={(e) => setProfileOverride(e.target.value)}
+                disabled={locked || profiles === null}
+                aria-label="Override quality profile for this request"
+                className="w-full px-2 py-1.5 rounded-lg text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
+              >
+                <option value="">
+                  {profiles === null ? 'Loading profiles…' : 'Use default / highest toggle above'}
+                </option>
+                {profiles?.map((p) => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
         {error && <p className="text-xs text-red-400 max-w-xs">{error}</p>}
       </div>
     </>
