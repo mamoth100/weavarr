@@ -12,7 +12,7 @@ export interface SettingField {
   label: string;
   group: string;
   secret: boolean; // if true, never echo the actual value back to the client
-  type?: 'boolean'; // renders as an Enable/Disable dropdown instead of a text input
+  type?: 'boolean' | 'profile'; // 'boolean' renders Enable/Disable; 'profile' renders a quality-profile dropdown populated by testing the service
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
@@ -25,8 +25,12 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', label: 'Supabase Anon Key', group: 'Supabase', secret: false },
   { key: 'RADARR_URL', label: 'Radarr URL', group: 'Radarr', secret: false },
   { key: 'RADARR_KEY', label: 'Radarr API Key', group: 'Radarr', secret: true },
+  { key: 'RADARR_DEFAULT_PROFILE', label: 'Default Quality Profile', group: 'Radarr', secret: false, type: 'profile' },
+  { key: 'RADARR_HIGHEST_PROFILE', label: 'Highest Quality Profile', group: 'Radarr', secret: false, type: 'profile' },
   { key: 'SONARR_URL', label: 'Sonarr URL', group: 'Sonarr', secret: false },
   { key: 'SONARR_KEY', label: 'Sonarr API Key', group: 'Sonarr', secret: true },
+  { key: 'SONARR_DEFAULT_PROFILE', label: 'Default Quality Profile', group: 'Sonarr', secret: false, type: 'profile' },
+  { key: 'SONARR_HIGHEST_PROFILE', label: 'Highest Quality Profile', group: 'Sonarr', secret: false, type: 'profile' },
   { key: 'ENABLE_SABNZBD', label: 'Enable SABnzbd', group: 'SABnzbd', secret: false, type: 'boolean' },
   { key: 'SABNZBD_URL', label: 'SABnzbd URL', group: 'SABnzbd', secret: false },
   { key: 'SABNZBD_API_KEY', label: 'SABnzbd API Key', group: 'SABnzbd', secret: true },
@@ -104,7 +108,7 @@ export interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null; // only populated for non-secret fields
-  type?: 'boolean';
+  type?: 'boolean' | 'profile';
 }
 
 /** Server-internal only - the real value, including secrets. Never return this from an API route directly. */

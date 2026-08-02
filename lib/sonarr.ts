@@ -4,6 +4,8 @@ import { trackedStatePriority } from './queuePriority';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const SONARR_URL = process.env.SONARR_URL?.replace(/\/$/, '');
 const SONARR_KEY = process.env.SONARR_KEY;
+const SONARR_DEFAULT_PROFILE = process.env.SONARR_DEFAULT_PROFILE || null;
+const SONARR_HIGHEST_PROFILE = process.env.SONARR_HIGHEST_PROFILE || null;
 
 function headers() {
   return { 'X-Api-Key': SONARR_KEY as string, 'Content-Type': 'application/json' };
@@ -53,7 +55,7 @@ export async function addSeriesToSonarr({
   if (!profiles?.length) throw new Error('Sonarr has no quality profile configured');
   if (!folders?.length) throw new Error('Sonarr has no root folder configured');
 
-  const profile = pickQualityProfile(profiles, highestQuality);
+  const profile = pickQualityProfile(profiles, highestQuality, highestQuality ? SONARR_HIGHEST_PROFILE : SONARR_DEFAULT_PROFILE);
 
   // A specific season number wins over the preset monitor strategy: hand-pick
   // which season is monitored and leave addOptions.monitor out so Sonarr
