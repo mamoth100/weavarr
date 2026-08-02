@@ -4,17 +4,13 @@ interface QualityProfile {
 }
 
 /**
- * "Any" has no upper cutoff, so it grabs the highest quality release
- * available even when a narrower profile would filter it out. Falls back to
- * these names when the user hasn't picked profiles in Settings.
+ * Matches the configured profile name (from Settings, or a per-request
+ * override) against what this Radarr/Sonarr instance actually has. Falls
+ * back to whatever profile is first when nothing is configured yet, rather
+ * than guessing a profile name that may not exist in this instance.
  */
-export function pickQualityProfile(
-  profiles: QualityProfile[],
-  highestQuality: boolean,
-  configuredName?: string | null
-): QualityProfile {
-  const fallback = highestQuality ? 'Any' : 'HD - 720p/1080p';
-  const preferred = configuredName?.trim() || fallback;
-  const match = profiles.find((p) => p.name.toLowerCase() === preferred.toLowerCase());
+export function pickQualityProfile(profiles: QualityProfile[], configuredName?: string | null): QualityProfile {
+  const preferred = configuredName?.trim();
+  const match = preferred ? profiles.find((p) => p.name.toLowerCase() === preferred.toLowerCase()) : undefined;
   return match ?? profiles[0];
 }
