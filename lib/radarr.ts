@@ -29,7 +29,16 @@ export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number |
   return Array.isArray(movies) && movies.length > 0 ? movies[0].id ?? null : null;
 }
 
-export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
+/** The Radarr quality profiles available to pick from - used by the advanced per-request override in RequestButton. */
+export async function getRadarrQualityProfiles(): Promise<{ id: number; name: string }[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Radarr quality profile list failed: ${res.status}`);
+  return res.json();
+}
+
+/** profileOverride (an exact profile name) wins over the Settings default/highest pick for this one request. */
+export async function addMovieToRadarr(tmdbId: number, highestQuality = false, profileOverride?: string | null) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
   const existingId = await getRadarrMovieIdByTmdbId(tmdbId);
@@ -51,7 +60,8 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!profiles?.length) throw new Error('Radarr has no quality profile configured');
   if (!folders?.length) throw new Error('Radarr has no root folder configured');
 
-  const profile = pickQualityProfile(profiles, highestQuality, highestQuality ? RADARR_HIGHEST_PROFILE : RADARR_DEFAULT_PROFILE);
+  const preferredName = profileOverride || (highestQuality ? RADARR_HIGHEST_PROFILE : RADARR_DEFAULT_PROFILE);
+  const profile = pickQualityProfile(profiles, highestQuality, preferredName);
 
   const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
