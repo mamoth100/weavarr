@@ -12,6 +12,11 @@ export interface SonarrEpisode {
   airDateUtc: string | null;
 }
 
+interface QualityProfileOption {
+  id: number;
+  name: string;
+}
+
 export function formatBytes(bytes: number): string {
   if (!bytes) return '-';
   const gb = bytes / (1024 * 1024 * 1024);
@@ -95,7 +100,17 @@ function DeleteEpisodeButton({
   );
 }
 
-function SearchEpisodeButton({ episodeId, disabled }: { episodeId: number; disabled?: boolean }) {
+function SearchEpisodeButton({
+  episodeId,
+  seriesId,
+  profileOverrideId,
+  disabled,
+}: {
+  episodeId: number;
+  seriesId: number;
+  profileOverrideId?: number;
+  disabled?: boolean;
+}) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -106,7 +121,7 @@ function SearchEpisodeButton({ episodeId, disabled }: { episodeId: number; disab
       const res = await fetch('/api/sonarr/search-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ episodeId }),
+        body: JSON.stringify({ episodeId, seriesId, profileOverrideId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Search failed');
@@ -148,6 +163,7 @@ function SeasonActions({
   seasonNumber,
   hasDownloadable,
   hasFiles,
+  profileOverrideId,
   onSearchStarted,
   onSeasonDeleted,
 }: {
@@ -155,6 +171,7 @@ function SeasonActions({
   seasonNumber: number;
   hasDownloadable: boolean;
   hasFiles: boolean;
+  profileOverrideId?: number;
   onSearchStarted: () => void;
   onSeasonDeleted: () => void;
 }) {
@@ -170,7 +187,7 @@ function SeasonActions({
       const res = await fetch('/api/sonarr/search-season', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seriesId, seasonNumber }),
+        body: JSON.stringify({ seriesId, seasonNumber, profileOverrideId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Search failed');
@@ -260,6 +277,30 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   const [error, setError] = useState<string | null>(null);
   const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
 
+  // One compact override for the whole show - applies to whichever season or
+  // episode Download button gets clicked next, rather than a picker on every
+  // single row. Collapsed by default; profiles are fetched lazily on open.
+  const [showQualityOverride, setShowQualityOverride] = useState(false);
+  const [profiles, setProfiles] = useState<QualityProfileOption[] | null>(null);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [profileOverrideId, setProfileOverrideId] = useState<number | undefined>(undefined);
+
+  function toggleQualityOverride() {
+    setShowQualityOverride((prev) => {
+      const next = !prev;
+      if (next && profiles === null) {
+        fetch('/api/sonarr/profiles', { cache: 'no-store' })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) setProfilesError(data.error);
+            else setProfiles(data.profiles);
+          })
+          .catch((err) => setProfilesError(err instanceof Error ? err.message : String(err)));
+      }
+      return next;
+    });
+  }
+
   useEffect(() => {
     fetch(`/api/sonarr/episodes?seriesId=${seriesId}`, { cache: 'no-store' })
       .then((res) => res.json())
@@ -290,9 +331,38 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   }
 
   const seasons = Array.from(new Set(episodes.map((e) => e.seasonNumber))).sort((a, b) => a - b);
+  const activeOverrideName = profiles?.find((p) => p.id === profileOverrideId)?.name;
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleQualityOverride}
+          className="text-[11px] text-zinc-600 hover:text-zinc-400 underline decoration-dotted"
+        >
+          {showQualityOverride ? 'Hide quality override' : activeOverrideName ? `Quality: ${activeOverrideName}` : 'Quality override'}
+        </button>
+        {showQualityOverride && (
+          <>
+            {profilesError && <span className="text-[11px] text-red-400">{profilesError}</span>}
+            {!profilesError && (
+              <select
+                value={profileOverrideId ?? ''}
+                onChange={(e) => setProfileOverrideId(e.target.value ? Number(e.target.value) : undefined)}
+                disabled={profiles === null}
+                aria-label="Override quality profile for downloads from this show"
+                className="px-2 py-1 rounded-lg text-[11px] bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
+              >
+                <option value="">{profiles === null ? 'Loading profiles…' : "Use show's current profile"}</option>
+                {profiles?.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
+          </>
+        )}
+      </div>
       {seasons.map((seasonNumber) => {
         const seasonEpisodes = episodes.filter((e) => e.seasonNumber === seasonNumber);
         const searching = searchingSeasons.has(seasonNumber);
@@ -307,6 +377,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                 seasonNumber={seasonNumber}
                 hasDownloadable={seasonEpisodes.some((e) => isDownloadable(e))}
                 hasFiles={seasonEpisodes.some((e) => e.hasFile)}
+                profileOverrideId={profileOverrideId}
                 onSearchStarted={() => setSearchingSeasons((prev) => new Set(prev).add(seasonNumber))}
                 onSeasonDeleted={() => markSeasonDeleted(seasonNumber)}
               />
@@ -331,7 +402,12 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                       />
                     </div>
                   ) : isDownloadable(e) ? (
-                    <SearchEpisodeButton episodeId={e.id} disabled={searching} />
+                    <SearchEpisodeButton
+                      episodeId={e.id}
+                      seriesId={seriesId}
+                      profileOverrideId={profileOverrideId}
+                      disabled={searching}
+                    />
                   ) : (
                     <span className="text-xs text-zinc-700 flex-shrink-0">{e.airDateUtc ? 'Not aired yet' : 'TBA'}</span>
                   )}
