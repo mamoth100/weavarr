@@ -132,14 +132,36 @@ function SearchEpisodeButton({
     }
   }
 
+  // We only know the search was triggered, not whether Sonarr actually found
+  // and grabbed a release - point to Status instead of claiming a result.
   if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400">Searching…</span>;
+    return (
+      <a
+        href="/status"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Sonarr searched and sent this to your downloader if a release was found - check Status for what's actually queued or downloading."
+        className="text-xs font-medium text-green-400 hover:underline"
+      >
+        Sent to downloader
+      </a>
+    );
   }
 
   // A season-level search already covered this episode - show the same
   // muted state without a live click handler still wired up underneath.
   if (disabled && status === 'idle') {
-    return <span className="text-xs font-medium text-zinc-600">Searching…</span>;
+    return (
+      <a
+        href="/status"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="A season search already covered this episode - check Status for what's actually queued or downloading."
+        className="text-xs font-medium text-zinc-600 hover:underline"
+      >
+        Sent to downloader
+      </a>
+    );
   }
 
   return (
@@ -219,19 +241,29 @@ function SeasonActions({
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       {hasDownloadable && (
-        <button
-          onClick={handleDownloadSeason}
-          disabled={downloadStatus !== 'idle' && downloadStatus !== 'error'}
-          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
-            downloadStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-          }`}
-        >
-          {downloadStatus === 'loading' || downloadStatus === 'done'
-            ? 'Searching…'
-            : downloadStatus === 'error'
-            ? 'Failed - retry'
-            : 'Download Season'}
-        </button>
+        downloadStatus === 'done' ? (
+          // We only know the search was triggered, not whether Sonarr actually
+          // found and grabbed a release - point to Status instead of claiming a result.
+          <a
+            href="/status"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Sonarr searched and sent this to your downloader if releases were found - check Status for what's actually queued or downloading."
+            className="px-2 py-0.5 rounded text-xs font-medium transition-colors bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black"
+          >
+            Sent to downloader
+          </a>
+        ) : (
+          <button
+            onClick={handleDownloadSeason}
+            disabled={downloadStatus !== 'idle' && downloadStatus !== 'error'}
+            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+              downloadStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
+            }`}
+          >
+            {downloadStatus === 'loading' ? 'Searching…' : downloadStatus === 'error' ? 'Failed - retry' : 'Download Season'}
+          </button>
+        )
       )}
       {hasFiles && (deleteStatus === 'confirm' || deleteStatus === 'loading' ? (
         <>
