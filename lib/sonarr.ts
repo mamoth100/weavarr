@@ -11,18 +11,29 @@ function headers() {
   return { 'X-Api-Key': SONARR_KEY as string, 'Content-Type': 'application/json' };
 }
 
+/** The Sonarr quality profiles available to pick from - used by the advanced per-request override in RequestButton. */
+export async function getSonarrQualityProfiles(): Promise<{ id: number; name: string }[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Sonarr quality profile list failed: ${res.status}`);
+  return res.json();
+}
+
 export async function addSeriesToSonarr({
   imdbId,
   title,
   monitor = 'all',
   seasonNumber,
   highestQuality = false,
+  profileOverride,
 }: {
   imdbId: string | null;
   title: string;
   monitor?: string;
   seasonNumber?: number;
   highestQuality?: boolean;
+  /** An exact profile name that wins over the Settings default/highest pick for this one request. */
+  profileOverride?: string | null;
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
@@ -55,7 +66,8 @@ export async function addSeriesToSonarr({
   if (!profiles?.length) throw new Error('Sonarr has no quality profile configured');
   if (!folders?.length) throw new Error('Sonarr has no root folder configured');
 
-  const profile = pickQualityProfile(profiles, highestQuality, highestQuality ? SONARR_HIGHEST_PROFILE : SONARR_DEFAULT_PROFILE);
+  const preferredName = profileOverride || (highestQuality ? SONARR_HIGHEST_PROFILE : SONARR_DEFAULT_PROFILE);
+  const profile = pickQualityProfile(profiles, highestQuality, preferredName);
 
   // A specific season number wins over the preset monitor strategy: hand-pick
   // which season is monitored and leave addOptions.monitor out so Sonarr
