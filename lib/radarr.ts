@@ -4,6 +4,8 @@ import { trackedStatePriority } from './queuePriority';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const RADARR_URL = process.env.RADARR_URL?.replace(/\/$/, '');
 const RADARR_KEY = process.env.RADARR_KEY;
+const RADARR_DEFAULT_PROFILE = process.env.RADARR_DEFAULT_PROFILE || null;
+const RADARR_HIGHEST_PROFILE = process.env.RADARR_HIGHEST_PROFILE || null;
 
 function headers() {
   return { 'X-Api-Key': RADARR_KEY as string, 'Content-Type': 'application/json' };
@@ -49,7 +51,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false) {
   if (!profiles?.length) throw new Error('Radarr has no quality profile configured');
   if (!folders?.length) throw new Error('Radarr has no root folder configured');
 
-  const profile = pickQualityProfile(profiles, highestQuality);
+  const profile = pickQualityProfile(profiles, highestQuality, highestQuality ? RADARR_HIGHEST_PROFILE : RADARR_DEFAULT_PROFILE);
 
   const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
