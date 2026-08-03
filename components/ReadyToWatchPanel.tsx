@@ -9,12 +9,30 @@ interface ReadyToWatchItem {
   year: number;
   unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number }[];
   sizeOnDisk: number;
+  posterPath: string | null;
 }
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '-';
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+}
+
+/** service picks which proxy (Radarr vs Sonarr posters live on separate services, both LAN-only - see RadarrLibraryPanel/SonarrLibraryPanel for why this can't just be a direct <img src>). */
+function Poster({ posterPath, title, service }: { posterPath: string | null; title: string; service: 'radarr' | 'sonarr' }) {
+  const [failed, setFailed] = useState(false);
+  if (!posterPath || failed) {
+    return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
+  }
+  return (
+    <img
+      src={`/api/${service}/image?path=${encodeURIComponent(posterPath)}`}
+      alt={title}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-9 h-[54px] rounded object-cover flex-shrink-0"
+    />
+  );
 }
 
 function formatEpisode(e: { seasonNumber: number; episodeNumber: number }): string {
@@ -324,6 +342,7 @@ interface RecentlyWatchedMovie {
   watchedAt: string;
   reason: string;
   sizeOnDisk: number;
+  posterPath: string | null;
 }
 
 interface RecentlyWatchedEpisode {
@@ -335,6 +354,7 @@ interface RecentlyWatchedEpisode {
   episodeNumber: number;
   watchedAt: string;
   reason: string;
+  posterPath: string | null;
 }
 
 type RecentlyWatchedItem = RecentlyWatchedMovie | RecentlyWatchedEpisode;
@@ -479,28 +499,31 @@ function RecentlyWatchedSection() {
           ? [1, 2, 3].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
           : items.map((item) => {
               return (
-                <div key={item.key} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">
-                      {item.title}
-                      {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
-                    </p>
-                    <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className="text-xs text-zinc-500">
-                      Watched {timeAgo(item.watchedAt)}
-                      {item.type === 'movie' && ` · ${formatBytes(item.sizeOnDisk)}`}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <ClearButton
-                        itemKey={item.key}
-                        onCleared={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
-                      />
-                      <RecentlyWatchedDeleteButton
-                        item={item}
-                        onDeleted={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
-                      />
+                <div key={item.key} className="flex items-start gap-3 bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+                  <Poster posterPath={item.posterPath} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">
+                        {item.title}
+                        {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
+                      </p>
+                      <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className="text-xs text-zinc-500">
+                        Watched {timeAgo(item.watchedAt)}
+                        {item.type === 'movie' && ` · ${formatBytes(item.sizeOnDisk)}`}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <ClearButton
+                          itemKey={item.key}
+                          onCleared={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
+                        />
+                        <RecentlyWatchedDeleteButton
+                          item={item}
+                          onDeleted={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -529,23 +552,26 @@ function ReadyToWatchRow({
 
   return (
     <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-      <div>
-        <p className="text-sm font-medium">
-          {item.title}{' '}
-          {item.type === 'movie' && item.year
-            ? `(${item.year})`
-            : item.type === 'tv' && item.unwatchedEpisodes
-            ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
-            : ''}
-        </p>
-        <p className="text-xs text-zinc-500">
-          {item.type === 'tv' && item.unwatchedEpisodes && (
-            <>
-              <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
-            </>
-          )}
-          {formatBytes(item.sizeOnDisk)}
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <Poster posterPath={item.posterPath} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">
+            {item.title}{' '}
+            {item.type === 'movie' && item.year
+              ? `(${item.year})`
+              : item.type === 'tv' && item.unwatchedEpisodes
+              ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
+              : ''}
+          </p>
+          <p className="text-xs text-zinc-500">
+            {item.type === 'tv' && item.unwatchedEpisodes && (
+              <>
+                <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+              </>
+            )}
+            {formatBytes(item.sizeOnDisk)}
+          </p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {item.type === 'movie' ? (

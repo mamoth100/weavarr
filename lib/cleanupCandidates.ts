@@ -10,6 +10,7 @@ export interface CleanupCandidate {
   episodeId: number;
   episodeFileId: number;
   reason: string;
+  posterPath: string | null;
 }
 
 /** Shared with the movie side of "recently watched" so both use the same threshold. */
@@ -100,6 +101,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       episodeId: episodeFile.episodeId,
       episodeFileId: episodeFile.episodeFileId,
       reason: watched.reason,
+      posterPath: matchedSeries.posterPath,
     });
   }
 
