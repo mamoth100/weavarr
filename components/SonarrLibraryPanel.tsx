@@ -12,6 +12,23 @@ interface SonarrSeries {
   episodeCount: number;
   sizeOnDisk: number;
   status: string;
+  posterPath: string | null;
+}
+
+function Poster({ posterPath, title }: { posterPath: string | null; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!posterPath || failed) {
+    return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
+  }
+  return (
+    <img
+      src={`/api/sonarr/image?path=${encodeURIComponent(posterPath)}`}
+      alt={title}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-9 h-[54px] rounded object-cover flex-shrink-0"
+    />
+  );
 }
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -148,9 +165,10 @@ export default function SonarrLibraryPanel() {
             <div className="flex items-center justify-between p-3">
               <button
                 onClick={() => setExpanded((prev) => (prev === show.id ? null : show.id))}
-                className="flex items-center gap-2 text-left min-w-0"
+                className="flex items-center gap-3 text-left min-w-0"
               >
                 <span className={`text-zinc-500 text-xs transition-transform ${expanded === show.id ? 'rotate-90' : ''}`}>▶</span>
+                <Poster posterPath={show.posterPath} title={show.title} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{show.title} {show.year ? `(${show.year})` : ''}</p>
                   <p className="text-xs text-zinc-500">
