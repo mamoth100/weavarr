@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import SimplePagination from '@/components/SimplePagination';
+
+const PAGE_SIZE = 50;
 
 interface RadarrMovie {
   id: number;
@@ -101,6 +104,7 @@ export default function RadarrLibraryPanel() {
   const [movies, setMovies] = useState<RadarrMovie[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetch('/api/radarr/movies', { cache: 'no-store' })
@@ -130,20 +134,33 @@ export default function RadarrLibraryPanel() {
     .filter((m) => m.title.toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => a.title.localeCompare(b.title));
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const pageStart = (pageSafe - 1) * PAGE_SIZE;
+  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-sm text-zinc-500">
-        <span>{movies.length} movies in Radarr</span>
+        <span>
+          {filtered.length === movies.length
+            ? `${movies.length} movies in Radarr`
+            : `${filtered.length} of ${movies.length} movies`}
+          {filtered.length > 0 && ` · showing ${pageStart + 1}-${Math.min(pageStart + PAGE_SIZE, filtered.length)}`}
+        </span>
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setPage(1);
+          }}
           placeholder="Filter by title…"
           className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
       </div>
       <div className="space-y-2">
-        {filtered.map((movie) => (
+        {paged.map((movie) => (
           <div key={movie.id} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
             <div className="flex items-center gap-3 min-w-0">
               <Poster id={movie.id} hasPoster={Boolean(movie.posterPath)} title={movie.title} />
@@ -158,6 +175,7 @@ export default function RadarrLibraryPanel() {
           </div>
         ))}
       </div>
+      <SimplePagination page={pageSafe} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }
