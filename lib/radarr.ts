@@ -148,6 +148,13 @@ export interface RadarrMovie {
   hasFile: boolean;
   sizeOnDisk: number;
   tmdbId: number;
+  /** Radarr's own cached poster path (e.g. "/MediaCover/6/poster.jpg?lastWrite=..."), null if Radarr has none. Served through /api/radarr/image, never fetched directly - Radarr's LAN address isn't reachable from outside the network. */
+  posterPath: string | null;
+}
+
+interface RadarrImage {
+  coverType?: string;
+  url?: string;
 }
 
 export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
@@ -155,14 +162,18 @@ export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
   const res = await fetch(`${RADARR_URL}/api/v3/movie`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Radarr movie list failed: ${res.status}`);
   const data: Record<string, unknown>[] = await res.json();
-  return data.map((m) => ({
-    id: m.id as number,
-    title: m.title as string,
-    year: m.year as number,
-    hasFile: m.hasFile as boolean,
-    sizeOnDisk: (m.sizeOnDisk as number) ?? 0,
-    tmdbId: m.tmdbId as number,
-  }));
+  return data.map((m) => {
+    const images = (m.images as RadarrImage[] | undefined) ?? [];
+    return {
+      id: m.id as number,
+      title: m.title as string,
+      year: m.year as number,
+      hasFile: m.hasFile as boolean,
+      sizeOnDisk: (m.sizeOnDisk as number) ?? 0,
+      tmdbId: m.tmdbId as number,
+      posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
+    };
+  });
 }
 
 /** Removes the movie from Radarr entirely and deletes its file(s) from disk. */
