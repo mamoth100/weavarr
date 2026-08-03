@@ -14,6 +14,19 @@ export async function register() {
     }, POLL_INTERVAL_MS);
   }
 
+  // Same untracked-state, Pi-only caveat as the import poller above -
+  // data/connection-health.json isn't synced with local dev either.
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_CONNECTION_ALERTS === 'true') {
+    const { checkConnectionHealth } = await import('./lib/connectionHealth');
+
+    checkConnectionHealth().catch(() => {});
+
+    const HEALTH_POLL_INTERVAL_MS = 10 * 60 * 1000;
+    setInterval(() => {
+      checkConnectionHealth().catch(() => {});
+    }, HEALTH_POLL_INTERVAL_MS);
+  }
+
   // Only meaningful with both media servers configured - same untracked
   // data/watched-sync-state.json caveat as above applies here too.
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_WATCHED_SYNC === 'true') {

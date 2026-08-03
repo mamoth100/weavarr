@@ -52,7 +52,7 @@ export async function checkForNewPlexImports(): Promise<void> {
         ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber)
         : await hasTitle(item.title);
       if (inLibrary) {
-        await notifyAllChannels('Ready to watch', `${label} is ready to watch.`);
+        await notifyAllChannels('Ready to watch', `${label} is ready to watch.`, 'import');
         seen.add(key);
         changed = true;
         console.log(`[notifyOnPlexImport] sent notification for "${label}"`);

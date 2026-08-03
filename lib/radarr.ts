@@ -1,6 +1,7 @@
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
+import { notifyAllChannels } from './notificationChannels';
 
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const RADARR_URL = process.env.RADARR_URL?.replace(/\/$/, '');
@@ -63,6 +64,13 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
 
   const preferredName = profileOverride || (highestQuality ? RADARR_HIGHEST_PROFILE : RADARR_DEFAULT_PROFILE);
   const profile = pickQualityProfile(profiles, preferredName);
+  if (preferredName && profile.name.toLowerCase() !== preferredName.trim().toLowerCase()) {
+    notifyAllChannels(
+      'Quality profile mismatch',
+      `Radarr has no profile named "${preferredName}" - "${movie.title}" was added using "${profile.name}" instead.`,
+      'alert'
+    ).catch(() => {});
+  }
 
   const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
@@ -180,11 +188,17 @@ export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
 /** Removes the movie from Radarr entirely and deletes its file(s) from disk. */
 export async function deleteRadarrMovie(movieId: number): Promise<void> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/movie/${movieId}?deleteFiles=true&addImportExclusion=false`, {
-    method: 'DELETE',
-    headers: headers(),
-  });
-  if (!res.ok) throw new Error(`Radarr movie delete failed: ${await res.text()}`);
+  try {
+    const res = await fetch(`${RADARR_URL}/api/v3/movie/${movieId}?deleteFiles=true&addImportExclusion=false`, {
+      method: 'DELETE',
+      headers: headers(),
+    });
+    if (!res.ok) throw new Error(`Radarr movie delete failed: ${await res.text()}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    notifyAllChannels('Delete failed', `Radarr movie ${movieId}: ${message}`, 'alert').catch(() => {});
+    throw err;
+  }
   await deleteCachedPoster('radarr', movieId);
 }
 
