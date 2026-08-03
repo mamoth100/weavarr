@@ -169,6 +169,44 @@ async function testPushover(userKey?: string, apiToken?: string): Promise<TestRe
   }
 }
 
+async function testWebhook(url?: string): Promise<TestResult> {
+  if (!url) return { ok: false, message: 'Webhook URL required' };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Weavarr test',
+        message: 'This is a test notification from Weavarr.',
+        timestamp: new Date().toISOString(),
+      }),
+      cache: 'no-store',
+    });
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check the URL` };
+    return { ok: true, message: 'Test notification sent' };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+async function testDiscord(url?: string): Promise<TestResult> {
+  if (!url) return { ok: false, message: 'Discord webhook URL required' };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{ title: 'Weavarr test', description: 'This is a test notification from Weavarr.', color: 0xfbbf24, timestamp: new Date().toISOString() }],
+      }),
+      cache: 'no-store',
+    });
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check the webhook URL` };
+    return { ok: true, message: 'Test notification sent - check Discord' };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 async function testSupabase(url?: string, anonKey?: string): Promise<TestResult> {
   if (!url || !anonKey) return { ok: false, message: 'URL and anon key required' };
   try {
@@ -207,6 +245,10 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testOMDb(values.OMDB_API_KEY);
     case 'Pushover':
       return testPushover(values.PUSHOVER_USER_KEY, values.PUSHOVER_API_TOKEN);
+    case 'Webhook':
+      return testWebhook(values.WEBHOOK_NOTIFY_URL);
+    case 'Discord':
+      return testDiscord(values.DISCORD_WEBHOOK_URL);
     case 'Supabase':
       return testSupabase(values.NEXT_PUBLIC_SUPABASE_URL, values.NEXT_PUBLIC_SUPABASE_ANON_KEY);
     default:
