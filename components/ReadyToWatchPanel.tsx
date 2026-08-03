@@ -34,7 +34,7 @@ function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNu
   );
 }
 
-function MovieDeleteButton({ item }: { item: ReadyToWatchItem }) {
+function MovieDeleteButton({ item, onDeleted }: { item: ReadyToWatchItem; onDeleted: () => void }) {
   const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +50,7 @@ function MovieDeleteButton({ item }: { item: ReadyToWatchItem }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Delete failed');
       setStatus('done');
+      onDeleted();
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
@@ -206,7 +207,16 @@ async function callMarkWatched(body: object): Promise<void> {
   if (!res.ok) throw new Error(data.error ?? 'Failed');
 }
 
-function MovieWatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWatched: () => void }) {
+function MovieWatchedButton({
+  item,
+  onWatched,
+  disabled,
+}: {
+  item: ReadyToWatchItem;
+  onWatched: () => void;
+  /** True once the file's been deleted - Plex drops the item from its own index almost immediately, so marking watched can no longer succeed. */
+  disabled?: boolean;
+}) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -226,7 +236,8 @@ function MovieWatchedButton({ item, onWatched }: { item: ReadyToWatchItem; onWat
     <div>
       <button
         onClick={handleClick}
-        disabled={status === 'loading'}
+        disabled={disabled || status === 'loading'}
+        title={disabled ? "File already deleted - Plex no longer has this to mark watched" : undefined}
         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
@@ -500,6 +511,59 @@ function RecentlyWatchedSection() {
   );
 }
 
+function ReadyToWatchRow({
+  item,
+  onWatched,
+  onEpisodeWatched,
+  onEpisodeDeleted,
+}: {
+  item: ReadyToWatchItem;
+  onWatched: () => void;
+  onEpisodeWatched: (seasonNumber: number, episodeNumber: number) => void;
+  onEpisodeDeleted: (seasonNumber: number, episodeNumber: number) => void;
+}) {
+  // Movies only - once the file's deleted, Plex drops it from its own index almost
+  // immediately, so a later Watched click has nothing left to mark. TV doesn't need
+  // this: deleting a specific episode already removes it from both dropdowns at once.
+  const [movieDeleted, setMovieDeleted] = useState(false);
+
+  return (
+    <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+      <div>
+        <p className="text-sm font-medium">
+          {item.title}{' '}
+          {item.type === 'movie' && item.year
+            ? `(${item.year})`
+            : item.type === 'tv' && item.unwatchedEpisodes
+            ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
+            : ''}
+        </p>
+        <p className="text-xs text-zinc-500">
+          {item.type === 'tv' && item.unwatchedEpisodes && (
+            <>
+              <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+            </>
+          )}
+          {formatBytes(item.sizeOnDisk)}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {item.type === 'movie' ? (
+          <>
+            <MovieWatchedButton item={item} onWatched={onWatched} disabled={movieDeleted} />
+            <MovieDeleteButton item={item} onDeleted={() => setMovieDeleted(true)} />
+          </>
+        ) : (
+          <>
+            <ShowWatchedDropdown item={item} onEpisodeWatched={onEpisodeWatched} />
+            <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -549,48 +613,13 @@ export default function ReadyToWatchPanel() {
 
   function renderRow(item: ReadyToWatchItem) {
     return (
-      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-        <div>
-          <p className="text-sm font-medium">
-            {item.title}{' '}
-            {item.type === 'movie' && item.year
-              ? `(${item.year})`
-              : item.type === 'tv' && item.unwatchedEpisodes
-              ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
-              : ''}
-          </p>
-          <p className="text-xs text-zinc-500">
-            {item.type === 'tv' && item.unwatchedEpisodes && (
-              <>
-                <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
-              </>
-            )}
-            {formatBytes(item.sizeOnDisk)}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {item.type === 'movie' ? (
-            <>
-              <MovieWatchedButton
-                item={item}
-                onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
-              />
-              <MovieDeleteButton item={item} />
-            </>
-          ) : (
-            <>
-              <ShowWatchedDropdown
-                item={item}
-                onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
-              />
-              <ShowDeleteDropdown
-                item={item}
-                onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
-              />
-            </>
-          )}
-        </div>
-      </div>
+      <ReadyToWatchRow
+        key={`${item.type}-${item.id}`}
+        item={item}
+        onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
+        onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+        onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+      />
     );
   }
 
