@@ -3,7 +3,7 @@ import path from 'path';
 import { getRadarrRecentImports } from './radarr';
 import { getSonarrRecentImports } from './sonarr';
 import { hasTitle, hasEpisode } from './mediaServer';
-import { sendPushoverNotification } from './pushover';
+import { notifyAllChannels } from './notificationChannels';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'notified-imports.json');
 
@@ -52,7 +52,7 @@ export async function checkForNewPlexImports(): Promise<void> {
         ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber)
         : await hasTitle(item.title);
       if (inLibrary) {
-        await sendPushoverNotification('Ready to watch', `${label} is ready to watch.`);
+        await notifyAllChannels('Ready to watch', `${label} is ready to watch.`);
         seen.add(key);
         changed = true;
         console.log(`[notifyOnPlexImport] sent notification for "${label}"`);
