@@ -9,12 +9,29 @@ interface RadarrMovie {
   hasFile: boolean;
   sizeOnDisk: number;
   tmdbId: number;
+  posterPath: string | null;
 }
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '-';
   const gb = bytes / (1024 * 1024 * 1024);
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
+}
+
+function Poster({ posterPath, title }: { posterPath: string | null; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!posterPath || failed) {
+    return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
+  }
+  return (
+    <img
+      src={`/api/radarr/image?path=${encodeURIComponent(posterPath)}`}
+      alt={title}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-9 h-[54px] rounded object-cover flex-shrink-0"
+    />
+  );
 }
 
 function DeleteButton({ movieId }: { movieId: number }) {
@@ -128,11 +145,14 @@ export default function RadarrLibraryPanel() {
       <div className="space-y-2">
         {filtered.map((movie) => (
           <div key={movie.id} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-            <div>
-              <p className="text-sm font-medium">{movie.title} {movie.year ? `(${movie.year})` : ''}</p>
-              <p className="text-xs text-zinc-500">
-                {movie.hasFile ? formatBytes(movie.sizeOnDisk) : 'No file'}
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <Poster posterPath={movie.posterPath} title={movie.title} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{movie.title} {movie.year ? `(${movie.year})` : ''}</p>
+                <p className="text-xs text-zinc-500">
+                  {movie.hasFile ? formatBytes(movie.sizeOnDisk) : 'No file'}
+                </p>
+              </div>
             </div>
             <DeleteButton movieId={movie.id} />
           </div>

@@ -239,6 +239,13 @@ export interface SonarrSeries {
   sizeOnDisk: number;
   /** Sonarr production status: 'continuing' | 'ended' | 'upcoming' | 'deleted'. */
   status: string;
+  /** Sonarr's own cached poster path (e.g. "/MediaCover/2/poster.jpg?lastWrite=..."), null if Sonarr has none. Served through /api/sonarr/image, never fetched directly - Sonarr's LAN address isn't reachable from outside the network. */
+  posterPath: string | null;
+}
+
+interface SonarrImage {
+  coverType?: string;
+  url?: string;
 }
 
 export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
@@ -248,6 +255,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
   const data: Record<string, unknown>[] = await res.json();
   return data.map((s) => {
     const stats = s.statistics as Record<string, unknown> | undefined;
+    const images = (s.images as SonarrImage[] | undefined) ?? [];
     return {
       id: s.id as number,
       title: s.title as string,
@@ -257,6 +265,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
       episodeCount: (stats?.episodeCount as number) ?? 0,
       sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
       status: (s.status as string) ?? 'continuing',
+      posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
     };
   });
 }
