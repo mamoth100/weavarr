@@ -1,5 +1,6 @@
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
+import { deleteCachedPoster } from './posterCache';
 
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const RADARR_URL = process.env.RADARR_URL?.replace(/\/$/, '');
@@ -184,6 +185,7 @@ export async function deleteRadarrMovie(movieId: number): Promise<void> {
     headers: headers(),
   });
   if (!res.ok) throw new Error(`Radarr movie delete failed: ${await res.text()}`);
+  await deleteCachedPoster('radarr', movieId);
 }
 
 export interface ImportHistoryItem {

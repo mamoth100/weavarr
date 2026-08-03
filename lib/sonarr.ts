@@ -1,5 +1,6 @@
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
+import { deleteCachedPoster } from './posterCache';
 
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const SONARR_URL = process.env.SONARR_URL?.replace(/\/$/, '');
@@ -298,6 +299,7 @@ export async function deleteSonarrSeries(seriesId: number): Promise<void> {
     headers: headers(),
   });
   if (!res.ok) throw new Error(`Sonarr series delete failed: ${await res.text()}`);
+  await deleteCachedPoster('sonarr', seriesId);
 }
 
 export interface SonarrEpisode {

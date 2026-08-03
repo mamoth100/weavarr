@@ -15,14 +15,14 @@ interface SonarrSeries {
   posterPath: string | null;
 }
 
-function Poster({ posterPath, title }: { posterPath: string | null; title: string }) {
+function Poster({ id, hasPoster, title }: { id: number; hasPoster: boolean; title: string }) {
   const [failed, setFailed] = useState(false);
-  if (!posterPath || failed) {
+  if (!hasPoster || failed) {
     return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
   }
   return (
     <img
-      src={`/api/sonarr/image?path=${encodeURIComponent(posterPath)}`}
+      src={`/api/sonarr/image?id=${id}`}
       alt={title}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -168,7 +168,7 @@ export default function SonarrLibraryPanel() {
                 className="flex items-center gap-3 text-left min-w-0"
               >
                 <span className={`text-zinc-500 text-xs transition-transform ${expanded === show.id ? 'rotate-90' : ''}`}>▶</span>
-                <Poster posterPath={show.posterPath} title={show.title} />
+                <Poster id={show.id} hasPoster={Boolean(show.posterPath)} title={show.title} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{show.title} {show.year ? `(${show.year})` : ''}</p>
                   <p className="text-xs text-zinc-500">

@@ -19,14 +19,24 @@ function formatBytes(bytes: number): string {
 }
 
 /** service picks which proxy (Radarr vs Sonarr posters live on separate services, both LAN-only - see RadarrLibraryPanel/SonarrLibraryPanel for why this can't just be a direct <img src>). */
-function Poster({ posterPath, title, service }: { posterPath: string | null; title: string; service: 'radarr' | 'sonarr' }) {
+function Poster({
+  id,
+  hasPoster,
+  title,
+  service,
+}: {
+  id: number;
+  hasPoster: boolean;
+  title: string;
+  service: 'radarr' | 'sonarr';
+}) {
   const [failed, setFailed] = useState(false);
-  if (!posterPath || failed) {
+  if (!hasPoster || failed) {
     return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
   }
   return (
     <img
-      src={`/api/${service}/image?path=${encodeURIComponent(posterPath)}`}
+      src={`/api/${service}/image?id=${id}`}
       alt={title}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -500,7 +510,12 @@ function RecentlyWatchedSection() {
           : items.map((item) => {
               return (
                 <div key={item.key} className="flex items-start gap-3 bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                  <Poster posterPath={item.posterPath} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
+                  <Poster
+                    id={item.type === 'movie' ? item.id : item.seriesId}
+                    hasPoster={Boolean(item.posterPath)}
+                    title={item.title}
+                    service={item.type === 'movie' ? 'radarr' : 'sonarr'}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium truncate">
@@ -553,7 +568,7 @@ function ReadyToWatchRow({
   return (
     <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
       <div className="flex items-center gap-3 min-w-0">
-        <Poster posterPath={item.posterPath} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
+        <Poster id={item.id} hasPoster={Boolean(item.posterPath)} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
             {item.title}{' '}
