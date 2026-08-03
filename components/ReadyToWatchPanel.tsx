@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import SimplePagination from '@/components/SimplePagination';
+
+const PAGE_SIZE = 50;
 
 interface ReadyToWatchItem {
   type: 'movie' | 'tv';
@@ -609,6 +612,8 @@ export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [tvPage, setTvPage] = useState(1);
+  const [moviePage, setMoviePage] = useState(1);
 
   useEffect(() => {
     fetch('/api/ready-to-watch', { cache: 'no-store' })
@@ -652,6 +657,14 @@ export default function ReadyToWatchPanel() {
   const tvItems = filtered.filter((i) => i.type === 'tv');
   const movieItems = filtered.filter((i) => i.type === 'movie');
 
+  const tvTotalPages = Math.max(1, Math.ceil(tvItems.length / PAGE_SIZE));
+  const tvPageSafe = Math.min(tvPage, tvTotalPages);
+  const tvPaged = tvItems.slice((tvPageSafe - 1) * PAGE_SIZE, tvPageSafe * PAGE_SIZE);
+
+  const movieTotalPages = Math.max(1, Math.ceil(movieItems.length / PAGE_SIZE));
+  const moviePageSafe = Math.min(moviePage, movieTotalPages);
+  const moviePaged = movieItems.slice((moviePageSafe - 1) * PAGE_SIZE, moviePageSafe * PAGE_SIZE);
+
   function renderRow(item: ReadyToWatchItem) {
     return (
       <ReadyToWatchRow
@@ -671,7 +684,11 @@ export default function ReadyToWatchPanel() {
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setTvPage(1);
+            setMoviePage(1);
+          }}
           placeholder="Filter by title…"
           className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
@@ -681,14 +698,20 @@ export default function ReadyToWatchPanel() {
       )}
       {tvItems.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">TV Shows</h2>
-          <div className="space-y-2">{tvItems.map(renderRow)}</div>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+            TV Shows{tvItems.length > PAGE_SIZE && ` (${tvItems.length})`}
+          </h2>
+          <div className="space-y-2">{tvPaged.map(renderRow)}</div>
+          <SimplePagination page={tvPageSafe} totalPages={tvTotalPages} onChange={setTvPage} />
         </div>
       )}
       {movieItems.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Movies</h2>
-          <div className="space-y-2">{movieItems.map(renderRow)}</div>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+            Movies{movieItems.length > PAGE_SIZE && ` (${movieItems.length})`}
+          </h2>
+          <div className="space-y-2">{moviePaged.map(renderRow)}</div>
+          <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
         </div>
       )}
       <RecentlyWatchedSection />
