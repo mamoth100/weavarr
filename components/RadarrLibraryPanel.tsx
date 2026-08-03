@@ -18,14 +18,14 @@ function formatBytes(bytes: number): string {
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 }
 
-function Poster({ posterPath, title }: { posterPath: string | null; title: string }) {
+function Poster({ id, hasPoster, title }: { id: number; hasPoster: boolean; title: string }) {
   const [failed, setFailed] = useState(false);
-  if (!posterPath || failed) {
+  if (!hasPoster || failed) {
     return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
   }
   return (
     <img
-      src={`/api/radarr/image?path=${encodeURIComponent(posterPath)}`}
+      src={`/api/radarr/image?id=${id}`}
       alt={title}
       loading="lazy"
       onError={() => setFailed(true)}
@@ -146,7 +146,7 @@ export default function RadarrLibraryPanel() {
         {filtered.map((movie) => (
           <div key={movie.id} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
             <div className="flex items-center gap-3 min-w-0">
-              <Poster posterPath={movie.posterPath} title={movie.title} />
+              <Poster id={movie.id} hasPoster={Boolean(movie.posterPath)} title={movie.title} />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{movie.title} {movie.year ? `(${movie.year})` : ''}</p>
                 <p className="text-xs text-zinc-500">
