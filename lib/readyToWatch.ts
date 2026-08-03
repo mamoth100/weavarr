@@ -8,6 +8,7 @@ export interface ReadyToWatchMovie {
   title: string;
   year: number;
   sizeOnDisk: number;
+  posterPath: string | null;
 }
 
 export interface ReadyToWatchShow {
@@ -17,6 +18,7 @@ export interface ReadyToWatchShow {
   year: number;
   unwatchedEpisodes: { seasonNumber: number; episodeNumber: number }[];
   sizeOnDisk: number;
+  posterPath: string | null;
 }
 
 export type ReadyToWatchItem = ReadyToWatchMovie | ReadyToWatchShow;
@@ -40,7 +42,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
     .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titleFuzzyMatch(w.title, m.title)))
-    .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk }));
+    .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
 
   const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);
   const fileSets = await Promise.all(
@@ -70,6 +72,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
         year: s.year,
         unwatchedEpisodes,
         sizeOnDisk: s.sizeOnDisk,
+        posterPath: s.posterPath,
       });
     }
   });
