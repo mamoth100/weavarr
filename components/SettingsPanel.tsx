@@ -17,7 +17,7 @@ interface QualityProfileOption {
   name: string;
 }
 
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Supabase']);
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord', 'Supabase']);
 
 // Groups whose quality-profile dropdowns should auto-populate on load if
 // already configured, rather than staying greyed out until a manual Test.
@@ -39,6 +39,8 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Jellyfin: 'Media Players',
   'Watched Sync': 'Media Players',
   Pushover: 'Notifications',
+  Webhook: 'Notifications',
+  Discord: 'Notifications',
   'App Behavior': 'Misc',
 };
 
