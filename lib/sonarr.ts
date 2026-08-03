@@ -219,6 +219,7 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
 export interface SonarrSeriesLite {
   id: number;
   title: string;
+  posterPath: string | null;
 }
 
 export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
@@ -226,7 +227,14 @@ export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
   const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
   const data = await res.json();
-  return (data as Record<string, unknown>[]).map((s) => ({ id: s.id as number, title: s.title as string }));
+  return (data as Record<string, unknown>[]).map((s) => {
+    const images = (s.images as SonarrImage[] | undefined) ?? [];
+    return {
+      id: s.id as number,
+      title: s.title as string,
+      posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
+    };
+  });
 }
 
 export interface SonarrSeries {

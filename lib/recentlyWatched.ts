@@ -14,6 +14,7 @@ export interface RecentlyWatchedMovie {
   watchedAt: string;
   reason: string;
   sizeOnDisk: number;
+  posterPath: string | null;
 }
 
 export interface RecentlyWatchedEpisode {
@@ -25,6 +26,7 @@ export interface RecentlyWatchedEpisode {
   episodeNumber: number;
   watchedAt: string;
   reason: string;
+  posterPath: string | null;
 }
 
 export type RecentlyWatchedItem = RecentlyWatchedMovie | RecentlyWatchedEpisode;
@@ -93,6 +95,7 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
       watchedAt: s.watchedAt,
       reason: s.reason,
       sizeOnDisk: matched.sizeOnDisk,
+      posterPath: matched.posterPath,
     });
   }
   return results;
@@ -114,6 +117,7 @@ export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedIte
     episodeNumber: e.episodeNumber,
     watchedAt: e.viewedAt,
     reason: e.reason,
+    posterPath: e.posterPath,
   }));
 
   return [...episodeItems, ...movies]
