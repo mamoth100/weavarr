@@ -519,3 +519,90 @@ export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: nu
   const withFiles = episodes.filter((e) => e.seasonNumber === seasonNumber && e.hasFile && e.episodeFileId);
   await Promise.all(withFiles.map((e) => deleteSonarrEpisodeFile(e.id, e.episodeFileId as number)));
 }
+
+export interface MissingAiredEpisode {
+  episodeId: number;
+  seriesId: number;
+  seriesTitle: string;
+  hasPoster: boolean;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  airDateUtc: string;
+}
+
+/**
+ * Monitored episodes whose air date has already passed but which Sonarr
+ * still has no file for - a gap Sonarr should have grabbed and didn't, as
+ * opposed to something simply not aired yet. Pulls from Sonarr's own
+ * wanted/missing list (already filtered to monitored + no file) and then
+ * re-checks airDateUtc ourselves rather than trusting that endpoint's
+ * default date handling, since it's been observed to include next-day
+ * episodes too.
+ */
+export async function getMissingAiredEpisodes(): Promise<MissingAiredEpisode[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(
+    `${SONARR_URL}/api/v3/wanted/missing?pageSize=1000&sortKey=airDateUtc&sortDirection=descending&includeSeries=true`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Sonarr wanted/missing failed: ${res.status}`);
+  const data = await res.json();
+  const now = Date.now();
+
+  return (data.records as Record<string, unknown>[])
+    .filter((r) => r.airDateUtc && new Date(r.airDateUtc as string).getTime() <= now)
+    .map((r) => {
+      const series = r.series as Record<string, unknown> | undefined;
+      const images = (series?.images as { coverType?: string }[] | undefined) ?? [];
+      return {
+        episodeId: r.id as number,
+        seriesId: r.seriesId as number,
+        seriesTitle: (series?.title as string) ?? 'Unknown Show',
+        hasPoster: images.some((img) => img.coverType === 'poster'),
+        seasonNumber: r.seasonNumber as number,
+        episodeNumber: r.episodeNumber as number,
+        title: (r.title as string) ?? `Episode ${r.episodeNumber as number}`,
+        airDateUtc: r.airDateUtc as string,
+      };
+    });
+}
+
+export interface SonarrCalendarItem {
+  seriesId: number;
+  seriesTitle: string;
+  hasPoster: boolean;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  airDateUtc: string;
+  hasFile: boolean;
+  monitored: boolean;
+}
+
+/** Every episode airing in this date range across the whole library - same data Sonarr's own Calendar page shows. */
+export async function getSonarrCalendar(start: string, end: string): Promise<SonarrCalendarItem[]> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(
+    `${SONARR_URL}/api/v3/calendar?start=${start}&end=${end}&includeSeries=true`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Sonarr calendar failed: ${res.status}`);
+  const data: Record<string, unknown>[] = await res.json();
+
+  return data.map((e) => {
+    const series = e.series as Record<string, unknown> | undefined;
+    const images = (series?.images as { coverType?: string }[] | undefined) ?? [];
+    return {
+      seriesId: e.seriesId as number,
+      seriesTitle: (series?.title as string) ?? 'Unknown Show',
+      hasPoster: images.some((img) => img.coverType === 'poster'),
+      seasonNumber: e.seasonNumber as number,
+      episodeNumber: e.episodeNumber as number,
+      title: (e.title as string) ?? `Episode ${e.episodeNumber as number}`,
+      airDateUtc: e.airDateUtc as string,
+      hasFile: Boolean(e.hasFile),
+      monitored: Boolean(e.monitored),
+    };
+  });
+}

@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import BackLink from '@/components/BackLink';
-import ReadyToWatchPanel from '@/components/ReadyToWatchPanel';
+import CalendarPanel from '@/components/CalendarPanel';
 import GlobalGenreNav from '@/components/GlobalGenreNav';
 
-export default function ReadyToWatchPage() {
+export default function CalendarPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <header className="border-b border-zinc-800 px-6 py-5">
@@ -13,7 +13,7 @@ export default function ReadyToWatchPage() {
             <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
               Weav<span className="text-amber-400">arr</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-0.5">Watch - what's missing, downloaded and unwatched, movies and shows</p>
+            <p className="text-zinc-500 text-sm mt-0.5">Calendar - what's airing and releasing, across movies and shows</p>
           </div>
           <BackLink />
         </div>
@@ -25,8 +25,8 @@ export default function ReadyToWatchPage() {
         </Suspense>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <ReadyToWatchPanel />
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <CalendarPanel />
       </div>
     </main>
   );
