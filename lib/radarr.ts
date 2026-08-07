@@ -229,3 +229,38 @@ export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryI
       movieId: r.movieId as number,
     }));
 }
+
+export interface RadarrCalendarItem {
+  movieId: number;
+  title: string;
+  hasPoster: boolean;
+  releaseDate: string;
+  hasFile: boolean;
+}
+
+/** Every movie releasing in this date range - same data Radarr's own Calendar page shows. Uses whichever release date Radarr actually has (digital, then physical, then cinema), same fallback order Radarr's own UI uses. */
+export async function getRadarrCalendar(start: string, end: string): Promise<RadarrCalendarItem[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/calendar?start=${start}&end=${end}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Radarr calendar failed: ${res.status}`);
+  const data: Record<string, unknown>[] = await res.json();
+
+  return data
+    .map((m) => {
+      const images = (m.images as { coverType?: string }[] | undefined) ?? [];
+      const releaseDate = (m.digitalRelease ?? m.physicalRelease ?? m.inCinemas ?? m.releaseDate) as string | undefined;
+      return releaseDate
+        ? {
+            movieId: m.id as number,
+            title: m.title as string,
+            hasPoster: images.some((img) => img.coverType === 'poster'),
+            releaseDate,
+            hasFile: Boolean(m.hasFile),
+          }
+        : null;
+    })
+    .filter((m): m is RadarrCalendarItem => m !== null);
+}
