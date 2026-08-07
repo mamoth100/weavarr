@@ -89,8 +89,29 @@ export default function CalendarPanel() {
   });
   const [items, setItems] = useState<CalendarItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [today, setToday] = useState(() => new Date());
 
   const days = useMemo(() => buildGridDays(monthStart), [monthStart]);
+
+  // "today" is only recomputed on a re-render - a tab left open across
+  // midnight would otherwise keep highlighting the day it was opened on
+  // forever, since nothing else here fires on a timer. Checked every minute
+  // (cheap, only actually updates state when the day changes) plus on tab
+  // focus, since backgrounded tabs commonly have their intervals throttled.
+  useEffect(() => {
+    const refreshIfDayChanged = () => {
+      setToday((prev) => {
+        const now = new Date();
+        return isSameDay(prev, now) ? prev : now;
+      });
+    };
+    const interval = setInterval(refreshIfDayChanged, 60000);
+    document.addEventListener('visibilitychange', refreshIfDayChanged);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshIfDayChanged);
+    };
+  }, []);
 
   useEffect(() => {
     const start = toDateKey(days[0]);
@@ -128,7 +149,6 @@ export default function CalendarPanel() {
     return <p className="text-red-400 text-sm">Failed to load calendar: {error}</p>;
   }
 
-  const today = new Date();
   const monthLabel = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
