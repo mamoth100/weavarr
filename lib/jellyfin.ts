@@ -241,15 +241,48 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
 }
 
 /**
- * Jellyfin doesn't expose a separate "actual playback session" log the way
- * Plex's session-history endpoint does (that would need the Playback
- * Reporting plugin) - IsPlayed is the only signal available, so this can't
- * distinguish "really watched" from "manually marked watched" for Jellyfin.
- * Returns the same keys as the watched-episode list.
+ * Jellyfin's core Activity Log (no plugin needed, unlike the third-party
+ * Playback Reporting plugin) records a "finished playing" entry per
+ * VideoPlaybackStopped event as a free-text line, e.g. "mamoth has finished
+ * playing The King of Queens - The.King.Of.Queens.S02e02 on SHIELD Den" -
+ * genuinely persists after the item is deleted from the library, unlike
+ * everything else here which queries live library listings. The show title
+ * and season/episode have to be parsed out of that text since the log
+ * doesn't return them as separate fields.
  */
+async function getJellyfinFinishedPlaybackEntries(limit: number): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
+  requireConfig();
+  const res = await fetch(`${JELLYFIN_URL}/System/ActivityLog/Entries?limit=${limit}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Jellyfin activity log failed: ${res.status}`);
+  const data = await res.json();
+  const entries: { Name?: string; Type?: string }[] = data.Items ?? [];
+
+  const results: { showTitle: string; seasonNumber: number; episodeNumber: number }[] = [];
+  for (const entry of entries) {
+    if (entry.Type !== 'VideoPlaybackStopped' || !entry.Name) continue;
+    const match = entry.Name.match(/has finished playing (.+?) - .*?[Ss](\d{1,2})[Ee](\d{1,3})/);
+    if (!match) continue;
+    results.push({
+      showTitle: match[1].trim(),
+      seasonNumber: Number(match[2]),
+      episodeNumber: Number(match[3]),
+    });
+  }
+  return results;
+}
+
+/** Set of "showTitle:season:episode" keys with an actual logged "finished playing" event - survives the episode's file being deleted, unlike getJellyfinEpisodeWatchHistory. */
 export async function getJellyfinPlayedSessionKeys(limit = 200): Promise<Set<string>> {
-  const history = await getJellyfinEpisodeWatchHistory(limit);
-  return new Set(history.map((h) => `${h.showTitle.toLowerCase().trim()}:${h.seasonNumber}:${h.episodeNumber}`));
+  const played = await getJellyfinFinishedPlaybackEntries(limit);
+  return new Set(played.map((p) => `${p.showTitle.toLowerCase().trim()}:${p.seasonNumber}:${p.episodeNumber}`));
+}
+
+/** Structured form of getJellyfinPlayedSessionKeys, keeping the real show title so a caller can fuzzy-match it against a different system's naming (e.g. Sonarr's). */
+export async function getJellyfinPlayedEpisodes(limit = 200): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
+  return getJellyfinFinishedPlaybackEntries(limit);
 }
 
 export interface JellyfinInProgressEpisode {

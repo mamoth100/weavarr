@@ -242,7 +242,10 @@ export interface RadarrCalendarItem {
 /** Every movie releasing in this date range - same data Radarr's own Calendar page shows. Uses whichever release date Radarr actually has (digital, then physical, then cinema), same fallback order Radarr's own UI uses. */
 export async function getRadarrCalendar(start: string, end: string): Promise<RadarrCalendarItem[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/calendar?start=${start}&end=${end}`, {
+  // unmonitored=true for the same reason as Sonarr's calendar - Radarr shares
+  // the same API framework and this endpoint's default almost certainly drops
+  // unmonitored movies too, even though the test range on hand didn't have one.
+  const res = await fetch(`${RADARR_URL}/api/v3/calendar?start=${start}&end=${end}&unmonitored=true`, {
     headers: headers(),
     cache: 'no-store',
   });
