@@ -236,6 +236,7 @@ export interface RadarrCalendarItem {
   hasPoster: boolean;
   releaseDate: string;
   hasFile: boolean;
+  monitored: boolean;
 }
 
 /** Every movie releasing in this date range - same data Radarr's own Calendar page shows. Uses whichever release date Radarr actually has (digital, then physical, then cinema), same fallback order Radarr's own UI uses. */
@@ -259,6 +260,7 @@ export async function getRadarrCalendar(start: string, end: string): Promise<Rad
             hasPoster: images.some((img) => img.coverType === 'poster'),
             releaseDate,
             hasFile: Boolean(m.hasFile),
+            monitored: Boolean(m.monitored),
           }
         : null;
     })

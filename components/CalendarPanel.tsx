@@ -10,6 +10,8 @@ interface CalendarItem {
   date: string;
   hasFile: boolean;
   hasPoster: boolean;
+  watched: boolean;
+  monitored: boolean;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -41,10 +43,23 @@ function buildGridDays(monthStart: Date): Date[] {
   return days;
 }
 
-/** Compares this item's own exact air/release timestamp against right now, not just "is this whole day in the past" - a day-level check would keep calling something airing this morning "upcoming" until midnight. */
+/**
+ * Watched (Plex/Jellyfin confirmed) always wins, even over hasFile - that's
+ * what keeps a watched-then-deleted episode reading as "Watched" instead of
+ * "Missing". Unmonitored (deleting an episode in Weavarr unmonitors it) is
+ * the fallback safety net for cases watch history can't confirm: it just
+ * keeps things neutral rather than red, since Sonarr/Radarr have been told
+ * not to care about it either. Missing only fires when Sonarr/Radarr still
+ * actually wants the file and doesn't have it - the true gap.
+ * Uses each item's own exact timestamp against right now, not "is this whole
+ * day in the past" - a day-level check would keep calling something airing
+ * this morning "upcoming" until midnight.
+ */
 function chipClass(item: CalendarItem): string {
+  if (item.watched) return 'bg-blue-500/15 text-blue-400';
   if (item.hasFile) return 'bg-green-500/15 text-green-400';
-  if (new Date(item.date).getTime() <= Date.now()) return 'bg-red-500/15 text-red-400';
+  const aired = new Date(item.date).getTime() <= Date.now();
+  if (aired && item.monitored) return 'bg-red-500/15 text-red-400';
   return 'bg-zinc-700/60 text-zinc-400';
 }
 
@@ -117,6 +132,7 @@ export default function CalendarPanel() {
       </div>
 
       <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500/40" /> Watched</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500/40" /> Downloaded</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500/40" /> Missing</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-zinc-600" /> Upcoming</span>
