@@ -488,6 +488,149 @@ function ClearButton({ itemKey, onCleared }: { itemKey: string; onCleared: () =>
   );
 }
 
+interface MissingAiredEpisode {
+  episodeId: number;
+  seriesId: number;
+  seriesTitle: string;
+  hasPoster: boolean;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  airDateUtc: string;
+}
+
+function formatAirDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function SearchMissingButton({ episode, onSearched }: { episode: MissingAiredEpisode; onSearched: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+
+  async function handleClick() {
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/sonarr/search-episode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId: episode.episodeId, seriesId: episode.seriesId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Search failed');
+      setStatus('done');
+      onSearched();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  // We only know the search was triggered, not whether Sonarr actually found
+  // and grabbed a release - same honesty as SonarrEpisodeManager's "Sent to downloader".
+  if (status === 'done') {
+    return <span className="text-xs font-medium text-green-400">Sent to downloader</span>;
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading'}
+      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
+      }`}
+    >
+      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search'}
+    </button>
+  );
+}
+
+interface MissingShowGroup {
+  seriesId: number;
+  seriesTitle: string;
+  hasPoster: boolean;
+  episodes: MissingAiredEpisode[];
+}
+
+/** Episodes that have already aired but Sonarr still has no file for - a gap it should have grabbed, not just something not out yet. */
+function MissingAiredSection() {
+  const [episodes, setEpisodes] = useState<MissingAiredEpisode[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/sonarr/missing', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) setError(data.error);
+        else setEpisodes(data.episodes);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }, []);
+
+  function markSearched(episodeId: number) {
+    setEpisodes((prev) => (prev ?? []).filter((e) => e.episodeId !== episodeId));
+  }
+
+  if (error || (episodes && episodes.length === 0)) return null;
+
+  const groups: MissingShowGroup[] = [];
+  if (episodes) {
+    const bySeriesId = new Map<number, MissingShowGroup>();
+    for (const e of episodes) {
+      let g = bySeriesId.get(e.seriesId);
+      if (!g) {
+        g = { seriesId: e.seriesId, seriesTitle: e.seriesTitle, hasPoster: e.hasPoster, episodes: [] };
+        bySeriesId.set(e.seriesId, g);
+      }
+      g.episodes.push(e);
+    }
+    groups.push(...Array.from(bySeriesId.values()).sort((a, b) => a.seriesTitle.localeCompare(b.seriesTitle)));
+  }
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+        Aired, Not Downloaded{episodes && episodes.length > 0 ? ` (${episodes.length})` : ''}
+      </h2>
+      <div className="space-y-2">
+        {!episodes
+          ? [1, 2].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
+          : groups.map((g) => (
+              <div key={g.seriesId} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 overflow-hidden">
+                <button
+                  onClick={() => setExpanded((prev) => (prev === g.seriesId ? null : g.seriesId))}
+                  className="w-full flex items-center gap-3 p-3 text-left"
+                >
+                  <span className={`text-zinc-500 text-xs transition-transform ${expanded === g.seriesId ? 'rotate-90' : ''}`}>▶</span>
+                  <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{g.seriesTitle}</p>
+                    <p className="text-xs text-zinc-500">
+                      {g.episodes.length} episode{g.episodes.length === 1 ? '' : 's'} missing
+                    </p>
+                  </div>
+                </button>
+                {expanded === g.seriesId && (
+                  <div className="px-3 pb-3 space-y-1">
+                    {g.episodes.map((e) => (
+                      <div key={e.episodeId} className="flex items-center justify-between bg-zinc-800/40 rounded px-2.5 py-1.5">
+                        <p className="text-xs text-zinc-300 truncate pr-2">
+                          <span className="text-zinc-500">
+                            S{String(e.seasonNumber).padStart(2, '0')}E{String(e.episodeNumber).padStart(2, '0')}
+                          </span>{' '}
+                          {e.title}
+                          <span className="text-zinc-600"> · aired {formatAirDate(e.airDateUtc)}</span>
+                        </p>
+                        <SearchMissingButton episode={e} onSearched={() => markSearched(e.episodeId)} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+      </div>
+    </div>
+  );
+}
+
 function RecentlyWatchedSection() {
   const [items, setItems] = useState<RecentlyWatchedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -680,7 +823,7 @@ export default function ReadyToWatchPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between text-sm text-zinc-500">
-        <span>{items.length} ready to watch</span>
+        <span>{items.length} to watch</span>
         <input
           type="text"
           value={query}
@@ -696,6 +839,7 @@ export default function ReadyToWatchPanel() {
       {filtered.length === 0 && (
         <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
+      <MissingAiredSection />
       {tvItems.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
