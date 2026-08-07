@@ -45,13 +45,12 @@ function buildGridDays(monthStart: Date): Date[] {
 type ItemStatus = 'watched' | 'downloaded' | 'missing' | 'upcoming';
 
 /**
- * Watched (Plex/Jellyfin confirmed) always wins, even over hasFile - that's
- * what keeps a watched-then-deleted episode reading as "Watched" instead of
- * "Missing". Unmonitored (deleting an episode in Weavarr unmonitors it) is
- * the fallback safety net for cases watch history can't confirm: it just
- * keeps things neutral rather than red, since Sonarr/Radarr have been told
- * not to care about it either. Missing only fires when Sonarr/Radarr still
- * actually wants the file and doesn't have it - the true gap.
+ * Watched (currently in Plex/Jellyfin, marked watched) always wins, even
+ * over hasFile. Missing only fires when Sonarr/Radarr still actually wants
+ * the file, hasn't gotten it, AND it's already aired - a true gap. Deleting
+ * an item unmonitors it, and Sonarr/Radarr's own calendar excludes
+ * unmonitored items by default, so a deleted item just disappears from the
+ * calendar entirely rather than showing any status here.
  * Uses each item's own exact timestamp against right now, not "is this whole
  * day in the past" - a day-level check would keep calling something airing
  * this morning "upcoming" until midnight.
@@ -73,7 +72,7 @@ function chipClass(item: CalendarItem): string {
   }
 }
 
-/** Missing (an actual gap) sorts first within a day so it's never buried by a neutral/unmonitored item that just happens to also be airing that day. */
+/** Missing (an actual gap) sorts first within a day so it's never buried by a less important item that just happens to also land that day. */
 function statusPriority(item: CalendarItem): number {
   switch (itemStatus(item)) {
     case 'missing': return 0;
@@ -188,9 +187,9 @@ export default function CalendarPanel() {
               <div className="space-y-0.5">
                 {items === null
                   ? null
-                  : dayItems.map((item) => (
+                  : dayItems.map((item, i) => (
                       <div
-                        key={`${item.type}-${item.id}-${item.date}`}
+                        key={`${item.type}-${item.id}-${item.date}-${item.subtitle ?? i}`}
                         title={`${item.title}${item.subtitle ? ` - ${item.subtitle}` : ''}`}
                         className={`text-[10px] leading-tight truncate rounded px-1 py-0.5 ${chipClass(item)}`}
                       >

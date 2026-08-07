@@ -244,11 +244,10 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
  * Jellyfin's core Activity Log (no plugin needed, unlike the third-party
  * Playback Reporting plugin) records a "finished playing" entry per
  * VideoPlaybackStopped event as a free-text line, e.g. "mamoth has finished
- * playing The King of Queens - The.King.Of.Queens.S02e02 on SHIELD Den" -
- * genuinely persists after the item is deleted from the library, unlike
- * everything else here which queries live library listings. The show title
- * and season/episode have to be parsed out of that text since the log
- * doesn't return them as separate fields.
+ * playing The King of Queens - The.King.Of.Queens.S02e02 on SHIELD Den". Note
+ * this log has limited retention (rolls off after a while) so it's only
+ * reliable for "was this a real playback vs a manual mark-watched" on items
+ * still in the library, not as a durable record of anything ever watched.
  */
 async function getJellyfinFinishedPlaybackEntries(limit: number): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
   requireConfig();
@@ -274,15 +273,10 @@ async function getJellyfinFinishedPlaybackEntries(limit: number): Promise<{ show
   return results;
 }
 
-/** Set of "showTitle:season:episode" keys with an actual logged "finished playing" event - survives the episode's file being deleted, unlike getJellyfinEpisodeWatchHistory. */
+/** Set of "showTitle:season:episode" keys with an actual logged "finished playing" event - used to tell "really watched" apart from "manually marked watched". */
 export async function getJellyfinPlayedSessionKeys(limit = 200): Promise<Set<string>> {
   const played = await getJellyfinFinishedPlaybackEntries(limit);
   return new Set(played.map((p) => `${p.showTitle.toLowerCase().trim()}:${p.seasonNumber}:${p.episodeNumber}`));
-}
-
-/** Structured form of getJellyfinPlayedSessionKeys, keeping the real show title so a caller can fuzzy-match it against a different system's naming (e.g. Sonarr's). */
-export async function getJellyfinPlayedEpisodes(limit = 200): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
-  return getJellyfinFinishedPlaybackEntries(limit);
 }
 
 export interface JellyfinInProgressEpisode {
