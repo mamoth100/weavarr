@@ -15,7 +15,6 @@ interface CalendarItem {
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MAX_CHIPS_PER_DAY = 3;
 
 function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -43,6 +42,8 @@ function buildGridDays(monthStart: Date): Date[] {
   return days;
 }
 
+type ItemStatus = 'watched' | 'downloaded' | 'missing' | 'upcoming';
+
 /**
  * Watched (Plex/Jellyfin confirmed) always wins, even over hasFile - that's
  * what keeps a watched-then-deleted episode reading as "Watched" instead of
@@ -55,12 +56,31 @@ function buildGridDays(monthStart: Date): Date[] {
  * day in the past" - a day-level check would keep calling something airing
  * this morning "upcoming" until midnight.
  */
-function chipClass(item: CalendarItem): string {
-  if (item.watched) return 'bg-blue-500/15 text-blue-400';
-  if (item.hasFile) return 'bg-green-500/15 text-green-400';
+function itemStatus(item: CalendarItem): ItemStatus {
+  if (item.watched) return 'watched';
+  if (item.hasFile) return 'downloaded';
   const aired = new Date(item.date).getTime() <= Date.now();
-  if (aired && item.monitored) return 'bg-red-500/15 text-red-400';
-  return 'bg-zinc-700/60 text-zinc-400';
+  if (aired && item.monitored) return 'missing';
+  return 'upcoming';
+}
+
+function chipClass(item: CalendarItem): string {
+  switch (itemStatus(item)) {
+    case 'watched': return 'bg-blue-500/15 text-blue-400';
+    case 'downloaded': return 'bg-green-500/15 text-green-400';
+    case 'missing': return 'bg-red-500/15 text-red-400';
+    default: return 'bg-zinc-700/60 text-zinc-400';
+  }
+}
+
+/** Missing (an actual gap) sorts first within a day so it's never buried by a neutral/unmonitored item that just happens to also be airing that day. */
+function statusPriority(item: CalendarItem): number {
+  switch (itemStatus(item)) {
+    case 'missing': return 0;
+    case 'watched': return 1;
+    case 'downloaded': return 2;
+    default: return 3;
+  }
 }
 
 export default function CalendarPanel() {
@@ -94,6 +114,13 @@ export default function CalendarPanel() {
       const list = map.get(key) ?? [];
       list.push(item);
       map.set(key, list);
+    }
+    // A day can genuinely have more items than fit (e.g. a show airing
+    // several episodes back to back) - sort so the ones actually worth
+    // seeing (a real Missing gap) never end up buried behind "+N more"
+    // just because a neutral/unmonitored item happened to load first.
+    for (const list of Array.from(map.values())) {
+      list.sort((a: CalendarItem, b: CalendarItem) => statusPriority(a) - statusPriority(b));
     }
     return map;
   }, [items]);
@@ -149,8 +176,6 @@ export default function CalendarPanel() {
           const dayItems = itemsByDay.get(key) ?? [];
           const inMonth = day.getMonth() === monthStart.getMonth();
           const isToday = isSameDay(day, today);
-          const shown = dayItems.slice(0, MAX_CHIPS_PER_DAY);
-          const remaining = dayItems.length - shown.length;
 
           return (
             <div
@@ -163,7 +188,7 @@ export default function CalendarPanel() {
               <div className="space-y-0.5">
                 {items === null
                   ? null
-                  : shown.map((item) => (
+                  : dayItems.map((item) => (
                       <div
                         key={`${item.type}-${item.id}-${item.date}`}
                         title={`${item.title}${item.subtitle ? ` - ${item.subtitle}` : ''}`}
@@ -172,7 +197,6 @@ export default function CalendarPanel() {
                         {item.title}
                       </div>
                     ))}
-                {remaining > 0 && <p className="text-[10px] text-zinc-600 px-1">+{remaining} more</p>}
               </div>
             </div>
           );
