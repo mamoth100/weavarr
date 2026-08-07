@@ -262,7 +262,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
     }));
 }
 
-/** Shared by getPlexPlayedSessionKeys and getPlexPlayedEpisodes - /status/sessions/history/all is a genuine event log, unlike getPlexEpisodeWatchHistory's live-library-listing query, so it keeps a deleted episode's watch record around after Plex drops the file from its index. */
+/** Used by getPlexPlayedSessionKeys - /status/sessions/history/all is a genuine event log, unlike getPlexEpisodeWatchHistory's live-library-listing query. */
 async function getPlexPlaySessions(limit: number): Promise<Record<string, unknown>[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
   const res = await fetch(
@@ -288,18 +288,6 @@ export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>
     }
   }
   return keys;
-}
-
-/** Structured form of getPlexPlayedSessionKeys, keeping the real show title so a caller can fuzzy-match it against a different system's naming (e.g. Sonarr's) - survives the episode's file being deleted. */
-export async function getPlexPlayedEpisodes(limit = 200): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
-  const items = await getPlexPlaySessions(limit);
-  return items
-    .filter((i) => i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined)
-    .map((i) => ({
-      showTitle: i.grandparentTitle as string,
-      seasonNumber: i.parentIndex as number,
-      episodeNumber: i.index as number,
-    }));
 }
 
 export interface InProgressEpisode {
