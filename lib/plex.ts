@@ -262,22 +262,25 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
     }));
 }
 
-/**
- * Set of "showTitle:season:episode" keys with an actual logged playback
- * session - used only to tell "really watched" apart from "manually marked
- * watched" (which sets viewCount/lastViewedAt but never hits this log).
- */
-export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>> {
+/** Shared by getPlexPlayedSessionKeys and getPlexPlayedEpisodes - /status/sessions/history/all is a genuine event log, unlike getPlexEpisodeWatchHistory's live-library-listing query, so it keeps a deleted episode's watch record around after Plex drops the file from its index. */
+async function getPlexPlaySessions(limit: number): Promise<Record<string, unknown>[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
-
   const res = await fetch(
     `${PLEX_URL}/status/sessions/history/all?X-Plex-Token=${PLEX_TOKEN}&sort=viewedAt:desc&limit=${limit}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
   if (!res.ok) throw new Error(`Plex session history failed: ${res.status}`);
   const data = await res.json();
-  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+  return data.MediaContainer?.Metadata ?? [];
+}
 
+/**
+ * Set of "showTitle:season:episode" keys with an actual logged playback
+ * session - used only to tell "really watched" apart from "manually marked
+ * watched" (which sets viewCount/lastViewedAt but never hits this log).
+ */
+export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>> {
+  const items = await getPlexPlaySessions(limit);
   const keys = new Set<string>();
   for (const i of items) {
     if (i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined) {
@@ -285,6 +288,18 @@ export async function getPlexPlayedSessionKeys(limit = 200): Promise<Set<string>
     }
   }
   return keys;
+}
+
+/** Structured form of getPlexPlayedSessionKeys, keeping the real show title so a caller can fuzzy-match it against a different system's naming (e.g. Sonarr's) - survives the episode's file being deleted. */
+export async function getPlexPlayedEpisodes(limit = 200): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
+  const items = await getPlexPlaySessions(limit);
+  return items
+    .filter((i) => i.type === 'episode' && i.grandparentTitle && i.parentIndex !== undefined && i.index !== undefined)
+    .map((i) => ({
+      showTitle: i.grandparentTitle as string,
+      seasonNumber: i.parentIndex as number,
+      episodeNumber: i.index as number,
+    }));
 }
 
 export interface InProgressEpisode {

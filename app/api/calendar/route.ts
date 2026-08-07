@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSonarrCalendar } from '@/lib/sonarr';
 import { getRadarrCalendar } from '@/lib/radarr';
-import { getWatchedMovies, getEpisodeWatchHistory } from '@/lib/mediaServer';
+import { getWatchedMovies, getEpisodeWatchHistory, getPlayedEpisodes } from '@/lib/mediaServer';
 import { titleFuzzyMatch } from '@/lib/readyToWatch';
 
 export interface CalendarItem {
@@ -24,23 +24,31 @@ export async function GET(request: Request) {
   const end = searchParams.get('end');
   if (!start || !end) return NextResponse.json({ error: 'start and end required' }, { status: 400 });
 
-  const [sonarrResult, radarrResult, watchedMovies, watchedEpisodes] = await Promise.allSettled([
+  const [sonarrResult, radarrResult, watchedMovies, watchedEpisodes, playedEpisodes] = await Promise.allSettled([
     getSonarrCalendar(start, end),
     getRadarrCalendar(start, end),
     getWatchedMovies().catch(() => []),
     getEpisodeWatchHistory(2000).catch(() => []),
+    // Genuine logged-playback events, unlike getEpisodeWatchHistory's live
+    // library listing - the only signal that survives a deleted episode.
+    getPlayedEpisodes(2000).catch(() => []),
   ]);
 
   const movieTitlesWatched = watchedMovies.status === 'fulfilled' ? watchedMovies.value : [];
   const episodesWatched = watchedEpisodes.status === 'fulfilled' ? watchedEpisodes.value : [];
+  const episodesPlayed = playedEpisodes.status === 'fulfilled' ? playedEpisodes.value : [];
 
   const items: CalendarItem[] = [];
 
   if (sonarrResult.status === 'fulfilled') {
     for (const e of sonarrResult.value) {
-      const watched = episodesWatched.some(
-        (w) => w.seasonNumber === e.seasonNumber && w.episodeNumber === e.episodeNumber && titleFuzzyMatch(w.showTitle, e.seriesTitle)
-      );
+      const watched =
+        episodesWatched.some(
+          (w) => w.seasonNumber === e.seasonNumber && w.episodeNumber === e.episodeNumber && titleFuzzyMatch(w.showTitle, e.seriesTitle)
+        ) ||
+        episodesPlayed.some(
+          (w) => w.seasonNumber === e.seasonNumber && w.episodeNumber === e.episodeNumber && titleFuzzyMatch(w.showTitle, e.seriesTitle)
+        );
       items.push({
         type: 'tv',
         id: e.seriesId,
