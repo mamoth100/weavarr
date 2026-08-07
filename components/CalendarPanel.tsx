@@ -41,9 +41,10 @@ function buildGridDays(monthStart: Date): Date[] {
   return days;
 }
 
-function chipClass(item: CalendarItem, isPast: boolean): string {
+/** Compares this item's own exact air/release timestamp against right now, not just "is this whole day in the past" - a day-level check would keep calling something airing this morning "upcoming" until midnight. */
+function chipClass(item: CalendarItem): string {
   if (item.hasFile) return 'bg-green-500/15 text-green-400';
-  if (isPast) return 'bg-red-500/15 text-red-400';
+  if (new Date(item.date).getTime() <= Date.now()) return 'bg-red-500/15 text-red-400';
   return 'bg-zinc-700/60 text-zinc-400';
 }
 
@@ -132,7 +133,6 @@ export default function CalendarPanel() {
           const dayItems = itemsByDay.get(key) ?? [];
           const inMonth = day.getMonth() === monthStart.getMonth();
           const isToday = isSameDay(day, today);
-          const isPastDay = day < new Date(today.getFullYear(), today.getMonth(), today.getDate());
           const shown = dayItems.slice(0, MAX_CHIPS_PER_DAY);
           const remaining = dayItems.length - shown.length;
 
@@ -151,7 +151,7 @@ export default function CalendarPanel() {
                       <div
                         key={`${item.type}-${item.id}-${item.date}`}
                         title={`${item.title}${item.subtitle ? ` - ${item.subtitle}` : ''}`}
-                        className={`text-[10px] leading-tight truncate rounded px-1 py-0.5 ${chipClass(item, isPastDay)}`}
+                        className={`text-[10px] leading-tight truncate rounded px-1 py-0.5 ${chipClass(item)}`}
                       >
                         {item.title}
                       </div>
