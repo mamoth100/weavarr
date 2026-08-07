@@ -583,12 +583,8 @@ export interface SonarrCalendarItem {
 /** Every episode airing in this date range across the whole library - same data Sonarr's own Calendar page shows. */
 export async function getSonarrCalendar(start: string, end: string): Promise<SonarrCalendarItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  // unmonitored=true is required - Sonarr's calendar silently drops unmonitored
-  // episodes otherwise (confirmed live: 7 vs 11 episodes for the same range),
-  // which is exactly the episodes the Watched-status logic most needs to see,
-  // since deleting an episode in Weavarr unmonitors it.
   const res = await fetch(
-    `${SONARR_URL}/api/v3/calendar?start=${start}&end=${end}&includeSeries=true&unmonitored=true`,
+    `${SONARR_URL}/api/v3/calendar?start=${start}&end=${end}&includeSeries=true`,
     { headers: headers(), cache: 'no-store' }
   );
   if (!res.ok) throw new Error(`Sonarr calendar failed: ${res.status}`);

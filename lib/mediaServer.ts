@@ -29,12 +29,6 @@ export interface WatchedEpisode {
   viewedAt: string;
 }
 
-export interface PlayedEpisode {
-  showTitle: string;
-  seasonNumber: number;
-  episodeNumber: number;
-}
-
 export interface InProgressMovie {
   title: string;
   viewOffset: number;
@@ -142,15 +136,6 @@ export async function getPlayedSessionKeys(limit = 200): Promise<Set<string>> {
     jellyfinEnabled() ? jellyfin.getJellyfinPlayedSessionKeys(limit) : Promise.resolve(new Set<string>()),
   ]);
   return new Set([...Array.from(p), ...Array.from(j)]);
-}
-
-/** Structured form of getPlayedSessionKeys - genuine logged-playback events from both backends, which (unlike getEpisodeWatchHistory) survive the episode's file being deleted, so a watched-then-deleted episode can still be recognized as watched. */
-export async function getPlayedEpisodes(limit = 200): Promise<PlayedEpisode[]> {
-  const [p, j] = await Promise.all([
-    plexEnabled() ? plex.getPlexPlayedEpisodes(limit) : Promise.resolve([]),
-    jellyfinEnabled() ? jellyfin.getJellyfinPlayedEpisodes(limit) : Promise.resolve([]),
-  ]);
-  return [...p, ...j];
 }
 
 export async function getInProgressEpisodes(): Promise<InProgressEpisode[]> {
