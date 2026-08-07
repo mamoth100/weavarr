@@ -503,8 +503,17 @@ function formatAirDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function SearchMissingButton({ episode, onSearched }: { episode: MissingAiredEpisode; onSearched: () => void }) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+function SearchMissingButton({
+  episode,
+  searching,
+  onSearchStarted,
+}: {
+  episode: MissingAiredEpisode;
+  /** True once a search has actually been confirmed triggered - persists across polls until the episode is confirmed downloaded and drops out of the missing list entirely, rather than reverting after one fetch cycle. */
+  searching: boolean;
+  onSearchStarted: () => void;
+}) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   async function handleClick() {
     setStatus('loading');
@@ -516,17 +525,14 @@ function SearchMissingButton({ episode, onSearched }: { episode: MissingAiredEpi
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Search failed');
-      setStatus('done');
-      onSearched();
+      onSearchStarted();
     } catch {
       setStatus('error');
     }
   }
 
-  // We only know the search was triggered, not whether Sonarr actually found
-  // and grabbed a release - same honesty as SonarrEpisodeManager's "Sent to downloader".
-  if (status === 'done') {
-    return <span className="text-xs font-medium text-green-400">Sent to downloader</span>;
+  if (searching) {
+    return <span className="text-xs font-medium text-amber-400">Searching…</span>;
   }
 
   return (
@@ -549,24 +555,59 @@ interface MissingShowGroup {
   episodes: MissingAiredEpisode[];
 }
 
-/** Episodes that have already aired but Sonarr still has no file for - a gap it should have grabbed, not just something not out yet. */
-function MissingAiredSection() {
+const MISSING_POLL_INTERVAL_MS = 30000;
+
+/**
+ * Episodes that have already aired but Sonarr still has no file for - a gap
+ * it should have grabbed, not just something not out yet. A row only leaves
+ * this section once Sonarr's own missing list confirms the file landed
+ * (polled while anything here is mid-search) - clicking Search doesn't
+ * remove it on its own, since triggering a search is not the same as the
+ * episode actually being downloaded.
+ */
+function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () => void }) {
   const [episodes, setEpisodes] = useState<MissingAiredEpisode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [searchingIds, setSearchingIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    fetch('/api/sonarr/missing', { cache: 'no-store' })
+  function fetchMissing() {
+    return fetch('/api/sonarr/missing', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        if (data.error) setError(data.error);
-        else setEpisodes(data.episodes);
+        if (data.error) {
+          setError(data.error);
+          return;
+        }
+        const next: MissingAiredEpisode[] = data.episodes;
+        const nextIds = new Set(next.map((e) => e.episodeId));
+
+        setSearchingIds((prev) => {
+          const stillMissing = new Set(Array.from(prev).filter((id) => nextIds.has(id)));
+          if (stillMissing.size !== prev.size) onEpisodeAvailable(); // something we were tracking dropped off the missing list - it landed
+          return stillMissing;
+        });
+        setEpisodes(next);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  useEffect(() => {
+    fetchMissing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function markSearched(episodeId: number) {
-    setEpisodes((prev) => (prev ?? []).filter((e) => e.episodeId !== episodeId));
+  // Only keep polling while something here is actually being searched for -
+  // no point re-checking Sonarr on a timer when nothing's in flight.
+  useEffect(() => {
+    if (searchingIds.size === 0) return;
+    const interval = setInterval(fetchMissing, MISSING_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchingIds.size]);
+
+  function markSearching(episodeId: number) {
+    setSearchingIds((prev) => new Set(prev).add(episodeId));
   }
 
   if (error || (episodes && episodes.length === 0)) return null;
@@ -619,7 +660,11 @@ function MissingAiredSection() {
                           {e.title}
                           <span className="text-zinc-600"> · aired {formatAirDate(e.airDateUtc)}</span>
                         </p>
-                        <SearchMissingButton episode={e} onSearched={() => markSearched(e.episodeId)} />
+                        <SearchMissingButton
+                          episode={e}
+                          searching={searchingIds.has(e.episodeId)}
+                          onSearchStarted={() => markSearching(e.episodeId)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -758,14 +803,19 @@ export default function ReadyToWatchPanel() {
   const [tvPage, setTvPage] = useState(1);
   const [moviePage, setMoviePage] = useState(1);
 
-  useEffect(() => {
-    fetch('/api/ready-to-watch', { cache: 'no-store' })
+  function refreshItems() {
+    return fetch('/api/ready-to-watch', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
         else setItems(data.items);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  useEffect(() => {
+    refreshItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) {
@@ -839,7 +889,7 @@ export default function ReadyToWatchPanel() {
       {filtered.length === 0 && (
         <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
-      <MissingAiredSection />
+      <MissingAiredSection onEpisodeAvailable={refreshItems} />
       {tvItems.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">

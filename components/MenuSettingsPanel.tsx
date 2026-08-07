@@ -134,6 +134,10 @@ export default function MenuSettingsPanel() {
       setSaveStatus('saved');
       setOriginalGenres(currentGenreIds);
       setOriginalLinks(currentLinkIds);
+      // The nav (GlobalGenreNav/GenreSwitcher) only fetches /api/menu once on
+      // mount - without a reload it keeps showing the stale menu it already
+      // loaded, even though the save itself took effect immediately.
+      window.location.reload();
     } catch (err) {
       setSaveStatus('error');
       setSaveError(err instanceof Error ? err.message : String(err));
