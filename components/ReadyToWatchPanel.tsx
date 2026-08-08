@@ -1151,7 +1151,6 @@ export default function ReadyToWatchPanel() {
       {filtered.length === 0 && (
         <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
-      <MissingAiredSection onEpisodeAvailable={refreshItems} />
       {tvItems.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
@@ -1170,6 +1169,7 @@ export default function ReadyToWatchPanel() {
           <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
         </div>
       )}
+      <MissingAiredSection onEpisodeAvailable={refreshItems} />
       <MissingMoviesSection />
       <RecentlyWatchedSection />
     </div>
