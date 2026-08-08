@@ -1079,14 +1079,14 @@ function ReadyToWatchRow({
 }
 
 /** Jumps to a section's own heading rather than a fixed scroll offset, since section heights vary with content and page size. */
-function SectionTile({ label, count, targetId }: { label: string; count: number; targetId: string }) {
+function SectionTile({ label, singularLabel, count, targetId }: { label: string; singularLabel?: string; count: number; targetId: string }) {
   return (
     <button
       onClick={() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
       className="flex-shrink-0 text-left px-4 py-2.5 rounded-lg bg-zinc-900 ring-1 ring-white/5 hover:ring-amber-500/50 hover:bg-zinc-800 transition-colors"
     >
       <p className="text-xl font-bold text-white leading-none">{count}</p>
-      <p className="text-xs text-zinc-500 uppercase tracking-wider mt-1 whitespace-nowrap">{label}</p>
+      <p className="text-xs text-zinc-500 uppercase tracking-wider mt-1 whitespace-nowrap">{count === 1 && singularLabel ? singularLabel : label}</p>
     </button>
   );
 }
@@ -1189,13 +1189,13 @@ export default function ReadyToWatchPanel() {
         missingMoviesCount > 0 ||
         recentlyWatchedCount > 0) && (
         <div className="flex flex-wrap gap-2">
-          {tvItems.length > 0 && <SectionTile label="TV Shows" count={tvItems.length} targetId="section-tv-shows" />}
-          {movieItems.length > 0 && <SectionTile label="Movies" count={movieItems.length} targetId="section-movies" />}
+          {tvItems.length > 0 && <SectionTile label="TV Shows" singularLabel="TV Show" count={tvItems.length} targetId="section-tv-shows" />}
+          {movieItems.length > 0 && <SectionTile label="Movies" singularLabel="Movie" count={movieItems.length} targetId="section-movies" />}
           {missingAiredCount > 0 && (
             <SectionTile label="Aired, Not Downloaded" count={missingAiredCount} targetId="section-aired-not-downloaded" />
           )}
           {missingMoviesCount > 0 && (
-            <SectionTile label="Movies Not Found" count={missingMoviesCount} targetId="section-movies-not-found" />
+            <SectionTile label="Movies Not Found" singularLabel="Movie Not Found" count={missingMoviesCount} targetId="section-movies-not-found" />
           )}
           {recentlyWatchedCount > 0 && (
             <SectionTile label="Recently Watched" count={recentlyWatchedCount} targetId="section-recently-watched" />
