@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { forceImportRadarr } from '@/lib/radarr';
 
+// Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
+export const dynamic = 'force-dynamic';
+
+
 export async function POST(request: Request) {
   const { downloadId } = await request.json();
   if (!downloadId) return NextResponse.json({ error: 'downloadId required' }, { status: 400 });

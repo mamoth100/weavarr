@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { deleteSonarrSeries } from '@/lib/sonarr';
 import { refreshTvLibrary } from '@/lib/mediaServer';
 
+// Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
+export const dynamic = 'force-dynamic';
+
+
 export async function POST(request: Request) {
   const { seriesId } = await request.json();
   if (!seriesId) return NextResponse.json({ error: 'seriesId required' }, { status: 400 });

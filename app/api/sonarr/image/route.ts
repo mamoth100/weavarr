@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getCachedPoster } from '@/lib/posterCache';
 
+// Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
+export const dynamic = 'force-dynamic';
+
+
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const SONARR_URL = process.env.SONARR_URL?.replace(/\/$/, '');
 const SONARR_KEY = process.env.SONARR_KEY;
