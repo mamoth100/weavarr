@@ -974,7 +974,9 @@ function RecentlyWatchedSection({ onCountChange }: { onCountChange: (count: numb
 
   return (
     <div id="section-recently-watched" className="space-y-2">
-      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Recently Watched</h2>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+        Recently Watched{items && items.length > 0 ? ` (${items.length})` : ''}
+      </h2>
       <div className="space-y-2">
         {!items
           ? [1, 2, 3].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
@@ -1206,7 +1208,7 @@ export default function ReadyToWatchPanel() {
       {tvItems.length > 0 && (
         <div id="section-tv-shows" className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-            TV Shows{tvItems.length > PAGE_SIZE && ` (${tvItems.length})`}
+            TV Shows ({tvItems.length})
           </h2>
           <div className="space-y-2">{tvPaged.map(renderRow)}</div>
           <SimplePagination page={tvPageSafe} totalPages={tvTotalPages} onChange={setTvPage} />
@@ -1215,7 +1217,7 @@ export default function ReadyToWatchPanel() {
       {movieItems.length > 0 && (
         <div id="section-movies" className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-            Movies{movieItems.length > PAGE_SIZE && ` (${movieItems.length})`}
+            Movies ({movieItems.length})
           </h2>
           <div className="space-y-2">{moviePaged.map(renderRow)}</div>
           <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
