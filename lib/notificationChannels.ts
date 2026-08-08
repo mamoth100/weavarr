@@ -13,8 +13,9 @@ import { sendDiscordNotification } from './discordNotify';
 
 export type NotificationCategory = 'import' | 'alert';
 
+/** Defaults on (unset !== 'false') unlike Webhook/Discord below - Pushover was the original channel, added before either of those existed or before this toggle did, so existing setups shouldn't go silent just because a toggle now exists. */
 export function pushoverEnabled(): boolean {
-  return Boolean(process.env.PUSHOVER_USER_KEY && process.env.PUSHOVER_API_TOKEN);
+  return process.env.ENABLE_PUSHOVER !== 'false' && Boolean(process.env.PUSHOVER_USER_KEY && process.env.PUSHOVER_API_TOKEN);
 }
 
 export function webhookNotifyEnabled(): boolean {
