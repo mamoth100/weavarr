@@ -6,7 +6,7 @@ import { getMenuConfig } from '@/lib/settings';
 import CardGrid from '@/components/CardGrid';
 import FilterBar from '@/components/FilterBar';
 import Pagination from '@/components/Pagination';
-import GenreSwitcher from '@/components/GenreSwitcher';
+import AppShell from '@/components/AppShell';
 import SearchResultCard from '@/components/SearchResultCard';
 import type { SortOption } from '@/types';
 
@@ -145,7 +145,7 @@ export default async function Home({ searchParams }: PageProps) {
   const enriched = data;
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <AppShell>
       <header className="border-b border-zinc-800 px-6 py-5">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
@@ -207,12 +207,6 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
         </div>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
-        <Suspense>
-          <GenreSwitcher config={config} />
-        </Suspense>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Suspense fallback={<div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />}>
@@ -303,7 +297,7 @@ export default async function Home({ searchParams }: PageProps) {
           </>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }
 

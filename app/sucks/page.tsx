@@ -2,17 +2,16 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import BackLink from '@/components/BackLink';
-import GlobalGenreNav from '@/components/GlobalGenreNav';
+import AppShell from '@/components/AppShell';
 
 export default function SucksPage() {
   const { sucksItems, removeSucks } = useWatchlist();
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <AppShell>
       <header className="border-b border-zinc-800 px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
@@ -24,12 +23,6 @@ export default function SucksPage() {
           <BackLink />
         </div>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
-        <Suspense>
-          <GlobalGenreNav />
-        </Suspense>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {sucksItems.length === 0 ? (
@@ -102,6 +95,6 @@ export default function SucksPage() {
           </>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }

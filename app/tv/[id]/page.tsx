@@ -1,8 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import GlobalGenreNav from '@/components/GlobalGenreNav';
+import AppShell from '@/components/AppShell';
 import { getTvDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
 import { getSonarrSeriesIdByImdbId } from '@/lib/sonarr';
@@ -64,19 +63,13 @@ export default async function TvPage({ params }: Props) {
     .sort((a, b) => (b.official ? 1 : 0) - (a.official ? 1 : 0))[0]?.key ?? null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <AppShell>
       {/* Nav */}
       <header className="border-b border-zinc-800 px-6 py-5">
         <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
           Weav<span className="text-amber-400">arr</span>
         </Link>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
-        <Suspense>
-          <GlobalGenreNav />
-        </Suspense>
-      </div>
 
       {/* Backdrop hero */}
       {backdropUrl && (
@@ -339,6 +332,6 @@ export default async function TvPage({ params }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
