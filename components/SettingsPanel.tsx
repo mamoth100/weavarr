@@ -24,7 +24,7 @@ const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex'
 // shown as a hover tooltip next to the group's Test button.
 const GROUP_INFO: Record<string, { text: string; linkLabel: string; linkHref: string }> = {
   TMDB: {
-    text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Works out of the box with a bundled key; set your own here to use your own TMDB rate limit instead.',
+    text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Works out of the box with a bundled key. Setting your own isn\'t about rate limits (TMDB limits per-IP, not per-key) - it just means you\'re not affected if the shared bundled key ever gets abused and revoked.',
     linkLabel: 'Get a TMDB key',
     linkHref: 'https://www.themoviedb.org/settings/api',
   },
@@ -121,6 +121,12 @@ export default function SettingsPanel() {
   const [settings, setSettings] = useState<SettingStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  // Secret fields never round-trip their real value, so "leave blank" has
+  // always meant "unchanged" - there was never a way to explicitly wipe one
+  // via this UI. Tracked separately from edits so a blank field still means
+  // "unchanged" by default; only fields the user actively marks here get an
+  // explicit empty value sent on save.
+  const [clearedKeys, setClearedKeys] = useState<Set<string>>(new Set());
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
@@ -176,7 +182,20 @@ export default function SettingsPanel() {
   }
 
   const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g));
-  const changedCount = Object.values(edits).filter((v) => v.trim() !== '').length;
+  const changedCount = new Set([
+    ...Object.entries(edits).filter(([, v]) => v.trim() !== '').map(([k]) => k),
+    ...Array.from(clearedKeys),
+  ]).size;
+
+  function toggleClear(key: string) {
+    setClearedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setEdits((prev) => ({ ...prev, [key]: '' }));
+  }
 
   // Reflects unsaved edits too, not just what's persisted - toggling Plex
   // off should grey out Watched Sync immediately, before hitting Save.
@@ -273,6 +292,7 @@ export default function SettingsPanel() {
     const updates = Object.fromEntries(
       Object.entries(edits).filter(([, v]) => v.trim() !== '')
     );
+    for (const key of Array.from(clearedKeys)) updates[key] = '';
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -283,6 +303,7 @@ export default function SettingsPanel() {
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
       setSaveStatus('saved');
       setEdits({});
+      setClearedKeys(new Set());
       // Reload so non-secret fields reflect the saved values
       const refreshed = await fetch('/api/settings', { cache: 'no-store' }).then((r) => r.json());
       if (!refreshed.error) setSettings(refreshed.settings);
@@ -399,14 +420,43 @@ export default function SettingsPanel() {
                                 <input
                                   type={s.secret ? 'password' : 'text'}
                                   value={s.secret ? (edits[s.key] ?? '') : (edits[s.key] ?? s.value ?? '')}
-                                  onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                                  placeholder={s.secret ? (s.isSet ? 'Set - leave blank to keep' : 'Not set') : ''}
-                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+                                  disabled={clearedKeys.has(s.key)}
+                                  onChange={(e) => {
+                                    if (clearedKeys.has(s.key)) {
+                                      setClearedKeys((prev) => {
+                                        const next = new Set(prev);
+                                        next.delete(s.key);
+                                        return next;
+                                      });
+                                    }
+                                    setEdits((prev) => ({ ...prev, [s.key]: e.target.value }));
+                                  }}
+                                  placeholder={
+                                    clearedKeys.has(s.key)
+                                      ? 'Will be cleared on save'
+                                      : s.secret
+                                        ? (s.isSet ? 'Set - leave blank to keep' : 'Not set')
+                                        : ''
+                                  }
+                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600 disabled:opacity-50"
                                 />
+                              )}
+                              {s.secret && s.isSet && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleClear(s.key)}
+                                  className={`text-xs font-medium whitespace-nowrap px-2 py-1 rounded-md ${
+                                    clearedKeys.has(s.key)
+                                      ? 'bg-amber-500 text-black hover:bg-amber-400'
+                                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                                  }`}
+                                >
+                                  {clearedKeys.has(s.key) ? 'Undo' : 'Clear'}
+                                </button>
                               )}
                               {s.secret && (
                                 <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
-                                  {s.isSet ? 'set' : 'not set'}
+                                  {clearedKeys.has(s.key) ? 'will clear' : s.isSet ? 'set' : 'not set'}
                                 </span>
                               )}
                             </div>
