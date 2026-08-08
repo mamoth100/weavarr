@@ -22,6 +22,14 @@ services:
       - .env.local
     volumes:
       - data:/app/data
+      # env_file above only injects the VALUES as environment variables at
+      # container start - it never copies the actual file in. The Settings
+      # page reads/writes .env.local as a real file (lib/settings.ts), so
+      # without this bind mount it'd read an empty file (showing everything
+      # as "not configured" despite env vars working fine) and any save
+      # from the UI would write to a path that doesn't survive a rebuild.
+      # This makes it the literal same file the host has.
+      - ./.env.local:/app/.env.local
 
 volumes:
   data:
