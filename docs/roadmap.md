@@ -50,6 +50,33 @@ Seerr, not Overseerr.
       an API key: movie/show request, library list, status, search) but
       never greenlit - deliberately deferred, not forgotten.
 
+## Things Weavarr has that Seerr does not
+
+Verified 2026-08-08 by reading Seerr's source directly (not assumed):
+
+- **Calendar page** - scanned Seerr's full `src/components` listing (A-Z).
+  There's `AirDateBadge` (a small inline "airs in N days" badge on
+  individual media cards) but nothing resembling an actual month-grid
+  calendar merging Sonarr + Radarr release dates. No equivalent exists.
+- **In-app Backup/Restore** - checked Seerr's full `Settings` component
+  list (`SettingsAbout`, `SettingsJobsCache`, `SettingsLogs`,
+  `SettingsMain`, `SettingsNetwork`, `SettingsUsers`, `SettingsJellyfin`,
+  `SettingsMetadata`, `SettingsNotifications`, `SettingsPlex`,
+  `SettingsServices`) - no backup component. Seerr expects you to back up
+  the Postgres/SQLite file yourself, outside the app.
+- **"Not Found" give-up tracking** - traced this all the way through
+  Seerr's actual request lifecycle to be sure, not just a guess. Their
+  `MediaRequestStatus` enum (`server/constants/media.ts`) has a `FAILED`
+  state, but tracing `server/routes/request.ts` shows it's paired with
+  an admin-only `POST /:requestId/retry` endpoint that resets `FAILED`
+  back to `APPROVED` and resends the request to Radarr/Sonarr - meaning
+  `FAILED` represents the *initial API call to Radarr/Sonarr erroring*
+  (network hiccup, bad config), not "searched for weeks and there's
+  genuinely no release anywhere." Radarr/Sonarr's own `wanted/missing`
+  list (what Weavarr's Not Found section is built on) represents items
+  that *were* successfully added/monitored and just never turn up a
+  release - Seerr has no status, route, or UI for that state at all.
+
 ## Not gaps - Weavarr already has an equivalent
 
 - **Watchlisting & blocklisting** - Seerr's README lists this as a
