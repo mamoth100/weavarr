@@ -178,6 +178,14 @@ export default function SettingsPanel() {
   const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g));
   const changedCount = Object.values(edits).filter((v) => v.trim() !== '').length;
 
+  // Reflects unsaved edits too, not just what's persisted - toggling Plex
+  // off should grey out Watched Sync immediately, before hitting Save.
+  function resolveBoolean(key: string): boolean {
+    const field = settings!.find((s) => s.key === key);
+    return (edits[key] ?? field?.value ?? field?.defaultValue ?? 'false') === 'true';
+  }
+  const watchedSyncEligible = resolveBoolean('ENABLE_PLEX') && resolveBoolean('ENABLE_JELLYFIN');
+
   async function handleRestart() {
     setRestartStatus('restarting');
     try {
@@ -343,7 +351,16 @@ export default function SettingsPanel() {
                                 <p className="text-sm font-medium">{s.label}</p>
                                 <p className="text-xs text-zinc-600">{s.key}</p>
                               </div>
-                              {s.type === 'boolean' ? (
+                              {s.type === 'boolean' && s.key === 'ENABLE_WATCHED_SYNC' && !watchedSyncEligible ? (
+                                <select
+                                  value="false"
+                                  disabled
+                                  title="Needs both Plex and Jellyfin enabled - there's nothing to sync between just one media server."
+                                  className="flex-1 bg-zinc-800 text-zinc-600 text-sm rounded-lg px-3 py-1.5 border border-zinc-700 opacity-50 cursor-not-allowed"
+                                >
+                                  <option value="false">Disable</option>
+                                </select>
+                              ) : s.type === 'boolean' ? (
                                 <select
                                   value={edits[s.key] ?? s.value ?? s.defaultValue ?? 'false'}
                                   onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
