@@ -128,9 +128,22 @@ Status as of 2026-08-08:
       shell commands might (package manager differences, etc.)
 - [ ] Optional polish: `HEALTHCHECK` in the Dockerfile; reverse-proxy/HTTPS
       guidance for anyone wanting to expose this outside their LAN
-- [ ] Backup/restore feature (see separate note - snapshot `.env.local` +
-      `data/` into a downloadable/restorable archive, Radarr/Sonarr-style).
-      Explicitly deferred, not urgent.
+- [x] Backup/restore feature - manual "Backup Now" + scheduled automatic
+      backups (opt-in, with retention), download/restore/delete per
+      backup, own "Backup" area in Settings. Snapshots `.env.local` +
+      everything under `data/` except the regenerable poster cache.
+      Verified end-to-end on the Pi with real production data (2026-08-08):
+      created a real backup, confirmed all 6 expected files present via
+      `unzip -l`, then separately verified restore actually reverts a
+      modified setting (tested locally with a throwaway value, not
+      against production data).
+- [x] **Fixed a second Docker-cutover bug found in passing**: the
+      "Restart App" button in Settings was hardcoded to
+      `sudo systemctl restart weavarr`, dead code since neither `sudo`
+      nor `systemctl` exist inside the container (confirmed live) and
+      the systemd service is stopped anyway. Now exits cleanly and lets
+      `restart: unless-stopped` bring the container back - verified via
+      `RestartCount` incrementing and the app coming back healthy.
 
 ## Cutover steps actually run (2026-08-08)
 
