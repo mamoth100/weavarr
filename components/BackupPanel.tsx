@@ -196,7 +196,7 @@ const RETENTION_KEY = 'BACKUP_RETENTION_COUNT';
 const ENABLE_KEY = 'ENABLE_SCHEDULED_BACKUPS';
 
 function ScheduleSettings() {
-  const [enabled, setEnabled] = useState('false');
+  const [enabled, setEnabled] = useState('true');
   const [retention, setRetention] = useState('10');
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -242,7 +242,7 @@ function ScheduleSettings() {
         <div className="p-3 flex items-center gap-3">
           <div className="w-52 flex-shrink-0">
             <p className="text-sm font-medium">Enable Scheduled Backups</p>
-            <p className="text-xs text-zinc-600">Runs daily, keeps the newest N automatically</p>
+            <p className="text-xs text-zinc-600">On by default - runs daily, keeps the newest N automatically</p>
           </div>
           <select
             value={enabled}
