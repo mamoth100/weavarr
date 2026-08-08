@@ -25,7 +25,7 @@ const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
 
 // Groups each service's Settings fields into a broader category so the page
 // reads as ~7 sections instead of 12 flat, equally-weighted blocks.
-const SECTION_ORDER = ['Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Backup', 'Misc'];
+const SECTION_ORDER = ['Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
 const GROUP_TO_SECTION: Record<string, string> = {
   TMDB: 'Metadata',
   OMDb: 'Metadata',
@@ -40,199 +40,13 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Pushover: 'Notifications',
   Webhook: 'Notifications',
   Discord: 'Notifications',
-  Backup: 'Backup',
   'App Behavior': 'Misc',
 };
 
-interface BackupInfo {
-  filename: string;
-  sizeBytes: number;
-  createdAt: string;
-}
-
-function formatBackupSize(bytes: number): string {
-  const mb = bytes / (1024 * 1024);
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
-}
-
-function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () => void }) {
-  const [restoreStatus, setRestoreStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
-  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRestore() {
-    setRestoreStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/backup/restore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: backup.filename }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Restore failed');
-      setRestoreStatus('done');
-    } catch (err) {
-      setRestoreStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleDelete() {
-    setDeleteStatus('loading');
-    try {
-      const res = await fetch(`/api/backup/${encodeURIComponent(backup.filename)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      onDeleted();
-    } catch (err) {
-      setDeleteStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  return (
-    <div className="p-3 flex items-center gap-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{backup.filename}</p>
-        <p className="text-xs text-zinc-600">
-          {new Date(backup.createdAt).toLocaleString()} · {formatBackupSize(backup.sizeBytes)}
-        </p>
-        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-      </div>
-
-      <a
-        href={`/api/backup/${encodeURIComponent(backup.filename)}`}
-        download
-        className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-      >
-        Download
-      </a>
-
-      {restoreStatus === 'done' ? (
-        <span className="text-xs font-medium text-green-400">Restored - restart to apply</span>
-      ) : restoreStatus === 'confirm' || restoreStatus === 'loading' ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-zinc-400">Overwrite current config/data?</span>
-          <button
-            onClick={handleRestore}
-            disabled={restoreStatus === 'loading'}
-            className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
-          >
-            {restoreStatus === 'loading' ? '…' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setRestoreStatus('idle')}
-            disabled={restoreStatus === 'loading'}
-            className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
-          >
-            No
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setRestoreStatus('confirm')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-            restoreStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-          }`}
-        >
-          {restoreStatus === 'error' ? 'Failed - retry' : 'Restore'}
-        </button>
-      )}
-
-      {deleteStatus === 'confirm' || deleteStatus === 'loading' ? (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleDelete}
-            disabled={deleteStatus === 'loading'}
-            className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
-          >
-            {deleteStatus === 'loading' ? '…' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setDeleteStatus('idle')}
-            disabled={deleteStatus === 'loading'}
-            className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
-          >
-            No
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setDeleteStatus('confirm')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-            deleteStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
-          }`}
-        >
-          {deleteStatus === 'error' ? 'Failed - retry' : 'Delete'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function BackupManager() {
-  const [backups, setBackups] = useState<BackupInfo[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-
-  function fetchBackups() {
-    return fetch('/api/backup', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) setError(data.error);
-        else setBackups(data.backups);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
-  }
-
-  useEffect(() => {
-    fetchBackups();
-  }, []);
-
-  async function handleBackupNow() {
-    setCreating(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/backup', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Backup failed');
-      await fetchBackups();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  return (
-    <div className="space-y-2 pt-2">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-          Existing Backups{backups && backups.length > 0 ? ` (${backups.length})` : ''}
-        </h4>
-        <button
-          onClick={handleBackupNow}
-          disabled={creating}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-60"
-        >
-          {creating ? 'Backing up…' : 'Backup Now'}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
-      {backups && backups.length === 0 && (
-        <p className="text-xs text-zinc-600">No backups yet - click Backup Now to create one.</p>
-      )}
-      {backups && backups.length > 0 && (
-        <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
-          {backups.map((b) => (
-            <BackupRow key={b.filename} backup={b} onDeleted={fetchBackups} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// Backup gets its own top-level tab in SettingsLayout.tsx (BackupPanel.tsx),
+// not a section here - it isn't a "connection" and the user was explicit
+// it shouldn't read as one.
+const EXCLUDED_GROUPS = new Set(['Backup']);
 
 type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string; profiles?: QualityProfileOption[] };
 
@@ -294,7 +108,7 @@ export default function SettingsPanel() {
     );
   }
 
-  const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu');
+  const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g));
   const changedCount = Object.values(edits).filter((v) => v.trim() !== '').length;
 
   async function handleRestart() {
@@ -513,7 +327,6 @@ export default function SettingsPanel() {
                             </div>
                           ))}
                       </div>
-                      {group === 'Backup' && <BackupManager />}
                     </div>
                   );
                 })}
