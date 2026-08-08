@@ -76,15 +76,17 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
       })),
   ];
 
-  const seenTitles = new Set<string>();
+  // Dedupe by the resolved Radarr movie, not the raw signal title - two
+  // signals with slightly different title strings (e.g. Plex vs Jellyfin
+  // naming) can both fuzzy-match the same movie and would otherwise both
+  // survive a title-keyed dedup, producing two entries with the same key.
+  const seenMovieIds = new Set<number>();
   const results: RecentlyWatchedMovie[] = [];
   for (const s of signals) {
-    const titleKey = s.title.toLowerCase().trim();
-    if (seenTitles.has(titleKey)) continue;
-    seenTitles.add(titleKey);
-
     const matched = movies.find((m) => m.hasFile && titleFuzzyMatch(m.title, s.title));
     if (!matched) continue; // no file - already gone, or never had one
+    if (seenMovieIds.has(matched.id)) continue;
+    seenMovieIds.add(matched.id);
 
     results.push({
       type: 'movie',
