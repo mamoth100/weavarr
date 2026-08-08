@@ -150,6 +150,46 @@ export async function forceImportRadarr(downloadId: string) {
   return { triggered: true };
 }
 
+export interface MissingMovie {
+  movieId: number;
+  title: string;
+  year: number;
+  hasPoster: boolean;
+  releaseDate: string | null;
+}
+
+/** Monitored movies Radarr has no file for and no active download for - either not searched yet or genuinely unavailable on every configured indexer. Pulls straight from Radarr's own wanted/missing list. */
+export async function getMissingMovies(): Promise<MissingMovie[]> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(
+    `${RADARR_URL}/api/v3/wanted/missing?pageSize=1000&sortKey=releaseDate&sortDirection=descending`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Radarr wanted/missing failed: ${res.status}`);
+  const data = await res.json();
+  return (data.records as Record<string, unknown>[]).map((m) => {
+    const images = (m.images as RadarrImage[] | undefined) ?? [];
+    return {
+      movieId: m.id as number,
+      title: m.title as string,
+      year: m.year as number,
+      hasPoster: images.some((img) => img.coverType === 'poster'),
+      releaseDate: (m.releaseDate as string | undefined) ?? null,
+    };
+  });
+}
+
+/** Same search Radarr's own UI triggers from the movie's own search icon. */
+export async function searchRadarrMovie(movieId: number): Promise<void> {
+  if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
+  const res = await fetch(`${RADARR_URL}/api/v3/command`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name: 'MoviesSearch', movieIds: [movieId] }),
+  });
+  if (!res.ok) throw new Error(`Radarr movie search failed: ${await res.text()}`);
+}
+
 export interface RadarrMovie {
   id: number;
   title: string;
