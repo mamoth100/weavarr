@@ -82,16 +82,23 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
 
   return (
     <>
-      {/* Mobile trigger - fixed top-left, only below the lg breakpoint where the sidebar itself is off-canvas. */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Open menu"
-        className="lg:hidden fixed top-4 left-4 z-30 p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </button>
+      {/* Mobile top bar - in normal document flow (not fixed), so it takes its
+          own space above each page's header instead of floating over it. Only
+          below the lg breakpoint where the sidebar itself is off-canvas. */}
+      <div className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-zinc-950 border-b border-zinc-800">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+          className="p-2 -ml-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <Link href="/" className="text-lg font-bold tracking-tight hover:text-amber-400 transition">
+          Weav<span className="text-amber-400">arr</span>
+        </Link>
+      </div>
 
       {mobileOpen && (
         <div
