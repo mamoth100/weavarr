@@ -548,6 +548,66 @@ function SearchMissingButton({
   );
 }
 
+/** "Give up" on a missing episode - unmonitors it so Sonarr stops trying, since there's no file to delete in the first place. */
+function GiveUpEpisodeButton({ episodeId, onGivenUp }: { episodeId: number; onGivenUp: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/sonarr/give-up-episode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      onGivenUp();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'confirm' || status === 'loading') {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-zinc-500">Give up?</span>
+        <button
+          onClick={handleConfirm}
+          disabled={status === 'loading'}
+          className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
+        >
+          {status === 'loading' ? '…' : 'Yes'}
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          disabled={status === 'loading'}
+          className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setStatus('confirm')}
+        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-500 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'error' ? 'Failed - retry' : 'Give up'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 interface MissingShowGroup {
   seriesId: number;
   seriesTitle: string;
@@ -610,6 +670,16 @@ function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () =>
     setSearchingIds((prev) => new Set(prev).add(episodeId));
   }
 
+  function handleGivenUp(episodeId: number) {
+    setEpisodes((prev) => (prev ? prev.filter((e) => e.episodeId !== episodeId) : prev));
+    setSearchingIds((prev) => {
+      if (!prev.has(episodeId)) return prev;
+      const next = new Set(prev);
+      next.delete(episodeId);
+      return next;
+    });
+  }
+
   if (error || (episodes && episodes.length === 0)) return null;
 
   const groups: MissingShowGroup[] = [];
@@ -660,15 +730,207 @@ function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () =>
                           {e.title}
                           <span className="text-zinc-600"> · aired {formatAirDate(e.airDateUtc)}</span>
                         </p>
-                        <SearchMissingButton
-                          episode={e}
-                          searching={searchingIds.has(e.episodeId)}
-                          onSearchStarted={() => markSearching(e.episodeId)}
-                        />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <SearchMissingButton
+                            episode={e}
+                            searching={searchingIds.has(e.episodeId)}
+                            onSearchStarted={() => markSearching(e.episodeId)}
+                          />
+                          <GiveUpEpisodeButton episodeId={e.episodeId} onGivenUp={() => handleGivenUp(e.episodeId)} />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+            ))}
+      </div>
+    </div>
+  );
+}
+
+interface MissingMovie {
+  movieId: number;
+  title: string;
+  year: number;
+  hasPoster: boolean;
+  releaseDate: string | null;
+}
+
+function SearchMissingMovieButton({
+  movie,
+  searching,
+  onSearchStarted,
+}: {
+  movie: MissingMovie;
+  searching: boolean;
+  onSearchStarted: () => void;
+}) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  async function handleClick() {
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/radarr/search-movie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId: movie.movieId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Search failed');
+      onSearchStarted();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  if (searching) {
+    return <span className="text-xs font-medium text-amber-400">Searching…</span>;
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading'}
+      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
+        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
+      }`}
+    >
+      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search'}
+    </button>
+  );
+}
+
+/** Gives up on a missing movie by removing it from Radarr entirely - unlike a missing episode there's no partial series to preserve, so full removal (same as the regular movie Delete button) is the only sensible "stop asking" action. */
+function MissingMovieDeleteButton({ movieId, onDeleted }: { movieId: number; onDeleted: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setStatus('loading');
+    setError(null);
+    try {
+      const res = await fetch('/api/radarr/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      onDeleted();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (status === 'confirm' || status === 'loading') {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-zinc-500">Delete?</span>
+        <button
+          onClick={handleConfirm}
+          disabled={status === 'loading'}
+          className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
+        >
+          {status === 'loading' ? '…' : 'Yes'}
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          disabled={status === 'loading'}
+          className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setStatus('confirm')}
+        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-500 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {status === 'error' ? 'Failed - retry' : 'Delete'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+/** Movies Radarr has monitored, has no file for, and hasn't found on any indexer - the movie equivalent of MissingAiredSection, added since Radarr has no built-in concept mirroring Sonarr's air-date gap. */
+function MissingMoviesSection() {
+  const [movies, setMovies] = useState<MissingMovie[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [searchingIds, setSearchingIds] = useState<Set<number>>(new Set());
+
+  function fetchMissing() {
+    return fetch('/api/radarr/missing', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setError(data.error);
+          return;
+        }
+        const next: MissingMovie[] = data.movies;
+        const nextIds = new Set(next.map((m) => m.movieId));
+        setSearchingIds((prev) => new Set(Array.from(prev).filter((id) => nextIds.has(id))));
+        setMovies(next);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  useEffect(() => {
+    fetchMissing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Only keep polling while something here is actually being searched for.
+  useEffect(() => {
+    if (searchingIds.size === 0) return;
+    const interval = setInterval(fetchMissing, MISSING_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchingIds.size]);
+
+  function markSearching(movieId: number) {
+    setSearchingIds((prev) => new Set(prev).add(movieId));
+  }
+
+  function handleDeleted(movieId: number) {
+    setMovies((prev) => (prev ? prev.filter((m) => m.movieId !== movieId) : prev));
+  }
+
+  if (error || (movies && movies.length === 0)) return null;
+
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+        Movies Not Found{movies && movies.length > 0 ? ` (${movies.length})` : ''}
+      </h2>
+      <div className="space-y-2">
+        {!movies
+          ? [1, 2].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
+          : movies.map((m) => (
+              <div key={m.movieId} className="flex items-center gap-3 bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3">
+                <Poster id={m.movieId} hasPoster={m.hasPoster} title={m.title} service="radarr" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
+                    {m.title} <span className="text-zinc-500">({m.year})</span>
+                  </p>
+                  {m.releaseDate && <p className="text-xs text-zinc-600">released {formatAirDate(m.releaseDate)}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <SearchMissingMovieButton
+                    movie={m}
+                    searching={searchingIds.has(m.movieId)}
+                    onSearchStarted={() => markSearching(m.movieId)}
+                  />
+                  <MissingMovieDeleteButton movieId={m.movieId} onDeleted={() => handleDeleted(m.movieId)} />
+                </div>
               </div>
             ))}
       </div>
@@ -908,6 +1170,7 @@ export default function ReadyToWatchPanel() {
           <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
         </div>
       )}
+      <MissingMoviesSection />
       <RecentlyWatchedSection />
     </div>
   );
