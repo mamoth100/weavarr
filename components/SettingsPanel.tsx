@@ -24,17 +24,17 @@ const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex'
 // shown as a hover tooltip next to the group's Test button.
 const GROUP_INFO: Record<string, { text: string; linkLabel: string; linkHref: string }> = {
   TMDB: {
-    text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Free account required.',
+    text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Works out of the box with a bundled key; set your own here to use your own TMDB rate limit instead.',
     linkLabel: 'Get a TMDB key',
     linkHref: 'https://www.themoviedb.org/settings/api',
   },
   OMDb: {
-    text: 'OMDb supplements TMDB with additional metadata. Free tier available (daily request limit).',
+    text: 'Optional. Adds IMDb rating, Rotten Tomatoes, Metacritic, and content rating into the composite score. Free tier available (1,000 requests/day) - leave blank and the app falls back to a TMDB-only score.',
     linkLabel: 'Get an OMDb key',
     linkHref: 'https://www.omdbapi.com/apikey.aspx',
   },
   Trakt: {
-    text: 'Trakt adds community ratings and stats (watchers, plays, collectors) alongside TMDB\'s own.',
+    text: 'Optional. Adds Trakt\'s community rating into the composite score. Leave blank and the app falls back to a TMDB/IMDb-only score.',
     linkLabel: 'Create a Trakt app',
     linkHref: 'https://trakt.tv/oauth/applications',
   },

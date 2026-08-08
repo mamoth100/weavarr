@@ -156,6 +156,20 @@ async function testOMDb(key?: string): Promise<TestResult> {
   }
 }
 
+async function testTrakt(clientId?: string): Promise<TestResult> {
+  if (!clientId) return { ok: false, message: 'Client ID required' };
+  try {
+    const res = await fetch('https://api.trakt.tv/movies/popular?limit=1', {
+      headers: { 'Content-Type': 'application/json', 'trakt-api-version': '2', 'trakt-api-key': clientId },
+      cache: 'no-store',
+    });
+    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check the Client ID` };
+    return { ok: true, message: 'Client ID valid' };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 async function testPushover(userKey?: string, apiToken?: string): Promise<TestResult> {
   if (!userKey || !apiToken) return { ok: false, message: 'User key and API token required' };
   try {
@@ -225,6 +239,8 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testTMDB(values.TMDB_TOKEN);
     case 'OMDb':
       return testOMDb(values.OMDB_API_KEY);
+    case 'Trakt':
+      return testTrakt(values.TRAKT_CLIENT_ID);
     case 'Pushover':
       return testPushover(values.PUSHOVER_USER_KEY, values.PUSHOVER_API_TOKEN);
     case 'Webhook':
