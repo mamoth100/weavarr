@@ -543,7 +543,7 @@ function SearchMissingButton({
         status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
       }`}
     >
-      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search'}
+      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search Again'}
     </button>
   );
 }
@@ -806,7 +806,7 @@ function SearchMissingMovieButton({
         status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
       }`}
     >
-      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search'}
+      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search Again'}
     </button>
   );
 }
@@ -1168,8 +1168,7 @@ export default function ReadyToWatchPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between text-sm text-zinc-500">
-        <span>{items.length} to watch</span>
+      <div className="flex items-center justify-end text-sm text-zinc-500">
         <input
           type="text"
           value={query}
