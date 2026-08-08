@@ -1,3 +1,8 @@
+# Explicit project name - without this, Compose defaults to the directory
+# name, which would prefix every resource (volumes, network, labels) with
+# "docuview" if this checkout still lives in a folder called that.
+name: weavarr
+
 services:
   weavarr:
     build: .
@@ -16,7 +21,7 @@ services:
     env_file:
       - .env.local
     volumes:
-      - weavarr-data:/app/data
+      - data:/app/data
 
 volumes:
-  weavarr-data:
+  data:
