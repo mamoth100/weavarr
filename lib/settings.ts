@@ -13,6 +13,8 @@ export interface SettingField {
   group: string;
   secret: boolean; // if true, never echo the actual value back to the client
   type?: 'boolean' | 'profile'; // 'boolean' renders Enable/Disable; 'profile' renders a quality-profile dropdown populated by testing the service
+  /** For boolean fields only - what an unset env var actually evaluates to at runtime (must match the corresponding lib/*.ts check exactly), so the Enable/Disable dropdown reflects real behavior instead of always defaulting to "Disable" when nothing's been explicitly saved yet. */
+  defaultValue?: 'true' | 'false';
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
@@ -21,43 +23,46 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
   { key: 'TRAKT_CLIENT_ID', label: 'Trakt Client ID (server)', group: 'Trakt', secret: true },
   { key: 'NEXT_PUBLIC_TRAKT_CLIENT_ID', label: 'Trakt Client ID (public)', group: 'Trakt', secret: false },
+  { key: 'ENABLE_RADARR', label: 'Enable Radarr', group: 'Radarr', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'RADARR_URL', label: 'Radarr URL', group: 'Radarr', secret: false },
   { key: 'RADARR_KEY', label: 'Radarr API Key', group: 'Radarr', secret: true },
   { key: 'RADARR_DEFAULT_PROFILE', label: 'Default Quality Profile', group: 'Radarr', secret: false, type: 'profile' },
   { key: 'RADARR_HIGHEST_PROFILE', label: 'Highest Quality Profile', group: 'Radarr', secret: false, type: 'profile' },
+  { key: 'ENABLE_SONARR', label: 'Enable Sonarr', group: 'Sonarr', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'SONARR_URL', label: 'Sonarr URL', group: 'Sonarr', secret: false },
   { key: 'SONARR_KEY', label: 'Sonarr API Key', group: 'Sonarr', secret: true },
   { key: 'SONARR_DEFAULT_PROFILE', label: 'Default Quality Profile', group: 'Sonarr', secret: false, type: 'profile' },
   { key: 'SONARR_HIGHEST_PROFILE', label: 'Highest Quality Profile', group: 'Sonarr', secret: false, type: 'profile' },
-  { key: 'ENABLE_SABNZBD', label: 'Enable SABnzbd', group: 'SABnzbd', secret: false, type: 'boolean' },
+  { key: 'ENABLE_SABNZBD', label: 'Enable SABnzbd', group: 'SABnzbd', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'SABNZBD_URL', label: 'SABnzbd URL', group: 'SABnzbd', secret: false },
   { key: 'SABNZBD_API_KEY', label: 'SABnzbd API Key', group: 'SABnzbd', secret: true },
-  { key: 'ENABLE_NZBGET', label: 'Enable NZBGet', group: 'NZBGet', secret: false, type: 'boolean' },
+  { key: 'ENABLE_NZBGET', label: 'Enable NZBGet', group: 'NZBGet', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'NZBGET_URL', label: 'NZBGet URL', group: 'NZBGet', secret: false },
   { key: 'NZBGET_USERNAME', label: 'NZBGet Username', group: 'NZBGet', secret: false },
   { key: 'NZBGET_PASSWORD', label: 'NZBGet Password', group: 'NZBGet', secret: true },
-  { key: 'ENABLE_PLEX', label: 'Enable Plex', group: 'Plex', secret: false, type: 'boolean' },
+  { key: 'ENABLE_PLEX', label: 'Enable Plex', group: 'Plex', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'PLEX_URL', label: 'Plex URL', group: 'Plex', secret: false },
   { key: 'PLEX_TOKEN', label: 'Plex Token', group: 'Plex', secret: true },
-  { key: 'ENABLE_JELLYFIN', label: 'Enable Jellyfin', group: 'Jellyfin', secret: false, type: 'boolean' },
+  { key: 'ENABLE_JELLYFIN', label: 'Enable Jellyfin', group: 'Jellyfin', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'JELLYFIN_URL', label: 'Jellyfin URL', group: 'Jellyfin', secret: false },
   { key: 'JELLYFIN_API_KEY', label: 'Jellyfin API Key', group: 'Jellyfin', secret: true },
   { key: 'JELLYFIN_USER_ID', label: 'Jellyfin Username', group: 'Jellyfin', secret: false },
-  { key: 'ENABLE_WATCHED_SYNC', label: 'Sync Watched Between Media Players', group: 'Watched Sync', secret: false, type: 'boolean' },
+  { key: 'ENABLE_WATCHED_SYNC', label: 'Sync Watched Between Media Players', group: 'Watched Sync', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'ENABLE_PUSHOVER', label: 'Enable Pushover', group: 'Pushover', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'PUSHOVER_USER_KEY', label: 'Pushover User Key', group: 'Pushover', secret: true },
   { key: 'PUSHOVER_API_TOKEN', label: 'Pushover API Token', group: 'Pushover', secret: true },
-  { key: 'PUSHOVER_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Pushover', secret: false, type: 'boolean' },
-  { key: 'PUSHOVER_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Pushover', secret: false, type: 'boolean' },
-  { key: 'ENABLE_WEBHOOK_NOTIFY', label: 'Enable Webhook Notifications', group: 'Webhook', secret: false, type: 'boolean' },
+  { key: 'PUSHOVER_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Pushover', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'PUSHOVER_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Pushover', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'ENABLE_WEBHOOK_NOTIFY', label: 'Enable Webhook Notifications', group: 'Webhook', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'WEBHOOK_NOTIFY_URL', label: 'Webhook URL', group: 'Webhook', secret: true },
-  { key: 'WEBHOOK_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Webhook', secret: false, type: 'boolean' },
-  { key: 'WEBHOOK_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Webhook', secret: false, type: 'boolean' },
-  { key: 'ENABLE_DISCORD_NOTIFY', label: 'Enable Discord Notifications', group: 'Discord', secret: false, type: 'boolean' },
+  { key: 'WEBHOOK_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Webhook', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'WEBHOOK_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Webhook', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'ENABLE_DISCORD_NOTIFY', label: 'Enable Discord Notifications', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'DISCORD_WEBHOOK_URL', label: 'Discord Webhook URL', group: 'Discord', secret: true },
-  { key: 'DISCORD_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Discord', secret: false, type: 'boolean' },
-  { key: 'DISCORD_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Discord', secret: false, type: 'boolean' },
-  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications (Pi only)', group: 'App Behavior', secret: false, type: 'boolean' },
-  { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts (Pi only)', group: 'App Behavior', secret: false, type: 'boolean' },
+  { key: 'DISCORD_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'DISCORD_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications (Pi only)', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts (Pi only)', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
@@ -120,6 +125,7 @@ export interface SettingStatus {
   isSet: boolean;
   value: string | null; // only populated for non-secret fields
   type?: 'boolean' | 'profile';
+  defaultValue?: 'true' | 'false';
 }
 
 /** Server-internal only - the real value, including secrets. Never return this from an API route directly. */
@@ -140,6 +146,7 @@ export async function getSettingsStatus(): Promise<SettingStatus[]> {
       isSet: raw !== null && raw !== '',
       value: field.secret ? null : raw,
       type: field.type,
+      defaultValue: field.defaultValue,
     };
   });
 }
