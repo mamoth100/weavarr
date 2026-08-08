@@ -1,5 +1,7 @@
 const BASE_URL = 'https://api.trakt.tv';
 
+const TRAKT_ENABLED = process.env.ENABLE_TRAKT !== 'false';
+
 export interface TraktRatings {
   rating: number;
   votes: number;
@@ -61,7 +63,7 @@ async function resolveTraktItem(
 
 /** Fetch both ratings and stats for an IMDb ID in one resolved lookup */
 export async function getTraktData(imdbId: string): Promise<TraktData> {
-  if (!process.env.TRAKT_CLIENT_ID) return { ratings: null, stats: null };
+  if (!TRAKT_ENABLED || !process.env.TRAKT_CLIENT_ID) return { ratings: null, stats: null };
 
   const item = await resolveTraktItem(imdbId);
   if (!item) return { ratings: null, stats: null };
