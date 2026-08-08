@@ -4,8 +4,15 @@ services:
     image: weavarr:local
     container_name: weavarr
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Radarr/Sonarr/Plex/etc URLs in .env.local commonly point at
+    # "localhost" (the same box). Host networking makes that resolve
+    # correctly from inside the container too - default bridge networking
+    # would isolate the container onto its own loopback, unable to reach
+    # anything at the host's localhost. No port mapping needed/possible
+    # with host networking - the app's own PORT below is what's exposed.
+    network_mode: host
+    environment:
+      - PORT=3000
     env_file:
       - .env.local
     volumes:
