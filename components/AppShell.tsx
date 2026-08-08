@@ -1,11 +1,36 @@
 import Sidebar from '@/components/Sidebar';
 
-/** Left-rail layout used by every page - replaces the old top GenreSwitcher bar. Each page keeps its own <header>/content, just nested in here instead of a bare <main>. */
-export default function AppShell({ children }: { children: React.ReactNode }) {
+/**
+ * Left-rail layout used by every page, and the single owner of the page
+ * header - the sidebar already carries the Weavarr wordmark permanently, so
+ * repeating it in each page's own header was pure duplication. Pass `title`
+ * for the page's heading (omit for pages like the detail views that show
+ * their own title in the content itself) and `headerActions` for anything
+ * that belongs on the right (usually <BackLink />).
+ */
+export default function AppShell({
+  title,
+  headerActions,
+  children,
+}: {
+  title?: React.ReactNode;
+  headerActions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-zinc-950 text-white lg:flex">
       <Sidebar />
-      <div className="flex-1 min-w-0">{children}</div>
+      <div className="flex-1 min-w-0">
+        {(title || headerActions) && (
+          <header className="border-b border-zinc-800 px-6 py-5">
+            <div className="flex items-center justify-between gap-3">
+              {title && <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{title}</h1>}
+              {headerActions}
+            </div>
+          </header>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

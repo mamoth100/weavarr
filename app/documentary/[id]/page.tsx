@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
@@ -65,13 +64,6 @@ export default async function DocumentaryPage({ params }: Props) {
 
   return (
     <AppShell>
-      {/* Nav */}
-      <header className="border-b border-zinc-800 px-6 py-5">
-        <Link href="/" className="text-2xl font-bold tracking-tight hover:text-amber-400 transition">
-          Weav<span className="text-amber-400">arr</span>
-        </Link>
-      </header>
-
       {/* Backdrop hero */}
       {backdropUrl && (
         <div className="relative h-56 md:h-80 overflow-hidden">
