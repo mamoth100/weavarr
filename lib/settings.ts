@@ -19,8 +19,9 @@ export interface SettingField {
 
 export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'TMDB_TOKEN', label: 'TMDB Read Access Token', group: 'TMDB', secret: true },
-  { key: 'TMDB_API_KEY', label: 'TMDB API Key', group: 'TMDB', secret: true },
+  { key: 'ENABLE_OMDB', label: 'Enable OMDb', group: 'OMDb', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
+  { key: 'ENABLE_TRAKT', label: 'Enable Trakt', group: 'Trakt', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'TRAKT_CLIENT_ID', label: 'Trakt Client ID (server)', group: 'Trakt', secret: true },
   { key: 'NEXT_PUBLIC_TRAKT_CLIENT_ID', label: 'Trakt Client ID (public)', group: 'Trakt', secret: false },
   { key: 'ENABLE_RADARR', label: 'Enable Radarr', group: 'Radarr', secret: false, type: 'boolean', defaultValue: 'true' },

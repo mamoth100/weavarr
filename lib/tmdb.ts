@@ -3,9 +3,14 @@ import type { MediaType } from '@/types';
 
 const BASE_URL = 'https://api.themoviedb.org/3';
 
+// Shared fallback so the app works without every self-hoster registering their
+// own TMDB app - same pattern Seerr/Plex/Kodi use. A user-supplied TMDB_TOKEN
+// still wins, giving them their own rate limit instead of sharing this one.
+const BUNDLED_TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiMmJlZDhlYzEwNzBkOTg5M2Y5MWQ3YmQ3NDcxODNjYSIsIm5iZiI6MTc3OTgyMzI0MS4xOTkwMDAxLCJzdWIiOiI2YTE1ZjI4OTI3NjllMmMwOGUyZjVmYjYiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.azYXAjS2GknAn7Lsf3gvI4CvvE0X-2ZYpbETt0ojobc';
+
 function authHeaders() {
   return {
-    Authorization: `Bearer ${process.env.TMDB_TOKEN}`,
+    Authorization: `Bearer ${process.env.TMDB_TOKEN || BUNDLED_TMDB_TOKEN}`,
     'Content-Type': 'application/json',
   };
 }
