@@ -9,7 +9,6 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { supabase } from '@/lib/supabase';
 import { watchedKey, type WatchlistItem } from '@/lib/watchlist';
 
 interface WatchlistContextValue {
@@ -28,6 +27,26 @@ interface WatchlistContextValue {
 }
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
+
+type Table = 'favorites' | 'watched' | 'sucks';
+
+function apiList(table: Table): Promise<Record<string, unknown>[]> {
+  return fetch(`/api/${table}`)
+    .then((res) => res.json())
+    .then((data) => data.rows ?? []);
+}
+
+function apiUpsert(table: Table, row: object): Promise<void> {
+  return fetch(`/api/${table}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(row),
+  }).then(() => undefined);
+}
+
+function apiDelete(table: Table, id: number, mediaType: string): Promise<void> {
+  return fetch(`/api/${table}?tmdb_id=${id}&media_type=${mediaType}`, { method: 'DELETE' }).then(() => undefined);
+}
 
 function rowToItem(row: Record<string, unknown>): WatchlistItem {
   return {
@@ -69,24 +88,20 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const done = () => { loadCount.current += 1; if (loadCount.current >= 3) setLoaded(true); };
-    supabase.from('favorites').select('*').then(({ data }) => {
-      if (data) setFavorites(data.map(rowToItem));
+    apiList('favorites').then((rows) => {
+      setFavorites(rows.map(rowToItem));
       done();
     });
-    supabase.from('watched').select('*').then(({ data }) => {
-      if (data) {
-        const items = data.map(rowToItem);
-        setWatchedItems(items);
-        setWatchedSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
-      }
+    apiList('watched').then((rows) => {
+      const items = rows.map(rowToItem);
+      setWatchedItems(items);
+      setWatchedSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
       done();
     });
-    supabase.from('sucks').select('*').then(({ data }) => {
-      if (data) {
-        const items = data.map(rowToItem);
-        setSucksItems(items);
-        setSucksSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
-      }
+    apiList('sucks').then((rows) => {
+      const items = rows.map(rowToItem);
+      setSucksItems(items);
+      setSucksSet(new Set(items.map((i) => watchedKey(i.id, i.mediaType))));
       done();
     });
   }, []);
@@ -96,12 +111,12 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       if (prev.some((f) => f.id === item.id && f.mediaType === item.mediaType)) return prev;
       return [...prev, item];
     });
-    supabase.from('favorites').upsert(toFavoritesRow(item), { onConflict: 'tmdb_id,media_type' }).then();
+    apiUpsert('favorites', toFavoritesRow(item));
   }, []);
 
   const removeFavorite = useCallback((id: number, mediaType: string) => {
     setFavorites((prev) => prev.filter((f) => !(f.id === id && f.mediaType === mediaType)));
-    supabase.from('favorites').delete().eq('tmdb_id', id).eq('media_type', mediaType).then();
+    apiDelete('favorites', id, mediaType);
   }, []);
 
   const isFavorite = useCallback(
@@ -120,7 +135,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           return next;
         });
         setWatchedSet((prev) => { const next = new Set(Array.from(prev)); next.delete(key); return next; });
-        supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+        apiDelete('watched', item.id, item.mediaType);
       } else {
         setWatchedItems((prev) => {
           const next = [...prev, item];
@@ -128,13 +143,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           return next;
         });
         setWatchedSet((prev) => new Set(Array.from(prev).concat([key])));
-        supabase.from('watched').upsert(
-          { ...toRow(item), watched_at: new Date().toISOString() },
-          { onConflict: 'tmdb_id,media_type' }
-        ).then();
+        apiUpsert('watched', toRow(item));
         // Remove from favorites when marked watched
         setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
-        supabase.from('favorites').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+        apiDelete('favorites', item.id, item.mediaType);
       }
     },
     [watchedSet]
@@ -151,13 +163,13 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       return [...prev, item];
     });
     setSucksSet((prev) => new Set(Array.from(prev).concat([watchedKey(item.id, item.mediaType)])));
-    supabase.from('sucks').upsert(toRow(item), { onConflict: 'tmdb_id,media_type' }).then();
+    apiUpsert('sucks', toRow(item));
     // Remove from favorites and watched
     setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
-    supabase.from('favorites').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+    apiDelete('favorites', item.id, item.mediaType);
     setWatchedItems((prev) => prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType)));
     setWatchedSet((prev) => { const next = new Set(Array.from(prev)); next.delete(watchedKey(item.id, item.mediaType)); return next; });
-    supabase.from('watched').delete().eq('tmdb_id', item.id).eq('media_type', item.mediaType).then();
+    apiDelete('watched', item.id, item.mediaType);
   }, []);
 
   const removeSucks = useCallback((id: number, mediaType: string) => {
@@ -167,7 +179,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       next.delete(watchedKey(id, mediaType));
       return next;
     });
-    supabase.from('sucks').delete().eq('tmdb_id', id).eq('media_type', mediaType).then();
+    apiDelete('sucks', id, mediaType);
   }, []);
 
   const isSucks = useCallback(

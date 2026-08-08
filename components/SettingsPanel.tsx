@@ -17,7 +17,7 @@ interface QualityProfileOption {
   name: string;
 }
 
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord', 'Supabase']);
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
 
 // Groups whose quality-profile dropdowns should auto-populate on load if
 // already configured, rather than staying greyed out until a manual Test.
@@ -25,12 +25,11 @@ const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
 
 // Groups each service's Settings fields into a broader category so the page
 // reads as ~7 sections instead of 12 flat, equally-weighted blocks.
-const SECTION_ORDER = ['Metadata', 'Database', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
+const SECTION_ORDER = ['Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
 const GROUP_TO_SECTION: Record<string, string> = {
   TMDB: 'Metadata',
   OMDb: 'Metadata',
   Trakt: 'Metadata',
-  Supabase: 'Database',
   Radarr: 'Media Management',
   Sonarr: 'Media Management',
   SABnzbd: 'Downloaders',
