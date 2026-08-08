@@ -83,9 +83,11 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
   return (
     <>
       {/* Mobile top bar - in normal document flow (not fixed), so it takes its
-          own space above each page's header instead of floating over it. Only
-          below the lg breakpoint where the sidebar itself is off-canvas. */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-zinc-950 border-b border-zinc-800">
+          own space above each page's header instead of floating over it. Just
+          the trigger - each page's own header already shows the wordmark right
+          below this, so repeating it here would be redundant. Only below the
+          lg breakpoint where the sidebar itself is off-canvas. */}
+      <div className="lg:hidden sticky top-0 z-30 px-4 py-2 bg-zinc-950 border-b border-zinc-800">
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
@@ -95,9 +97,6 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
-        <Link href="/" className="text-lg font-bold tracking-tight hover:text-amber-400 transition">
-          Weav<span className="text-amber-400">arr</span>
-        </Link>
       </div>
 
       {mobileOpen && (
