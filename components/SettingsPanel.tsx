@@ -10,6 +10,7 @@ interface SettingStatus {
   isSet: boolean;
   value: string | null;
   type?: 'boolean' | 'profile';
+  defaultValue?: 'true' | 'false';
 }
 
 interface QualityProfileOption {
@@ -277,7 +278,7 @@ export default function SettingsPanel() {
                               </div>
                               {s.type === 'boolean' ? (
                                 <select
-                                  value={edits[s.key] ?? s.value ?? 'false'}
+                                  value={edits[s.key] ?? s.value ?? s.defaultValue ?? 'false'}
                                   onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
                                   className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
                                 >

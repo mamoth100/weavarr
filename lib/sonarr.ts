@@ -3,9 +3,16 @@ import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 
+// Enable defaults on (unset !== 'false') - Sonarr is core to this app and
+// was configurable long before this toggle existed, so an unset env var
+// must keep meaning "on" for every existing setup. Blanking both URL and
+// key when disabled means every existing `if (!SONARR_URL...)` check
+// throughout this file already treats "disabled" the same as "not
+// configured" for free, with no changes needed at each call site.
+const SONARR_ENABLED = process.env.ENABLE_SONARR !== 'false';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
-const SONARR_URL = process.env.SONARR_URL?.replace(/\/$/, '');
-const SONARR_KEY = process.env.SONARR_KEY;
+const SONARR_URL = SONARR_ENABLED ? process.env.SONARR_URL?.replace(/\/$/, '') : undefined;
+const SONARR_KEY = SONARR_ENABLED ? process.env.SONARR_KEY : undefined;
 const SONARR_DEFAULT_PROFILE = process.env.SONARR_DEFAULT_PROFILE || null;
 const SONARR_HIGHEST_PROFILE = process.env.SONARR_HIGHEST_PROFILE || null;
 

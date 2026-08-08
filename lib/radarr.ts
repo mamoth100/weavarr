@@ -3,9 +3,16 @@ import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 
+// Enable defaults on (unset !== 'false') - Radarr is core to this app and
+// was configurable long before this toggle existed, so an unset env var
+// must keep meaning "on" for every existing setup. Blanking both URL and
+// key when disabled means every existing `if (!RADARR_URL...)` check
+// throughout this file already treats "disabled" the same as "not
+// configured" for free, with no changes needed at each call site.
+const RADARR_ENABLED = process.env.ENABLE_RADARR !== 'false';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
-const RADARR_URL = process.env.RADARR_URL?.replace(/\/$/, '');
-const RADARR_KEY = process.env.RADARR_KEY;
+const RADARR_URL = RADARR_ENABLED ? process.env.RADARR_URL?.replace(/\/$/, '') : undefined;
+const RADARR_KEY = RADARR_ENABLED ? process.env.RADARR_KEY : undefined;
 const RADARR_DEFAULT_PROFILE = process.env.RADARR_DEFAULT_PROFILE || null;
 const RADARR_HIGHEST_PROFILE = process.env.RADARR_HIGHEST_PROFILE || null;
 
