@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import GenreSwitcher from '@/components/GenreSwitcher';
+import { Suspense, useEffect, useState } from 'react';
+import SidebarNav from '@/components/SidebarNav';
 import type { MenuConfig } from '@/lib/settings';
 
-export default function GlobalGenreNav() {
+export default function Sidebar() {
   const [config, setConfig] = useState<MenuConfig | null>(null);
 
   useEffect(() => {
@@ -17,8 +17,12 @@ export default function GlobalGenreNav() {
   }, []);
 
   if (!config) {
-    return <div className="h-[46px] bg-zinc-900 rounded-xl border border-zinc-800 animate-pulse" />;
+    return <div className="hidden lg:block w-64 flex-shrink-0 bg-zinc-900 border-r border-zinc-800 animate-pulse" />;
   }
 
-  return <GenreSwitcher config={config} />;
+  return (
+    <Suspense>
+      <SidebarNav config={config} />
+    </Suspense>
+  );
 }

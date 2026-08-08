@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { Suspense } from 'react';
 import BackLink from '@/components/BackLink';
 import ReadyToWatchPanel from '@/components/ReadyToWatchPanel';
-import GlobalGenreNav from '@/components/GlobalGenreNav';
+import AppShell from '@/components/AppShell';
 
 export default function ReadyToWatchPage() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <AppShell>
       <header className="border-b border-zinc-800 px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
@@ -19,15 +18,9 @@ export default function ReadyToWatchPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 pt-5 pb-2">
-        <Suspense>
-          <GlobalGenreNav />
-        </Suspense>
-      </div>
-
       <div className="max-w-4xl mx-auto px-4 py-8">
         <ReadyToWatchPanel />
       </div>
-    </main>
+    </AppShell>
   );
 }
