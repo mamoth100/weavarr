@@ -19,9 +19,18 @@ run against the Pi during this work gets logged here as it happens.
 - Host: `media01` (Raspberry Pi, Debian 13 "trixie", `aarch64`)
 - Docker already installed and in use for: `sonarr`, `radarr`, `sabnzbd`,
   `nzbget` (all `lscr.io/linuxserver/*` images)
-- Weavarr currently runs as a native systemd service (`weavarr.service`),
-  built via `npm run build` directly on the host, using system Node
-  (20.20.2, NodeSource apt package) — this is what's being replaced.
+- Weavarr **cut over to Docker on 2026-08-08.** The native systemd path
+  (`weavarr.service`, `npm run build` on the host) is stopped + disabled
+  (`sudo systemctl stop weavarr && sudo systemctl disable weavarr`) but not
+  deleted - fully reversible if ever needed. Docker Compose
+  (`docker compose up -d`) is now the live production path.
+- Host Node upgraded 20.20.2 → 22.23.2 (same NodeSource apt mechanism,
+  new major-version repo: `curl -fsSL https://deb.nodesource.com/setup_22.x
+  | sudo -E bash -` then `apt-get install -y nodejs`). Required because the
+  app moved off Supabase onto `node:sqlite`, which needs Node 22.5+.
+  Verified zero effect on sonarr/radarr/sabnzbd/nzbget - they're Docker
+  containers with their own bundled runtimes, entirely isolated from the
+  host's Node.
 
 ## For a brand-new Linux/Pi machine that doesn't have Docker yet
 
@@ -53,6 +62,55 @@ curl -fsSL https://raw.githubusercontent.com/mamoth100/DocuView/main/install.sh 
 Depends on a working, published image existing first - this is the last
 step, not the first.
 
-## Steps taken (this section fills in as work happens)
+## Real bugs found and fixed getting this working
 
-_(nothing executed yet as of this note - Dockerfile/compose work starts next)_
+1. **Supabase broke the build outright.** `NEXT_PUBLIC_SUPABASE_*` gets
+   baked in at build time, and secrets aren't available during a Docker
+   build by design - `npm run build` failed with `supabaseUrl is
+   required`. Root-caused why Supabase never made sense for a
+   self-hosted, publicly-distributed app and replaced it with local
+   SQLite (`node:sqlite`) instead of working around it.
+2. **`localhost` doesn't mean the host from inside a container.** `.env.local`
+   points at Radarr/Sonarr/etc via `localhost` (same box, works fine
+   for a native process). Default Docker bridge networking isolates a
+   container onto its own loopback, so it can't reach anything at the
+   host's localhost. Fixed with `network_mode: host` in
+   docker-compose.yml, so nobody using the file has to know this.
+3. **Next.js froze error responses as permanent static pages.** Next
+   decides static-vs-dynamic per API route by executing it once at
+   build time and watching for a `cache: 'no-store'` fetch. Several
+   lib functions throw immediately when their service's env var is
+   missing, before ever reaching that fetch - so building without
+   secrets (the Docker norm) let Next bake in "not configured" forever,
+   regardless of the real env vars at runtime. Fixed by adding
+   `export const dynamic = 'force-dynamic'` to all 36 API routes that
+   lacked it.
+4. **Compose project name leaked the old folder name.** The checkout
+   is still literally at `.../DocuView` on disk even though the
+   product is Weavarr, and Compose defaults every resource name
+   (volumes, network, labels) to the directory name - volume showed up
+   as `docuview_weavarr-data`. Fixed with an explicit `name: weavarr`
+   in docker-compose.yml.
+5. Docker's default port picked to match the existing Radarr (7878) /
+   Sonarr (8989) convention - each subtracts 1 from every digit of the
+   previous, so Weavarr's is **6767**.
+
+## Cutover steps actually run (2026-08-08)
+
+```bash
+# Copy live data into the (correctly-named) Docker volume before switching
+docker run --rm -v docuview_weavarr-data:/src:ro -v weavarr_data:/dest \
+  alpine sh -c "cp -a /src/. /dest/ && chown -R 1001:1001 /dest"
+
+# Stop the old path (reversible - not deleted)
+sudo systemctl stop weavarr
+sudo systemctl disable weavarr
+
+# Start the new one
+docker compose up -d
+
+# Verified: favorites/watched/sucks row counts matched exactly (27/24/31),
+# /api/status showed real Radarr/Sonarr/downloader data, all four other
+# containers (sonarr/radarr/sabnzbd/nzbget) confirmed untouched throughout
+# (same uptimes before and after).
+```
