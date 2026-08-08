@@ -5,6 +5,10 @@ import { getSonarrQueue, getSonarrRecentImports, getAllSonarrSeries, getSonarrEp
 import { hasTitle, hasEpisode } from '@/lib/mediaServer';
 import { getCleanupCandidates } from '@/lib/cleanupCandidates';
 
+// Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
+export const dynamic = 'force-dynamic';
+
+
 const RESOLVED_LIMIT = 10;
 const POOL_SIZE = 20;
 
