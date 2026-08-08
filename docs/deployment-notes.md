@@ -31,6 +31,18 @@ run against the Pi during this work gets logged here as it happens.
   Verified zero effect on sonarr/radarr/sabnzbd/nzbget - they're Docker
   containers with their own bundled runtimes, entirely isolated from the
   host's Node.
+- **Trap: `/home/mamoth/DocuView/data/` on the host is stale, not live.**
+  `docker-compose.yml` uses a Docker-managed named volume (`weavarr_data`)
+  for `/app/data`, not a bind mount to the host checkout's `data/` folder.
+  The host copy was a one-time snapshot made during the systemd→Docker
+  migration and nothing has read or written it since - editing or deleting
+  files there does nothing to what the running app actually sees. Caught
+  this live (2026-08-08): deleted an orphaned `shield-pairing.json` from
+  the host copy, confirmed via `docker exec weavarr ls /app/data` that the
+  real file was untouched, had to redo the delete with
+  `docker exec weavarr rm /app/data/shield-pairing.json` instead. To
+  inspect or modify the app's actual live data, always go through
+  `docker exec weavarr ...` or the app's own API - never the host path.
 
 ## For a brand-new Linux/Pi machine that doesn't have Docker yet
 
