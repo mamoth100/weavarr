@@ -95,6 +95,43 @@ step, not the first.
    Sonarr (8989) convention - each subtracts 1 from every digit of the
    previous, so Weavarr's is **6767**.
 
+## Remaining work (the board)
+
+Status as of 2026-08-08:
+
+- [x] Dockerfile, docker-compose.yml, working end-to-end on the Pi (arm64)
+- [x] SQLite replacing Supabase
+- [x] `.env.example` template (fresh clones have no `.env.local` at all -
+      required, `docker compose` refuses to start without the `env_file`
+      target existing - confirmed live)
+- [x] Bind-mount `.env.local` into the container (not just inject its
+      values) - Settings page was silently broken without this: reading an
+      empty file and showing everything as "not configured" despite the
+      app working correctly via env vars, and any save from the UI would've
+      been lost on the next rebuild. Found and fixed 2026-08-08.
+- [ ] **Test on amd64** - image has only ever been built/run on the Pi's
+      arm64. `node:22-alpine` + `node:sqlite` both officially support amd64
+      but this hasn't actually been verified on real x86 hardware yet.
+      User is setting up Hyper-V VMs for this.
+- [ ] **Multi-arch build + publish** - `docker buildx` with a multi-node
+      builder (Pi as the arm64 node, an x86 VM as the amd64 node) so each
+      platform builds natively, combined into one pushed manifest. Depends
+      on the amd64 VM existing first.
+- [ ] **Pick and set up a registry** - Docker Hub or GHCR, to push the
+      multi-arch image to. Nothing published anywhere yet.
+- [ ] **`install.sh`** - one-liner installer for end users (designed on
+      paper above, not built). Depends on a published image existing.
+- [ ] **Cross-distro install testing** - once `install.sh` exists, confirm
+      it behaves the same on Ubuntu/Fedora/Debian/etc, not just Debian
+      (what the Pi runs). Separate concern from architecture - the image
+      itself doesn't care about host distro, only the *install script's*
+      shell commands might (package manager differences, etc.)
+- [ ] Optional polish: `HEALTHCHECK` in the Dockerfile; reverse-proxy/HTTPS
+      guidance for anyone wanting to expose this outside their LAN
+- [ ] Backup/restore feature (see separate note - snapshot `.env.local` +
+      `data/` into a downloadable/restorable archive, Radarr/Sonarr-style).
+      Explicitly deferred, not urgent.
+
 ## Cutover steps actually run (2026-08-08)
 
 ```bash
