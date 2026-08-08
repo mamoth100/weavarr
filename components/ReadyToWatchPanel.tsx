@@ -625,7 +625,13 @@ const MISSING_POLL_INTERVAL_MS = 30000;
  * remove it on its own, since triggering a search is not the same as the
  * episode actually being downloaded.
  */
-function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () => void }) {
+function MissingAiredSection({
+  onEpisodeAvailable,
+  onCountChange,
+}: {
+  onEpisodeAvailable: () => void;
+  onCountChange: (count: number) => void;
+}) {
   const [episodes, setEpisodes] = useState<MissingAiredEpisode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -680,6 +686,10 @@ function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () =>
     });
   }
 
+  useEffect(() => {
+    onCountChange(episodes?.length ?? 0);
+  }, [episodes, onCountChange]);
+
   if (error || (episodes && episodes.length === 0)) return null;
 
   const groups: MissingShowGroup[] = [];
@@ -697,7 +707,7 @@ function MissingAiredSection({ onEpisodeAvailable }: { onEpisodeAvailable: () =>
   }
 
   return (
-    <div className="space-y-2">
+    <div id="section-aired-not-downloaded" className="space-y-2">
       <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
         Aired, Not Downloaded{episodes && episodes.length > 0 ? ` (${episodes.length})` : ''}
       </h2>
@@ -862,7 +872,7 @@ function MissingMovieDeleteButton({ movieId, onDeleted }: { movieId: number; onD
 }
 
 /** Movies Radarr has monitored, has no file for, and hasn't found on any indexer - the movie equivalent of MissingAiredSection, added since Radarr has no built-in concept mirroring Sonarr's air-date gap. */
-function MissingMoviesSection() {
+function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number) => void }) {
   const [movies, setMovies] = useState<MissingMovie[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchingIds, setSearchingIds] = useState<Set<number>>(new Set());
@@ -904,10 +914,14 @@ function MissingMoviesSection() {
     setMovies((prev) => (prev ? prev.filter((m) => m.movieId !== movieId) : prev));
   }
 
+  useEffect(() => {
+    onCountChange(movies?.length ?? 0);
+  }, [movies, onCountChange]);
+
   if (error || (movies && movies.length === 0)) return null;
 
   return (
-    <div className="space-y-2">
+    <div id="section-movies-not-found" className="space-y-2">
       <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
         Movies Not Found{movies && movies.length > 0 ? ` (${movies.length})` : ''}
       </h2>
@@ -938,7 +952,7 @@ function MissingMoviesSection() {
   );
 }
 
-function RecentlyWatchedSection() {
+function RecentlyWatchedSection({ onCountChange }: { onCountChange: (count: number) => void }) {
   const [items, setItems] = useState<RecentlyWatchedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -952,10 +966,14 @@ function RecentlyWatchedSection() {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
+  useEffect(() => {
+    onCountChange(items?.length ?? 0);
+  }, [items, onCountChange]);
+
   if (error || (items && items.length === 0)) return null;
 
   return (
-    <div className="space-y-2">
+    <div id="section-recently-watched" className="space-y-2">
       <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Recently Watched</h2>
       <div className="space-y-2">
         {!items
@@ -1058,12 +1076,28 @@ function ReadyToWatchRow({
   );
 }
 
+/** Jumps to a section's own heading rather than a fixed scroll offset, since section heights vary with content and page size. */
+function SectionTile({ label, count, targetId }: { label: string; count: number; targetId: string }) {
+  return (
+    <button
+      onClick={() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      className="flex-shrink-0 text-left px-4 py-2.5 rounded-lg bg-zinc-900 ring-1 ring-white/5 hover:ring-amber-500/50 hover:bg-zinc-800 transition-colors"
+    >
+      <p className="text-xl font-bold text-white leading-none">{count}</p>
+      <p className="text-xs text-zinc-500 uppercase tracking-wider mt-1 whitespace-nowrap">{label}</p>
+    </button>
+  );
+}
+
 export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [tvPage, setTvPage] = useState(1);
   const [moviePage, setMoviePage] = useState(1);
+  const [missingAiredCount, setMissingAiredCount] = useState(0);
+  const [missingMoviesCount, setMissingMoviesCount] = useState(0);
+  const [recentlyWatchedCount, setRecentlyWatchedCount] = useState(0);
 
   function refreshItems() {
     return fetch('/api/ready-to-watch', { cache: 'no-store' })
@@ -1148,11 +1182,30 @@ export default function ReadyToWatchPanel() {
           className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
         />
       </div>
+      {(tvItems.length > 0 ||
+        movieItems.length > 0 ||
+        missingAiredCount > 0 ||
+        missingMoviesCount > 0 ||
+        recentlyWatchedCount > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {tvItems.length > 0 && <SectionTile label="TV Shows" count={tvItems.length} targetId="section-tv-shows" />}
+          {movieItems.length > 0 && <SectionTile label="Movies" count={movieItems.length} targetId="section-movies" />}
+          {missingAiredCount > 0 && (
+            <SectionTile label="Aired, Not Downloaded" count={missingAiredCount} targetId="section-aired-not-downloaded" />
+          )}
+          {missingMoviesCount > 0 && (
+            <SectionTile label="Movies Not Found" count={missingMoviesCount} targetId="section-movies-not-found" />
+          )}
+          {recentlyWatchedCount > 0 && (
+            <SectionTile label="Recently Watched" count={recentlyWatchedCount} targetId="section-recently-watched" />
+          )}
+        </div>
+      )}
       {filtered.length === 0 && (
         <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
       {tvItems.length > 0 && (
-        <div className="space-y-2">
+        <div id="section-tv-shows" className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
             TV Shows{tvItems.length > PAGE_SIZE && ` (${tvItems.length})`}
           </h2>
@@ -1161,7 +1214,7 @@ export default function ReadyToWatchPanel() {
         </div>
       )}
       {movieItems.length > 0 && (
-        <div className="space-y-2">
+        <div id="section-movies" className="space-y-2">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
             Movies{movieItems.length > PAGE_SIZE && ` (${movieItems.length})`}
           </h2>
@@ -1169,9 +1222,9 @@ export default function ReadyToWatchPanel() {
           <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
         </div>
       )}
-      <MissingAiredSection onEpisodeAvailable={refreshItems} />
-      <MissingMoviesSection />
-      <RecentlyWatchedSection />
+      <MissingAiredSection onEpisodeAvailable={refreshItems} onCountChange={setMissingAiredCount} />
+      <MissingMoviesSection onCountChange={setMissingMoviesCount} />
+      <RecentlyWatchedSection onCountChange={setRecentlyWatchedCount} />
     </div>
   );
 }
