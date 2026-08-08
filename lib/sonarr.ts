@@ -513,6 +513,23 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
   }
 }
 
+/** Unmonitors a single episode that never has a file to delete in the first place - "give up, stop searching" for a missing episode Sonarr can't find, as opposed to deleteSonarrEpisodeFile which removes an existing file. */
+export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  try {
+    const res = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
+    });
+    if (!res.ok) throw new Error(`Sonarr unmonitor failed: ${await res.text()}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'alert').catch(() => {});
+    throw err;
+  }
+}
+
 /** Deletes the file for every episode in this season that has one - leaves the series and every other season untouched. */
 export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: number): Promise<void> {
   const episodes = await getSonarrSeriesEpisodes(seriesId);
