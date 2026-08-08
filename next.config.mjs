@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Produces a minimal, self-contained server (node_modules pruned to only
+  // what's actually used) - needed for a small, fast Docker image.
+  output: 'standalone',
   experimental: {
     instrumentationHook: true,
     // The dashboard's default genre depends on server-side Settings state, not the URL -
