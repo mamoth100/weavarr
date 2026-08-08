@@ -87,7 +87,10 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
           the trigger - each page's own header already shows the wordmark right
           below this, so repeating it here would be redundant. Only below the
           lg breakpoint where the sidebar itself is off-canvas. */}
-      <div className="lg:hidden sticky top-0 z-30 px-4 py-2 bg-zinc-950 border-b border-zinc-800">
+      <div
+        className="lg:hidden sticky top-0 z-30 px-4 pb-2 bg-zinc-950 border-b border-zinc-800"
+        style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+      >
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
