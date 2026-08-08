@@ -20,6 +20,53 @@ interface QualityProfileOption {
 
 const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
 
+// Where to get a key/token for groups that need one from an external site -
+// shown as a hover tooltip next to the group's Test button.
+const GROUP_INFO: Record<string, { text: string; linkLabel: string; linkHref: string }> = {
+  TMDB: {
+    text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Free account required.',
+    linkLabel: 'Get a TMDB key',
+    linkHref: 'https://www.themoviedb.org/settings/api',
+  },
+  OMDb: {
+    text: 'OMDb supplements TMDB with additional metadata. Free tier available (daily request limit).',
+    linkLabel: 'Get an OMDb key',
+    linkHref: 'https://www.omdbapi.com/apikey.aspx',
+  },
+  Trakt: {
+    text: 'Trakt adds community ratings and stats (watchers, plays, collectors) alongside TMDB\'s own.',
+    linkLabel: 'Create a Trakt app',
+    linkHref: 'https://trakt.tv/oauth/applications',
+  },
+};
+
+function GroupInfoTooltip({ group }: { group: string }) {
+  const info = GROUP_INFO[group];
+  if (!info) return null;
+  return (
+    <div className="relative group/info ml-auto">
+      <button
+        type="button"
+        className="w-5 h-5 rounded-full bg-zinc-800 text-zinc-400 text-xs font-bold flex items-center justify-center hover:bg-zinc-700 hover:text-white"
+        aria-label={`About ${group}`}
+      >
+        ?
+      </button>
+      <div className="hidden group-hover/info:block absolute right-0 top-full mt-1 z-20 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg p-3 text-xs text-zinc-300">
+        <p className="mb-2">{info.text}</p>
+        <a
+          href={info.linkHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-400 hover:text-amber-300 font-medium"
+        >
+          {info.linkLabel} →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // Groups whose quality-profile dropdowns should auto-populate on load if
 // already configured, rather than staying greyed out until a manual Test.
 const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
@@ -266,6 +313,7 @@ export default function SettingsPanel() {
                             )}
                           </>
                         )}
+                        <GroupInfoTooltip group={group} />
                       </div>
                       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
                         {settings
