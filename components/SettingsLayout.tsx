@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import SettingsPanel from '@/components/SettingsPanel';
 import MenuSettingsPanel from '@/components/MenuSettingsPanel';
+import BackupPanel from '@/components/BackupPanel';
 
 const SECTIONS = [
   { id: 'connections', label: 'Connections' },
   { id: 'menu', label: 'Menu' },
+  { id: 'backup', label: 'Backup/Restore' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -31,7 +33,7 @@ export default function SettingsLayout() {
       </nav>
 
       <div className="flex-1 min-w-0">
-        {section === 'connections' ? <SettingsPanel /> : <MenuSettingsPanel />}
+        {section === 'connections' ? <SettingsPanel /> : section === 'menu' ? <MenuSettingsPanel /> : <BackupPanel />}
       </div>
     </div>
   );

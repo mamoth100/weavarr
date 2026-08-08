@@ -5,7 +5,7 @@
  * own backup feature: a single downloadable/restorable zip.
  */
 import AdmZip from 'adm-zip';
-import { readdir, stat, mkdir, unlink } from 'fs/promises';
+import { readdir, stat, mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -83,6 +83,30 @@ export async function restoreBackup(filename: string): Promise<void> {
   assertSafeFilename(filename);
   const zip = new AdmZip(path.join(BACKUP_DIR, filename));
   zip.extractAllTo(process.cwd(), true);
+}
+
+/**
+ * Accepts a backup file from outside this server (downloaded from a
+ * different install, or from this one before a disk died) and drops it
+ * into the same backups/ folder as any other backup, so it shows up in
+ * the list with the exact same Restore/Download/Delete actions - real
+ * disaster recovery, not just "restore from a backup this exact server
+ * happened to already have."
+ */
+export async function saveUploadedBackup(originalFilename: string, buffer: Buffer): Promise<BackupInfo> {
+  await mkdir(BACKUP_DIR, { recursive: true });
+
+  // Throws if this isn't actually a readable zip - reject bad uploads early.
+  new AdmZip(buffer);
+
+  const safeName = path.basename(originalFilename).replace(/[^a-zA-Z0-9._-]/g, '_');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `uploaded-${timestamp}-${safeName}`;
+  const fullPath = path.join(BACKUP_DIR, filename);
+  await writeFile(fullPath, buffer);
+
+  const s = await stat(fullPath);
+  return { filename, sizeBytes: s.size, createdAt: s.mtime.toISOString() };
 }
 
 /** Keeps the newest `retain` backups, deletes the rest. */
