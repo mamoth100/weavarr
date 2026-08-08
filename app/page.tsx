@@ -144,23 +144,16 @@ export default async function Home({ searchParams }: PageProps) {
   const mediaType = hasMovies ? 'movie' : 'tv';
   const enriched = data;
 
-  return (
-    <AppShell>
-      <header className="border-b border-zinc-800 px-6 py-5">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Weav<span className="text-amber-400">arr</span>
-        </h1>
-        <p className="text-zinc-500 text-sm mt-0.5">
-          {isGlobalSearch
-            ? 'Search anything - movies, TV, any genre'
-            : isUpcoming
-            ? upcomingGenre.id === ALL_GENRES_ID
-              ? 'Coming soon - every genre'
-              : `${upcomingGenre.label} coming soon`
-            : `${activeGenre.label} discovery engine`}
-        </p>
-      </header>
+  const pageTitle = isGlobalSearch
+    ? 'Search anything - movies, TV, any genre'
+    : isUpcoming
+    ? upcomingGenre.id === ALL_GENRES_ID
+      ? 'Coming soon - every genre'
+      : `${upcomingGenre.label} coming soon`
+    : `${activeGenre.label} discovery engine`;
 
+  return (
+    <AppShell title={pageTitle}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Suspense fallback={<div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />}>
           <FilterBar
