@@ -12,7 +12,7 @@ services:
     # with host networking - the app's own PORT below is what's exposed.
     network_mode: host
     environment:
-      - PORT=3000
+      - PORT=6767
     env_file:
       - .env.local
     volumes:
