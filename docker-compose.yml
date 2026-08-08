@@ -1,0 +1,15 @@
+services:
+  weavarr:
+    build: .
+    image: weavarr:local
+    container_name: weavarr
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    volumes:
+      - weavarr-data:/app/data
+
+volumes:
+  weavarr-data:
