@@ -207,24 +207,6 @@ async function testDiscord(url?: string): Promise<TestResult> {
   }
 }
 
-async function testSupabase(url?: string, anonKey?: string): Promise<TestResult> {
-  if (!url || !anonKey) return { ok: false, message: 'URL and anon key required' };
-  try {
-    // The bare /rest/v1/ root rejects publishable/anon keys ("secret key
-    // required") on newer Supabase projects - query an actual table
-    // Weavarr uses instead, which is what the anon key is really for.
-    const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/favorites?select=id&limit=1`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-      cache: 'no-store',
-    });
-    if (res.status === 401 || res.status === 403) return { ok: false, message: 'Rejected - check anon key' };
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status}` };
-    return { ok: true, message: 'Reachable' };
-  } catch (err) {
-    return fail(err);
-  }
-}
-
 export async function testGroup(group: string, values: Record<string, string>): Promise<TestResult> {
   switch (group) {
     case 'Radarr':
@@ -249,8 +231,6 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testWebhook(values.WEBHOOK_NOTIFY_URL);
     case 'Discord':
       return testDiscord(values.DISCORD_WEBHOOK_URL);
-    case 'Supabase':
-      return testSupabase(values.NEXT_PUBLIC_SUPABASE_URL, values.NEXT_PUBLIC_SUPABASE_ANON_KEY);
     default:
       return { ok: false, message: 'No test available for this group' };
   }

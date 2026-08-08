@@ -21,8 +21,6 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
   { key: 'TRAKT_CLIENT_ID', label: 'Trakt Client ID (server)', group: 'Trakt', secret: true },
   { key: 'NEXT_PUBLIC_TRAKT_CLIENT_ID', label: 'Trakt Client ID (public)', group: 'Trakt', secret: false },
-  { key: 'NEXT_PUBLIC_SUPABASE_URL', label: 'Supabase URL', group: 'Supabase', secret: false },
-  { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', label: 'Supabase Anon Key', group: 'Supabase', secret: false },
   { key: 'RADARR_URL', label: 'Radarr URL', group: 'Radarr', secret: false },
   { key: 'RADARR_KEY', label: 'Radarr API Key', group: 'Radarr', secret: true },
   { key: 'RADARR_DEFAULT_PROFILE', label: 'Default Quality Profile', group: 'Radarr', secret: false, type: 'profile' },
