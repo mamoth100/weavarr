@@ -42,4 +42,15 @@ export async function register() {
       }, SYNC_INTERVAL_MS);
     }
   }
+
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_SCHEDULED_BACKUPS === 'true') {
+    const { createBackup, pruneBackups } = await import('./lib/backup');
+    const retain = Number(process.env.BACKUP_RETENTION_COUNT) || 10;
+
+    const runBackup = () => createBackup().then(() => pruneBackups(retain)).catch(() => {});
+
+    runBackup();
+    const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    setInterval(runBackup, BACKUP_INTERVAL_MS);
+  }
 }
