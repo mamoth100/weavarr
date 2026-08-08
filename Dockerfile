@@ -31,8 +31,10 @@ COPY --from=builder --chown=weavarr:nodejs /app/.next/static ./.next/static
 VOLUME /app/data
 
 USER weavarr
-EXPOSE 3000
-ENV PORT=3000
+# 6767, following the same "subtract 1 from each digit" pattern as
+# Radarr (7878) and Sonarr (8989).
+EXPOSE 6767
+ENV PORT=6767
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
