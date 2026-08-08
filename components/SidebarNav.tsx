@@ -102,7 +102,7 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 flex-shrink-0 bg-zinc-900 border-r border-zinc-800 flex flex-col transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 h-screen flex-shrink-0 bg-zinc-900 border-r border-zinc-800 flex flex-col transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -120,7 +120,7 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
             </svg>
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-0.5">
           {items.map((item) => (
             <button key={item.key} onClick={item.onClick} className={itemClass(item.isActive)}>
               {item.label}
