@@ -150,7 +150,7 @@ export default async function Home({ searchParams }: PageProps) {
     ? upcomingGenre.id === ALL_GENRES_ID
       ? 'Coming soon - every genre'
       : `${upcomingGenre.label} coming soon`
-    : `${activeGenre.label} discovery engine`;
+    : activeGenre.label;
 
   return (
     <AppShell title={pageTitle}>
