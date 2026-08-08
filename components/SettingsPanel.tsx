@@ -42,27 +42,46 @@ const GROUP_INFO: Record<string, { text: string; linkLabel: string; linkHref: st
 
 function GroupInfoTooltip({ group }: { group: string }) {
   const info = GROUP_INFO[group];
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
+
   if (!info) return null;
   return (
-    <div className="relative group/info ml-auto">
+    <div className="relative ml-auto" ref={containerRef}>
       <button
         type="button"
-        className="w-5 h-5 rounded-full bg-zinc-800 text-zinc-400 text-xs font-bold flex items-center justify-center hover:bg-zinc-700 hover:text-white"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${
+          open ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+        }`}
         aria-label={`About ${group}`}
       >
         ?
       </button>
-      <div className="hidden group-hover/info:block absolute right-0 top-full mt-1 z-20 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg p-3 text-xs text-zinc-300">
-        <p className="mb-2">{info.text}</p>
-        <a
-          href={info.linkHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-400 hover:text-amber-300 font-medium"
-        >
-          {info.linkLabel} →
-        </a>
-      </div>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg p-3 text-xs text-zinc-300">
+          <p className="mb-2">{info.text}</p>
+          <a
+            href={info.linkHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 hover:text-amber-300 font-medium"
+          >
+            {info.linkLabel} →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
