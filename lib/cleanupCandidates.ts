@@ -74,10 +74,6 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   for (const watched of [...watchedSignals, ...almostDoneSignals]) {
     if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
 
-    const dedupeKey = `${watched.showTitle.toLowerCase()}:${watched.seasonNumber}:${watched.episodeNumber}`;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-
     const matchedSeries = series.find((s) => {
       const a = s.title.toLowerCase().trim();
       const b = watched.showTitle.toLowerCase().trim();
@@ -85,11 +81,19 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
     });
     if (!matchedSeries) continue;
 
-    const cacheKey = `${matchedSeries.id}:${watched.seasonNumber}:${watched.episodeNumber}`;
-    if (!episodeCache.has(cacheKey)) {
-      episodeCache.set(cacheKey, findSonarrEpisodeFile(matchedSeries.id, watched.seasonNumber, watched.episodeNumber));
+    // Dedupe by the resolved Sonarr series, not the raw signal title - the
+    // watched-history and in-progress signals can format the same show's
+    // title differently (e.g. one carries a "(2020)" disambiguator, the
+    // other doesn't), so a title-keyed dedup before matching lets both
+    // survive as "different" episodes and produces a visible duplicate row.
+    const dedupeKey = `${matchedSeries.id}:${watched.seasonNumber}:${watched.episodeNumber}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    if (!episodeCache.has(dedupeKey)) {
+      episodeCache.set(dedupeKey, findSonarrEpisodeFile(matchedSeries.id, watched.seasonNumber, watched.episodeNumber));
     }
-    const episodeFile = await episodeCache.get(cacheKey);
+    const episodeFile = await episodeCache.get(dedupeKey);
     if (!episodeFile) continue; // no file on disk - already cleaned up, or never had one
 
     candidates.push({
