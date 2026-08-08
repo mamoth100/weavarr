@@ -574,7 +574,7 @@ function GiveUpEpisodeButton({ episodeId, onGivenUp }: { episodeId: number; onGi
   if (status === 'confirm' || status === 'loading') {
     return (
       <div className="flex items-center gap-1.5">
-        <span className="text-xs text-zinc-500">Give up?</span>
+        <span className="text-xs text-zinc-400">Give up?</span>
         <button
           onClick={handleConfirm}
           disabled={status === 'loading'}
@@ -598,7 +598,7 @@ function GiveUpEpisodeButton({ episodeId, onGivenUp }: { episodeId: number; onGi
       <button
         onClick={() => setStatus('confirm')}
         className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-500 hover:bg-red-600 hover:text-white'
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
         {status === 'error' ? 'Failed - retry' : 'Give up'}
@@ -827,7 +827,7 @@ function MissingMovieDeleteButton({ movieId, onDeleted }: { movieId: number; onD
   if (status === 'confirm' || status === 'loading') {
     return (
       <div className="flex items-center gap-1.5">
-        <span className="text-xs text-zinc-500">Delete?</span>
+        <span className="text-xs text-zinc-400">Delete?</span>
         <button
           onClick={handleConfirm}
           disabled={status === 'loading'}
@@ -851,7 +851,7 @@ function MissingMovieDeleteButton({ movieId, onDeleted }: { movieId: number; onD
       <button
         onClick={() => setStatus('confirm')}
         className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-500 hover:bg-red-600 hover:text-white'
+          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
         }`}
       >
         {status === 'error' ? 'Failed - retry' : 'Delete'}
