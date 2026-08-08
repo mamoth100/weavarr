@@ -62,6 +62,8 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'MENU_LINKS', label: 'Other menu items, in order (comma-separated ids)', group: 'Menu', secret: false },
+  { key: 'ENABLE_SCHEDULED_BACKUPS', label: 'Enable Scheduled Backups', group: 'Backup', secret: false, type: 'boolean' },
+  { key: 'BACKUP_RETENTION_COUNT', label: 'Backups to Keep', group: 'Backup', secret: false },
 ];
 
 export interface MenuConfig {
