@@ -43,7 +43,11 @@ export async function register() {
     }
   }
 
-  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_SCHEDULED_BACKUPS === 'true') {
+  // Defaults ON (unlike the jobs above) - no external notification spam and
+  // no multi-service prerequisite, so there's no real reason to make people
+  // discover and opt into protecting their own data. Same !== 'false'
+  // opt-out pattern lib/mediaServer.ts already uses for Plex.
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_SCHEDULED_BACKUPS !== 'false') {
     const { createBackup, pruneBackups } = await import('./lib/backup');
     const retain = Number(process.env.BACKUP_RETENTION_COUNT) || 10;
 
