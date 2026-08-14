@@ -190,8 +190,21 @@ export default function SettingsPanel() {
   }
 
   const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g));
+
+  // A NON-secret field emptied in the UI is a real change when it currently
+  // holds a saved value - without this, select-all-delete on e.g. PLEX_URL
+  // showed a blank input but was silently dropped from the save (and Save
+  // stayed disabled at "0 changed"). Secrets keep "blank = unchanged": their
+  // inputs are always blank by design, so their explicit path is the Clear
+  // button (clearedKeys).
+  function isNonSecretClear(key: string, value: string): boolean {
+    if (value.trim() !== '') return false;
+    const field = settings!.find((s) => s.key === key);
+    return !!field && !field.secret && !!(field.value ?? '').trim();
+  }
+
   const changedCount = new Set([
-    ...Object.entries(edits).filter(([, v]) => v.trim() !== '').map(([k]) => k),
+    ...Object.entries(edits).filter(([k, v]) => v.trim() !== '' || isNonSecretClear(k, v)).map(([k]) => k),
     ...Array.from(clearedKeys),
   ]).size;
 
@@ -298,7 +311,7 @@ export default function SettingsPanel() {
     setSaveStatus('saving');
     setSaveError(null);
     const updates = Object.fromEntries(
-      Object.entries(edits).filter(([, v]) => v.trim() !== '')
+      Object.entries(edits).filter(([k, v]) => v.trim() !== '' || isNonSecretClear(k, v))
     );
     for (const key of Array.from(clearedKeys)) updates[key] = '';
     try {

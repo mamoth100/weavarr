@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, readdir, unlink } from 'fs/promises';
+import { mkdir, readFile, writeFile, readdir, unlink, rename } from 'fs/promises';
 import path from 'path';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS, type GenreDef } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/menuLinks';
@@ -169,7 +169,21 @@ async function backupEnvFile(): Promise<void> {
   await Promise.all(toDelete.map((f) => unlink(path.join(BACKUP_DIR, f))));
 }
 
-export async function updateSettings(updates: Record<string, string>): Promise<void> {
+// Serializes every .env.local update. Three different panels POST saves to the
+// same endpoint; without this, two near-simultaneous saves both read the file,
+// then the later write rewrites it from a stale snapshot and silently discards
+// the earlier save's keys while both report success.
+let envWriteChain: Promise<void> = Promise.resolve();
+
+export function updateSettings(updates: Record<string, string>): Promise<void> {
+  const run = envWriteChain.then(() => applyUpdates(updates));
+  // Keep the chain alive even when a write fails, so one error doesn't wedge
+  // every subsequent save.
+  envWriteChain = run.catch(() => {});
+  return run;
+}
+
+async function applyUpdates(updates: Record<string, string>): Promise<void> {
   const validKeys = new Set(SETTINGS_SCHEMA.map((f) => f.key));
   const entries = Object.entries(updates).filter(([k]) => validKeys.has(k) && k.length > 0);
   if (entries.length === 0) return;
@@ -197,5 +211,9 @@ export async function updateSettings(updates: Record<string, string>): Promise<v
     if (!updatedKeys.has(k)) newLines.push(`${k}=${v}`);
   }
 
-  await writeFile(ENV_FILE, newLines.join('\n'), 'utf8');
+  // Write-then-rename so a crash or power cut mid-write can't leave a
+  // truncated .env.local - rename is atomic on the same filesystem.
+  const tmp = `${ENV_FILE}.tmp`;
+  await writeFile(tmp, newLines.join('\n'), 'utf8');
+  await rename(tmp, ENV_FILE);
 }

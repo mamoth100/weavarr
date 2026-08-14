@@ -104,11 +104,25 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
 }
 
 export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedItem[]> {
-  const [episodes, movies, seenDismissed] = await Promise.all([
-    getCleanupCandidates(limit),
-    getRecentlyWatchedMovies(limit),
+  // allSettled, not all: the episode branch needs Sonarr and the movie branch
+  // needs Radarr - one backend restarting used to reject the whole call, so
+  // the section silently vanished from both the Watch and Status pages even
+  // though the other branch's data was fine. Only fail when BOTH fail.
+  const [episodesR, moviesR, seenDismissed] = await Promise.all([
+    getCleanupCandidates(limit).then(
+      (v) => ({ ok: true as const, value: v }),
+      (e) => ({ ok: false as const, error: e })
+    ),
+    getRecentlyWatchedMovies(limit).then(
+      (v) => ({ ok: true as const, value: v }),
+      (e) => ({ ok: false as const, error: e })
+    ),
     loadDismissed(),
   ]);
+
+  if (!episodesR.ok && !moviesR.ok) throw episodesR.error;
+  const episodes = episodesR.ok ? episodesR.value : [];
+  const movies = moviesR.ok ? moviesR.value : [];
 
   const episodeItems: RecentlyWatchedEpisode[] = episodes.map((e) => ({
     type: 'tv',

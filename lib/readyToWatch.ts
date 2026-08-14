@@ -23,11 +23,12 @@ export interface ReadyToWatchShow {
 
 export type ReadyToWatchItem = ReadyToWatchMovie | ReadyToWatchShow;
 
-export function titleFuzzyMatch(a: string, b: string): boolean {
-  const x = a.toLowerCase().trim();
-  const y = b.toLowerCase().trim();
-  return x === y || x.includes(y) || y.includes(x);
-}
+// Re-exported so existing importers keep working; the implementation moved to
+// lib/titleMatch.ts and is now strict equality-after-normalization instead of
+// bidirectional substring containment (which matched wrong-but-similar titles
+// and fed deletes with the wrong id - see titleMatch.ts).
+import { titlesMatch } from './titleMatch';
+export { titlesMatch as titleFuzzyMatch };
 
 export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   const [movies, series, watchedMovies, watchedEpisodes] = await Promise.all([
@@ -38,23 +39,27 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   ]);
 
   const downloadedMovies = movies.filter((m) => m.hasFile);
-  const inLibraryFlags = await Promise.all(downloadedMovies.map((m) => hasTitle(m.title).catch(() => false)));
+  const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);
+
+  // The movie in-library checks (Plex/Jellyfin) and the per-series episode
+  // file fetches (Sonarr) hit different services and don't depend on each
+  // other - running them as one batch instead of two sequential awaits cuts
+  // end-to-end latency to whichever side is slower rather than their sum.
+  const [inLibraryFlags, fileSets] = await Promise.all([
+    Promise.all(downloadedMovies.map((m) => hasTitle(m.title).catch(() => false))),
+    Promise.all(showsWithFiles.map((s) => getSonarrEpisodeFileSet(s.id).catch(() => new Set<string>()))),
+  ]);
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
-    .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titleFuzzyMatch(w.title, m.title)))
+    .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
-
-  const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);
-  const fileSets = await Promise.all(
-    showsWithFiles.map((s) => getSonarrEpisodeFileSet(s.id).catch(() => new Set<string>()))
-  );
 
   const showItems: ReadyToWatchShow[] = [];
   showsWithFiles.forEach((s, i) => {
     const fileSet = Array.from(fileSets[i]);
     const watchedKeysForShow = new Set(
       watchedEpisodes
-        .filter((w) => titleFuzzyMatch(w.showTitle, s.title))
+        .filter((w) => titlesMatch(w.showTitle, s.title))
         .map((w) => `${w.seasonNumber}:${w.episodeNumber}`)
     );
     const unwatchedEpisodes = fileSet

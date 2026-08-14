@@ -1,3 +1,4 @@
+import { titlesMatch } from './titleMatch';
 // Stripped of any trailing slash - a URL saved with one (e.g. "http://host:8096/")
 // would otherwise produce double-slash paths like ".../Users" -> "..//Users",
 // which Jellyfin 404s on.
@@ -37,11 +38,9 @@ function stripDisambiguator(title: string): string {
   return title.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
-function titleMatches(itemName: string, normalized: string): boolean {
-  if (!itemName) return false;
-  const n = itemName.toLowerCase().trim();
-  return n === normalized || n.includes(normalized) || normalized.includes(n);
-}
+// Matching is strict equality-after-normalization (see lib/titleMatch.ts) -
+// the old bidirectional substring version here matched wrong-but-similar
+// titles and fed mark-watched/lookup calls with the wrong item.
 
 interface JellyfinItem {
   Id?: string;
@@ -78,8 +77,7 @@ export async function jellyfinHasTitle(title: string): Promise<boolean> {
   const searchQuery = stripDisambiguator(title);
   const items = await searchJellyfin(searchQuery, 'Movie');
   const shows = await searchJellyfin(searchQuery, 'Series');
-  const normalized = searchQuery.toLowerCase().trim();
-  return [...items, ...shows].some((item) => titleMatches(item.Name ?? '', normalized));
+  return [...items, ...shows].some((item) => titlesMatch(item.Name ?? '', searchQuery));
 }
 
 /** True if this specific season/episode of the show has actually been scanned into Jellyfin - not just the show existing. */
@@ -87,8 +85,7 @@ export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number
   requireConfig();
   const searchQuery = stripDisambiguator(showTitle);
   const shows = await searchJellyfin(searchQuery, 'Series');
-  const normalized = searchQuery.toLowerCase().trim();
-  const matchedShow = shows.find((s) => titleMatches(s.Name ?? '', normalized));
+  const matchedShow = shows.find((s) => titlesMatch(s.Name ?? '', searchQuery));
   if (!matchedShow?.Id) return false;
 
   const episodes = await getSeriesEpisodes(matchedShow.Id);
@@ -120,8 +117,7 @@ export async function markJellyfinMovieWatched(title: string): Promise<void> {
   requireConfig();
   const searchQuery = stripDisambiguator(title);
   const items = await searchJellyfin(searchQuery, 'Movie');
-  const normalized = searchQuery.toLowerCase().trim();
-  const matched = items.find((item) => titleMatches(item.Name ?? '', normalized));
+  const matched = items.find((item) => titlesMatch(item.Name ?? '', searchQuery));
   if (!matched?.Id) throw new Error(`Could not find "${title}" in Jellyfin`);
   await markPlayed(matched.Id);
 }
@@ -134,8 +130,7 @@ export async function markJellyfinEpisodesWatched(
   requireConfig();
   const searchQuery = stripDisambiguator(showTitle);
   const shows = await searchJellyfin(searchQuery, 'Series');
-  const normalized = searchQuery.toLowerCase().trim();
-  const matchedShow = shows.find((s) => titleMatches(s.Name ?? '', normalized));
+  const matchedShow = shows.find((s) => titlesMatch(s.Name ?? '', searchQuery));
   if (!matchedShow?.Id) throw new Error(`Could not find "${showTitle}" in Jellyfin`);
 
   const allEpisodes = await getSeriesEpisodes(matchedShow.Id);

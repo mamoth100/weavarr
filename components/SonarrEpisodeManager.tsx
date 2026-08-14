@@ -17,11 +17,9 @@ interface QualityProfileOption {
   name: string;
 }
 
-export function formatBytes(bytes: number): string {
-  if (!bytes) return '-';
-  const gb = bytes / (1024 * 1024 * 1024);
-  return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
-}
+// Canonical copy lives in RecentlyWatchedSection - re-exported for existing importers.
+export { formatBytes } from '@/components/RecentlyWatchedSection';
+import { formatBytes } from '@/components/RecentlyWatchedSection';
 
 function isDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
   return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();

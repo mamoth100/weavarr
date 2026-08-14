@@ -3,7 +3,6 @@ import { getDownloaderQueue, downloadersEnabled } from '@/lib/downloaders';
 import { getRadarrQueue, getRadarrRecentImports, getAllRadarrMovies } from '@/lib/radarr';
 import { getSonarrQueue, getSonarrRecentImports, getAllSonarrSeries, getSonarrEpisodeFileSet } from '@/lib/sonarr';
 import { hasTitle, hasEpisode } from '@/lib/mediaServer';
-import { getCleanupCandidates } from '@/lib/cleanupCandidates';
 
 // Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
 export const dynamic = 'force-dynamic';
@@ -21,14 +20,13 @@ export async function GET() {
     ? getDownloaderQueue().catch((err) => ({ error: errMessage(err) }))
     : Promise.resolve(null);
 
-  const [downloader, [radarr, sonarr, radarrHistory, sonarrHistory, cleanup, radarrMovies, sonarrSeries]] = await Promise.all([
+  const [downloader, [radarr, sonarr, radarrHistory, sonarrHistory, radarrMovies, sonarrSeries]] = await Promise.all([
     downloaderTask,
     Promise.allSettled([
       getRadarrQueue(),
       getSonarrQueue(),
       getRadarrRecentImports(POOL_SIZE),
       getSonarrRecentImports(POOL_SIZE),
-      getCleanupCandidates(200),
       getAllRadarrMovies(),
       getAllSonarrSeries(),
     ]),
@@ -102,6 +100,5 @@ export async function GET() {
     radarr: radarr.status === 'fulfilled' ? radarr.value : { error: errMessage(radarr.reason) },
     sonarr: sonarr.status === 'fulfilled' ? sonarr.value : { error: errMessage(sonarr.reason) },
     recentImports,
-    readyToCleanup: cleanup.status === 'fulfilled' ? cleanup.value : { error: errMessage(cleanup.reason) },
   });
 }

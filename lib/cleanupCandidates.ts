@@ -1,5 +1,6 @@
 import { getEpisodeWatchHistory, getInProgressEpisodes, getPlayedSessionKeys } from './mediaServer';
-import { getSonarrSeriesList, findSonarrEpisodeFile } from './sonarr';
+import { getSonarrSeriesList, getSonarrEpisodeFileInfoMap } from './sonarr';
+import { titlesMatch } from './titleMatch';
 
 export interface CleanupCandidate {
   showTitle: string;
@@ -67,18 +68,21 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       reason: `${Math.round((e.viewOffset / e.duration) * 100)}% watched`,
     }));
 
-  const candidates: CleanupCandidate[] = [];
-  const episodeCache = new Map<string, ReturnType<typeof findSonarrEpisodeFile>>();
+  // Resolve every signal to a series first (deduped), THEN fetch each
+  // distinct series' episode list exactly once, in parallel. The old shape
+  // fetched the full episode list per episode, sequentially - and its
+  // per-episode cache could never hit, because the dedupe directly above it
+  // already skipped every repeated key.
   const seen = new Set<string>();
+  const resolved: { watched: WatchSignal; seriesId: number; posterPath: string | null }[] = [];
 
   for (const watched of [...watchedSignals, ...almostDoneSignals]) {
     if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
 
-    const matchedSeries = series.find((s) => {
-      const a = s.title.toLowerCase().trim();
-      const b = watched.showTitle.toLowerCase().trim();
-      return a === b || a.includes(b) || b.includes(a);
-    });
+    // Strict equality-after-normalization - the old bidirectional substring
+    // match here could resolve "Doctor Who" to "Doctor Who Confidential" and
+    // hand the wrong seriesId to the episode-file delete downstream.
+    const matchedSeries = series.find((s) => titlesMatch(s.title, watched.showTitle));
     if (!matchedSeries) continue;
 
     // Dedupe by the resolved Sonarr series, not the raw signal title - the
@@ -90,10 +94,19 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    if (!episodeCache.has(dedupeKey)) {
-      episodeCache.set(dedupeKey, findSonarrEpisodeFile(matchedSeries.id, watched.seasonNumber, watched.episodeNumber));
-    }
-    const episodeFile = await episodeCache.get(dedupeKey);
+    resolved.push({ watched, seriesId: matchedSeries.id, posterPath: matchedSeries.posterPath });
+  }
+
+  const fileMaps = new Map<number, Map<string, { episodeId: number; episodeFileId: number }>>();
+  await Promise.all(
+    Array.from(new Set(resolved.map((r) => r.seriesId))).map(async (id) => {
+      fileMaps.set(id, await getSonarrEpisodeFileInfoMap(id).catch(() => new Map()));
+    })
+  );
+
+  const candidates: CleanupCandidate[] = [];
+  for (const { watched, seriesId, posterPath } of resolved) {
+    const episodeFile = fileMaps.get(seriesId)?.get(`${watched.seasonNumber}:${watched.episodeNumber}`);
     if (!episodeFile) continue; // no file on disk - already cleaned up, or never had one
 
     candidates.push({
@@ -101,11 +114,11 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       seasonNumber: watched.seasonNumber,
       episodeNumber: watched.episodeNumber,
       viewedAt: watched.viewedAt,
-      seriesId: matchedSeries.id,
+      seriesId,
       episodeId: episodeFile.episodeId,
       episodeFileId: episodeFile.episodeFileId,
       reason: watched.reason,
-      posterPath: matchedSeries.posterPath,
+      posterPath,
     });
   }
 
