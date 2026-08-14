@@ -367,8 +367,8 @@ export default function SettingsPanel() {
                         {settings
                           .filter((s) => s.group === group)
                           .map((s) => (
-                            <div key={s.key} className="p-3 flex items-center gap-3">
-                              <div className="w-52 flex-shrink-0">
+                            <div key={s.key} className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
+                              <div className="sm:w-52 flex-shrink-0">
                                 <p className="text-sm font-medium">{s.label}</p>
                                 <p className="text-xs text-zinc-600">{s.key}</p>
                               </div>
