@@ -595,6 +595,8 @@ export async function getMissingAiredEpisodes(): Promise<MissingAiredEpisode[]> 
 export interface SonarrCalendarItem {
   seriesId: number;
   seriesTitle: string;
+  /** TMDB id of the series when Sonarr knows it (v4+) - lets the calendar link to the in-app detail page. */
+  tmdbId: number | null;
   hasPoster: boolean;
   seasonNumber: number;
   episodeNumber: number;
@@ -620,6 +622,7 @@ export async function getSonarrCalendar(start: string, end: string): Promise<Son
     return {
       seriesId: e.seriesId as number,
       seriesTitle: (series?.title as string) ?? 'Unknown Show',
+      tmdbId: typeof series?.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null,
       hasPoster: images.some((img) => img.coverType === 'poster'),
       seasonNumber: e.seasonNumber as number,
       episodeNumber: e.episodeNumber as number,
