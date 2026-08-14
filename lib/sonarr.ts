@@ -258,6 +258,8 @@ export interface SonarrSeries {
   title: string;
   year: number;
   imdbId: string | null;
+  /** TMDB id when Sonarr knows it (v4+) - lets library rows link to the in-app detail page. */
+  tmdbId: number | null;
   episodeFileCount: number;
   episodeCount: number;
   sizeOnDisk: number;
@@ -285,6 +287,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
       title: s.title as string,
       year: s.year as number,
       imdbId: (s.imdbId as string) ?? null,
+      tmdbId: typeof s.tmdbId === 'number' && s.tmdbId > 0 ? s.tmdbId : null,
       episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
       episodeCount: (stats?.episodeCount as number) ?? 0,
       sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,

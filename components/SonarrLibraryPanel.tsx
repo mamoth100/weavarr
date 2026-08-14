@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import SonarrEpisodeManager, { formatBytes } from '@/components/SonarrEpisodeManager';
 import SimplePagination from '@/components/SimplePagination';
 
@@ -11,6 +12,7 @@ interface SonarrSeries {
   title: string;
   year: number;
   imdbId: string | null;
+  tmdbId: number | null;
   episodeFileCount: number;
   episodeCount: number;
   sizeOnDisk: number;
@@ -196,6 +198,15 @@ export default function SonarrLibraryPanel() {
                 </div>
               </button>
               <div className="flex items-center gap-3 shrink-0">
+                {/* Tapping the title expands episodes (load-bearing) - detail-page navigation gets its own link instead. */}
+                {show.tmdbId && (
+                  <Link
+                    href={`/tv/${show.tmdbId}`}
+                    className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                  >
+                    Details
+                  </Link>
+                )}
                 <StatusBadge status={show.status} />
                 <DeleteButton seriesId={show.id} />
               </div>

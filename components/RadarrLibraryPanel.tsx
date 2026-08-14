@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import SimplePagination from '@/components/SimplePagination';
 
 const PAGE_SIZE = 50;
@@ -162,15 +163,17 @@ export default function RadarrLibraryPanel() {
       <div className="space-y-2">
         {paged.map((movie) => (
           <div key={movie.id} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-            <div className="flex items-center gap-3 min-w-0">
+            <Link href={`/documentary/${movie.tmdbId}`} className="flex items-center gap-3 min-w-0 group">
               <Poster id={movie.id} hasPoster={Boolean(movie.posterPath)} title={movie.title} />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{movie.title} {movie.year ? `(${movie.year})` : ''}</p>
+                <p className="text-sm font-medium truncate group-hover:text-amber-400 transition-colors">
+                  {movie.title} {movie.year ? `(${movie.year})` : ''}
+                </p>
                 <p className="text-xs text-zinc-500">
                   {movie.hasFile ? formatBytes(movie.sizeOnDisk) : 'No file'}
                 </p>
               </div>
-            </div>
+            </Link>
             <DeleteButton movieId={movie.id} />
           </div>
         ))}
