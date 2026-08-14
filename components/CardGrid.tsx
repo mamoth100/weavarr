@@ -87,7 +87,7 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
         <p className="text-xs text-zinc-500 mb-2">
           {[
             hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
-            hiddenSucksCount > 0 && `${hiddenSucksCount} sucks hidden`,
+            hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
             hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
           ].filter(Boolean).join(' · ')}
         </p>

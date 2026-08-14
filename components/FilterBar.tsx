@@ -306,7 +306,7 @@ export default function FilterBar({
 
   const chips: { key: string; label: string; onClear: () => void }[] = [];
   if (showAll) chips.push({ key: 'show', label: 'Watched', onClear: () => navigate({ show: undefined }, 'show-all') });
-  if (sucksOn) chips.push({ key: 'sucks', label: 'Sucks', onClear: () => navigate({ sucks: undefined }, 'icon-sucks-row1') });
+  if (sucksOn) chips.push({ key: 'sucks', label: 'Not interested', onClear: () => navigate({ sucks: undefined }, 'icon-sucks-row1') });
   if (favOn) chips.push({ key: 'fav', label: 'Favorites', onClear: () => navigate({ fav: undefined }, 'icon-fav-row1') });
   if (langAll) chips.push({ key: 'lang', label: 'All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
   if (!sortIsDefault && sortOpt) chips.push({ key: 'sort', label: sortOpt.label, onClear: () => navigate({ sort: undefined }) });
@@ -427,7 +427,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                Sucks
+                Not interested
               </button>
               <button
                 onClick={() => navigate({ fav: searchParams.get('fav') === 'show' ? undefined : 'show' }, 'icon-fav-row1')}

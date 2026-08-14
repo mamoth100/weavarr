@@ -81,7 +81,7 @@ export default function SearchResultCard({ item }: Props) {
               sucks ? 'bg-red-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
-            {sucks ? 'Marked sucks' : 'Sucks'}
+            {sucks ? 'Not interested ✓' : 'Not interested'}
           </button>
           <RequestButton
             id={item.id}
