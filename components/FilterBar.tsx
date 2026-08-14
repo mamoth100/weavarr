@@ -17,6 +17,14 @@ interface Props {
   currentUpcomingGenre: string;
 }
 
+// Every filter click router.push()es, which re-renders the server page and
+// remounts this component (it sits inside a Suspense boundary) - plain
+// useState for the panel's open flag resets to closed on every selection,
+// forcing the panel to be reopened per choice. Module scope survives the
+// remount, so a multi-filter session keeps the panel open until the user
+// actually closes it.
+let persistedFiltersOpen = false;
+
 export default function FilterBar({
   activeSubgenres,
   currentSort,
@@ -33,8 +41,26 @@ export default function FilterBar({
   const [yearInput, setYearInput] = useState(currentYear);
   const [isPending, startTransition] = useTransition();
   const [pendingFilter, setPendingFilter] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpenState] = useState(() => persistedFiltersOpen);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  function setFiltersOpen(next: boolean | ((o: boolean) => boolean)) {
+    setFiltersOpenState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      persistedFiltersOpen = value;
+      return value;
+    });
+  }
+
+  // Escape closes the panel, same as clicking outside or Done.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFiltersOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [filtersOpen]);
 
   useEffect(() => {
     if (!isPending) setPendingFilter(null);
