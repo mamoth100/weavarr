@@ -10,9 +10,11 @@ interface Props {
   items: TmdbMovie[];
   mediaType: 'movie' | 'tv';
   variant?: 'default' | 'upcoming';
+  /** Total result count from the server page - rendered here so count + hidden-breakdown make one line instead of two stacked micro-rows. */
+  totalResults?: number;
 }
 
-export default function CardGrid({ items, mediaType, variant = 'default' }: Props) {
+export default function CardGrid({ items, mediaType, variant = 'default', totalResults }: Props) {
   const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
@@ -81,17 +83,16 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
     );
   }
 
+  const infoLine = [
+    totalResults !== undefined && `${totalResults.toLocaleString()} results`,
+    hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
+    hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
+    hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
+  ].filter(Boolean).join(' · ');
+
   return (
     <>
-      {(hiddenWatchedCount > 0 || hiddenSucksCount > 0 || hiddenFavCount > 0) && (
-        <p className="text-xs text-zinc-500 mb-2">
-          {[
-            hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
-            hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
-            hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
-          ].filter(Boolean).join(' · ')}
-        </p>
-      )}
+      {infoLine && <p className="text-xs text-zinc-500 mt-4 mb-2">{infoLine}</p>}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map((doc) => (
           <DocCard key={`${doc.id}:${doc.mediaType ?? mediaType}`} doc={doc} mediaType={doc.mediaType ?? mediaType} variant={variant} />

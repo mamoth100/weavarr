@@ -53,8 +53,15 @@ function GroupInfoTooltip({ group }: { group: string }) {
         setOpen(false);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setOpen(false); }
+    }
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [open]);
 
   if (!info) return null;
@@ -319,7 +326,10 @@ export default function SettingsPanel() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>Secret fields (API keys, tokens) never show their current value - leave blank to keep it unchanged.</p>
         <p>Every save is backed up first (last 10 kept), so a bad value can always be rolled back.</p>
-        <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
+        {/* Only warn about restarting once there's actually something to restart for - a permanent warning is noise. */}
+        {(changedCount > 0 || saveStatus === 'saved') && (
+          <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
+        )}
       </div>
 
       {SECTION_ORDER.map((section) => {

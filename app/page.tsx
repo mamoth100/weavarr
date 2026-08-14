@@ -213,14 +213,12 @@ export default async function Home({ searchParams }: PageProps) {
           </>
         ) : (
           <>
-            <p className="text-xs text-zinc-500 mt-4 mb-2">
-              {data.total_results.toLocaleString()} results
-            </p>
             <Suspense fallback={<div className="h-64 bg-zinc-900 rounded-lg animate-pulse" />}>
               <CardGrid
                 items={enriched.results}
                 mediaType={mediaType}
                 variant={isUpcoming ? 'upcoming' : 'default'}
+                totalResults={data.total_results}
               />
             </Suspense>
 
