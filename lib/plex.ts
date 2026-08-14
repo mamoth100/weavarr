@@ -1,3 +1,5 @@
+import { titlesMatch } from './titleMatch';
+
 // Stripped of any trailing slash - otherwise a URL saved as "http://host:32400/"
 // produces double-slash paths (".../hubs/search" -> "..//hubs/search") that 404.
 const PLEX_URL = process.env.PLEX_URL?.replace(/\/$/, '');
@@ -16,10 +18,9 @@ function stripDisambiguator(title: string): string {
   return title.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
-function titleMatches(itemTitle: string, normalized: string): boolean {
-  if (!itemTitle) return false;
-  return itemTitle === normalized || itemTitle.includes(normalized) || normalized.includes(itemTitle);
-}
+// Matching is strict equality-after-normalization (see lib/titleMatch.ts) -
+// the old bidirectional substring version here could scrobble/act on the
+// wrong library item ("It" matched anything containing "it").
 
 async function searchPlex(query: string): Promise<PlexHub[]> {
   // /search only returns the list of search categories, not actual matches -
@@ -41,8 +42,7 @@ export async function plexHasTitle(title: string): Promise<boolean> {
   const searchQuery = stripDisambiguator(title);
   const hubs = await searchPlex(searchQuery);
   const items = hubs.flatMap((hub) => hub.Metadata ?? []);
-  const normalized = searchQuery.toLowerCase().trim();
-  return items.some((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  return items.some((item) => titlesMatch(item.title ?? '', searchQuery));
 }
 
 /** True if this specific season/episode of the show has actually been scanned into Plex - not just the show existing. */
@@ -54,8 +54,7 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
   const showHub = hubs.find((h) => h.type === 'show');
   const shows = showHub?.Metadata ?? [];
 
-  const normalized = searchQuery.toLowerCase().trim();
-  const matchedShow = shows.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  const matchedShow = shows.find((item) => titlesMatch(item.title ?? '', searchQuery));
   if (!matchedShow?.ratingKey) return false;
 
   const episodesRes = await fetch(
@@ -87,8 +86,7 @@ export async function markPlexMovieWatched(title: string): Promise<void> {
   const hubs = await searchPlex(searchQuery);
   const movieHub = hubs.find((h) => h.type === 'movie');
   const movies = movieHub?.Metadata ?? [];
-  const normalized = searchQuery.toLowerCase().trim();
-  const matched = movies.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  const matched = movies.find((item) => titlesMatch(item.title ?? '', searchQuery));
   if (!matched?.ratingKey) throw new Error(`Could not find "${title}" in Plex`);
 
   await scrobble(matched.ratingKey);
@@ -105,8 +103,7 @@ export async function markPlexEpisodesWatched(
   const hubs = await searchPlex(searchQuery);
   const showHub = hubs.find((h) => h.type === 'show');
   const shows = showHub?.Metadata ?? [];
-  const normalized = searchQuery.toLowerCase().trim();
-  const matchedShow = shows.find((item) => titleMatches((item.title ?? '').toLowerCase().trim(), normalized));
+  const matchedShow = shows.find((item) => titlesMatch(item.title ?? '', searchQuery));
   if (!matchedShow?.ratingKey) throw new Error(`Could not find "${showTitle}" in Plex`);
 
   const episodesRes = await fetch(

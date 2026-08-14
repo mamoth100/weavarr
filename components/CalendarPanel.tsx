@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 interface CalendarItem {
@@ -146,17 +146,29 @@ export default function CalendarPanel() {
     };
   }, []);
 
+  // Generation counter so a slow response for a month the user already
+  // navigated away from can't overwrite the current month's data (clicking
+  // Next twice fast used to let month+1's late reply render into month+2's
+  // grid as a silently empty calendar).
+  const fetchGeneration = useRef(0);
+
   useEffect(() => {
+    const generation = ++fetchGeneration.current;
     const start = toDateKey(days[0]);
     const end = toDateKey(days[days.length - 1]);
     setItems(null);
+    setError(null); // an old month's failure shouldn't stick to the new month
     fetch(`/api/calendar?start=${start}&end=${end}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
+        if (generation !== fetchGeneration.current) return;
         if (data.error) setError(data.error);
         else setItems(data.items);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => {
+        if (generation !== fetchGeneration.current) return;
+        setError(err instanceof Error ? err.message : String(err));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthStart]);
 
@@ -177,10 +189,6 @@ export default function CalendarPanel() {
     }
     return map;
   }, [items]);
-
-  if (error) {
-    return <p className="text-red-400 text-sm">Failed to load calendar: {error}</p>;
-  }
 
   const monthLabel = monthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -217,10 +225,16 @@ export default function CalendarPanel() {
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-zinc-600" /> Upcoming</span>
       </div>
 
+      {error && (
+        <p className="text-red-400 text-sm">
+          Failed to load calendar: {error} - use Prev/Next or Today to retry.
+        </p>
+      )}
+
       {/* Month grid - desktop only. At phone widths each day cell is ~36px
           wide (verified), which truncates every chip to two letters; the
           agenda list below replaces it there. */}
-      <div className="hidden lg:grid grid-cols-7 gap-px bg-zinc-800 rounded-lg overflow-hidden ring-1 ring-white/5">
+      <div className={`${error ? 'hidden' : 'hidden lg:grid'} grid-cols-7 gap-px bg-zinc-800 rounded-lg overflow-hidden ring-1 ring-white/5`}>
         {WEEKDAYS.map((d) => (
           <div key={d} className="bg-zinc-900 text-center text-xs font-semibold text-zinc-500 uppercase tracking-wider py-2">
             {d}
@@ -274,7 +288,7 @@ export default function CalendarPanel() {
           actually have something, each entry readable at full width with its
           episode info visible (the grid keeps that in a hover tooltip, which
           touch can't see). */}
-      <div className="lg:hidden space-y-3">
+      <div className={`${error ? 'hidden' : 'lg:hidden'} space-y-3`}>
         {items === null ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (

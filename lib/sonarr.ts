@@ -180,6 +180,8 @@ export async function forceImportSonarr(downloadId: string) {
 }
 
 export interface ImportHistoryItem {
+  /** History record id from Sonarr - unique per event, used as the stable React key downstream. */
+  historyId: number;
   title: string;
   date: string;
   episode?: string | null;
@@ -204,6 +206,7 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
     .map((r: Record<string, unknown>) => {
       const episode = r.episode as { seasonNumber?: number; episodeNumber?: number } | undefined;
       return {
+        historyId: r.id as number,
         title: (r.series as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
         date: r.date as string,
         episode: episode?.seasonNumber !== undefined && episode?.episodeNumber !== undefined
@@ -375,6 +378,25 @@ export interface SonarrEpisodeFileInfo {
 }
 
 /** Finds the episode + file IDs for a specific season/episode of an already-added series - null if not found or no file on disk. */
+/** One fetch per series: every episode that has a file, keyed "season:episode" -> ids. Callers resolving many episodes of the same show should use this instead of findSonarrEpisodeFile, which refetches the full episode list on every call. */
+export async function getSonarrEpisodeFileInfoMap(seriesId: number): Promise<Map<string, SonarrEpisodeFileInfo>> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  const map = new Map<string, SonarrEpisodeFileInfo>();
+  for (const e of episodes) {
+    const file = e.episodeFile as { id?: number } | undefined;
+    if (e.hasFile && file?.id) {
+      map.set(`${e.seasonNumber}:${e.episodeNumber}`, { episodeId: e.id as number, episodeFileId: file.id });
+    }
+  }
+  return map;
+}
+
 export async function findSonarrEpisodeFile(
   seriesId: number,
   seasonNumber: number,

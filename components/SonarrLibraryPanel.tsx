@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import SonarrEpisodeManager, { formatBytes } from '@/components/SonarrEpisodeManager';
+import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
+import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
 import SimplePagination from '@/components/SimplePagination';
 
 const PAGE_SIZE = 50;
@@ -18,22 +19,6 @@ interface SonarrSeries {
   sizeOnDisk: number;
   status: string;
   posterPath: string | null;
-}
-
-function Poster({ id, hasPoster, title }: { id: number; hasPoster: boolean; title: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!hasPoster || failed) {
-    return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
-  }
-  return (
-    <img
-      src={`/api/sonarr/image?id=${id}`}
-      alt={title}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="w-9 h-[54px] rounded object-cover flex-shrink-0"
-    />
-  );
 }
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -135,6 +120,16 @@ export default function SonarrLibraryPanel() {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
+  // Memoized: this ran in the render body before, re-sorting the entire
+  // library with localeCompare on every keystroke and unrelated re-render.
+  const filtered = useMemo(
+    () =>
+      (series ?? [])
+        .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [series, query]
+  );
+
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load Sonarr library: {error}</p>;
   }
@@ -149,9 +144,6 @@ export default function SonarrLibraryPanel() {
     );
   }
 
-  const filtered = series
-    .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => a.title.localeCompare(b.title));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -187,7 +179,7 @@ export default function SonarrLibraryPanel() {
                 className="flex items-center gap-3 text-left min-w-0"
               >
                 <span className={`text-zinc-500 text-xs transition-transform ${expanded === show.id ? 'rotate-90' : ''}`}>▶</span>
-                <Poster id={show.id} hasPoster={Boolean(show.posterPath)} title={show.title} />
+                <Poster id={show.id} hasPoster={Boolean(show.posterPath)} title={show.title} service="sonarr" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{show.title} {show.year ? `(${show.year})` : ''}</p>
                   <p className="text-xs text-zinc-500">

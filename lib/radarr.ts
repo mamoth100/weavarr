@@ -250,6 +250,8 @@ export async function deleteRadarrMovie(movieId: number): Promise<void> {
 }
 
 export interface ImportHistoryItem {
+  /** History record id from Radarr/Sonarr - unique per event, used as the stable React key downstream. */
+  historyId: number;
   title: string;
   date: string;
   episode?: string | null;
@@ -262,15 +264,21 @@ export interface ImportHistoryItem {
 export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
+  // Over-fetch then filter then slice (mirrors the Sonarr twin) - history
+  // pages mix grabs/deletes/renames with imports, so applying `limit` as the
+  // page size BEFORE filtering let non-import events consume the whole page
+  // and silently drop genuinely recent imports.
   const res = await fetch(
-    `${RADARR_URL}/api/v3/history?page=1&pageSize=${limit}&sortKey=date&sortDirection=descending&includeMovie=true`,
+    `${RADARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeMovie=true`,
     { headers: headers(), cache: 'no-store' }
   );
   if (!res.ok) throw new Error(`Radarr history failed: ${res.status}`);
   const data = await res.json();
   return (data.records ?? [])
     .filter((r: Record<string, unknown>) => (r.eventType as string) === 'downloadFolderImported')
+    .slice(0, limit)
     .map((r: Record<string, unknown>) => ({
+      historyId: r.id as number,
       title: (r.movie as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
       date: r.date as string,
       movieId: r.movieId as number,

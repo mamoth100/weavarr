@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import SimplePagination from '@/components/SimplePagination';
+import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
 
 const PAGE_SIZE = 50;
 
@@ -14,28 +15,6 @@ interface RadarrMovie {
   sizeOnDisk: number;
   tmdbId: number;
   posterPath: string | null;
-}
-
-function formatBytes(bytes: number): string {
-  if (!bytes) return '-';
-  const gb = bytes / (1024 * 1024 * 1024);
-  return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
-}
-
-function Poster({ id, hasPoster, title }: { id: number; hasPoster: boolean; title: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!hasPoster || failed) {
-    return <div className="w-9 h-[54px] rounded bg-zinc-800 flex-shrink-0" />;
-  }
-  return (
-    <img
-      src={`/api/radarr/image?id=${id}`}
-      alt={title}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="w-9 h-[54px] rounded object-cover flex-shrink-0"
-    />
-  );
 }
 
 function DeleteButton({ movieId }: { movieId: number }) {
@@ -117,6 +96,16 @@ export default function RadarrLibraryPanel() {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
+  // Memoized: this ran in the render body before, re-sorting the entire
+  // library with localeCompare on every keystroke and unrelated re-render.
+  const filtered = useMemo(
+    () =>
+      (movies ?? [])
+        .filter((m) => m.title.toLowerCase().includes(query.toLowerCase()))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [movies, query]
+  );
+
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load Radarr library: {error}</p>;
   }
@@ -131,9 +120,6 @@ export default function RadarrLibraryPanel() {
     );
   }
 
-  const filtered = movies
-    .filter((m) => m.title.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => a.title.localeCompare(b.title));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -164,7 +150,7 @@ export default function RadarrLibraryPanel() {
         {paged.map((movie) => (
           <div key={movie.id} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
             <Link href={`/documentary/${movie.tmdbId}`} className="flex items-center gap-3 min-w-0 group">
-              <Poster id={movie.id} hasPoster={Boolean(movie.posterPath)} title={movie.title} />
+              <Poster id={movie.id} hasPoster={Boolean(movie.posterPath)} title={movie.title} service="radarr" />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate group-hover:text-amber-400 transition-colors">
                   {movie.title} {movie.year ? `(${movie.year})` : ''}

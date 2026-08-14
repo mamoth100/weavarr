@@ -15,14 +15,18 @@ interface MonitoredGroup {
 }
 
 const MONITORED_GROUPS: MonitoredGroup[] = [
+  // ENABLE_* checked like every other entry here - Settings never clears the
+  // URL/key when a service is toggled off, so without the flag check a
+  // deliberately disabled (and stopped) Radarr/Sonarr still got health-checked
+  // and fired "connection dropped" alerts for a service the user turned off.
   {
     name: 'Radarr',
-    configured: () => Boolean(process.env.RADARR_URL && process.env.RADARR_KEY),
+    configured: () => process.env.ENABLE_RADARR !== 'false' && Boolean(process.env.RADARR_URL && process.env.RADARR_KEY),
     values: () => ({ RADARR_URL: process.env.RADARR_URL ?? '', RADARR_KEY: process.env.RADARR_KEY ?? '' }),
   },
   {
     name: 'Sonarr',
-    configured: () => Boolean(process.env.SONARR_URL && process.env.SONARR_KEY),
+    configured: () => process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY),
     values: () => ({ SONARR_URL: process.env.SONARR_URL ?? '', SONARR_KEY: process.env.SONARR_KEY ?? '' }),
   },
   {

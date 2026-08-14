@@ -31,9 +31,14 @@ const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 type Table = 'favorites' | 'watched' | 'sucks';
 
 function apiList(table: Table): Promise<Record<string, unknown>[]> {
+  // Failures resolve to an empty list rather than rejecting - the loader
+  // below counts completions to flip `loaded`, and an unhandled rejection
+  // (500, non-JSON body, network drop) used to leave loaded=false forever,
+  // so every browse page rendered skeleton tiles indefinitely.
   return fetch(`/api/${table}`)
     .then((res) => res.json())
-    .then((data) => data.rows ?? []);
+    .then((data) => data.rows ?? [])
+    .catch(() => []);
 }
 
 function apiUpsert(table: Table, row: object): Promise<void> {

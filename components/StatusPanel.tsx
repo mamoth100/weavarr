@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import RecentlyWatchedSection from '@/components/RecentlyWatchedSection';
+import RecentlyWatchedSection, { timeAgo } from '@/components/RecentlyWatchedSection';
 
 interface DownloadSlot {
   filename: string;
@@ -39,24 +39,12 @@ interface ArrData {
 }
 
 interface RecentImport {
+  /** Unique Radarr/Sonarr history record id - the stable list key (title+date collide when one release imports multiple files). */
+  historyId: number;
   title: string;
   date: string;
   episode?: string | null;
   inLibrary: boolean | null;
-}
-
-interface CleanupCandidateItem {
-  showTitle: string;
-  seasonNumber: number;
-  episodeNumber: number;
-  viewedAt: string;
-  episodeId: number;
-  episodeFileId: number;
-  reason: string;
-}
-
-interface CleanupError {
-  error: string;
 }
 
 interface StatusResponse {
@@ -64,17 +52,6 @@ interface StatusResponse {
   radarr: QueueItem[] | ArrData;
   sonarr: QueueItem[] | ArrData;
   recentImports?: RecentImport[];
-  readyToCleanup?: CleanupCandidateItem[] | CleanupError;
-}
-
-function timeAgo(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function formatMb(mbStr: string | undefined): string {
@@ -341,7 +318,7 @@ export default function StatusPanel() {
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Recently Imported</h2>
         <div className="space-y-2">
           {data.recentImports.map((item) => (
-            <div key={`${item.title}-${item.episode ?? ''}-${item.date}`} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+            <div key={item.historyId} className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
               <div>
                 <p className="text-sm font-medium">{item.title}{item.episode ? ` - ${item.episode}` : ''}</p>
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
