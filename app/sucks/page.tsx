@@ -59,7 +59,7 @@ export default function SucksPage() {
                       {/* Remove - top-right on hover */}
                       <button
                         onClick={() => removeSucks(item.id, item.mediaType)}
-                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-900 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100 transition-all duration-200"
                         aria-label="Remove from sucks"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
