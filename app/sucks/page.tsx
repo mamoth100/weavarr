@@ -11,13 +11,13 @@ export default function SucksPage() {
   const { sucksItems, removeSucks } = useWatchlist();
 
   return (
-    <AppShell title="Things that suck" headerActions={<BackLink />}>
+    <AppShell title="Not interested" headerActions={<BackLink />}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {sucksItems.length === 0 ? (
           <div className="text-center py-24">
-            <p className="text-zinc-500 text-lg">Nothing marked as sucks yet.</p>
+            <p className="text-zinc-500 text-lg">Nothing marked as not interested yet.</p>
             <p className="text-zinc-500 text-sm mt-2">
-              Hover over any card and tap the thumbs down to track what sucked.
+              Tap the thumbs down on any card to hide it from browsing.
             </p>
           </div>
         ) : (
@@ -53,14 +53,14 @@ export default function SucksPage() {
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15h2.25m8.024-9.75c.011.05.028.1.052.148.591 1.2.924 2.55.924 3.977a8.96 8.96 0 01-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.105 1.25-1.987 1.25H14.5m0 0l-4.072 1.957a1.5 1.5 0 01-2.181-1.341V16.5M7.5 15V9.75a.75.75 0 01.75-.75h1.5" />
                         </svg>
-                        Sucks
+                        Not interested
                       </div>
 
                       {/* Remove - top-right on hover */}
                       <button
                         onClick={() => removeSucks(item.id, item.mediaType)}
                         className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-900 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100 transition-all duration-200"
-                        aria-label="Remove from sucks"
+                        aria-label="Remove from not interested"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
