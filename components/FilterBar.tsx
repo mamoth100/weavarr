@@ -154,7 +154,7 @@ export default function FilterBar({
 
     return (
       <div className="space-y-2">
-        <p className="text-xs text-zinc-600">Sorted by release date · next 6 months</p>
+        <p className="text-xs text-zinc-500">Sorted by release date · next 6 months</p>
         <div className="relative" ref={panelRef}>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -327,7 +327,7 @@ export default function FilterBar({
           onChange={(e) => setSearchInput(e.target.value)}
           onKeyDown={handleSearchKey}
           placeholder={isGlobalSearch ? 'Search anything… press Enter' : `Search ${activeGenreLabel.toLowerCase()}… press Enter`}
-          className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-3 pr-14 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+          className="w-full bg-zinc-800 text-white text-sm rounded-lg pl-3 pr-14 py-2.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500"
         />
         {searchInput && (
           <button
@@ -348,7 +348,7 @@ export default function FilterBar({
           </button>
         </p>
       ) : isGlobalSearch ? (
-        <p className="text-xs text-zinc-600 py-2">Search across everything - any movie or show, any genre.</p>
+        <p className="text-xs text-zinc-500 py-2">Search across everything - any movie or show, any genre.</p>
       ) : (
         <div className="relative" ref={panelRef}>
           {/* Filters trigger + active chips */}
@@ -515,7 +515,7 @@ export default function FilterBar({
                     }
                   }}
                   placeholder="Year"
-                  className={`w-20 bg-zinc-800 text-white text-sm rounded-full px-3 py-1.5 border transition-colors focus:outline-none placeholder:text-zinc-600 ${
+                  className={`w-20 bg-zinc-800 text-white text-sm rounded-full px-3 py-1.5 border transition-colors focus:outline-none placeholder:text-zinc-500 ${
                     currentYear
                       ? 'border-amber-500 text-amber-400'
                       : 'border-zinc-700 focus:border-amber-500'

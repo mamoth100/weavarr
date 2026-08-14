@@ -68,7 +68,7 @@ export default function TraktScore({ imdbId }: { imdbId: string }) {
 
   if (loading) {
     return (
-      <div className="text-xs text-zinc-600 animate-pulse">Trakt: loading…</div>
+      <div className="text-xs text-zinc-500 animate-pulse">Trakt: loading…</div>
     );
   }
 
@@ -79,7 +79,7 @@ export default function TraktScore({ imdbId }: { imdbId: string }) {
       <div>
         Trakt:{' '}
         <span className="text-white">{data.rating.toFixed(1)}</span>
-        <span className="text-zinc-600"> ({data.votes.toLocaleString()} votes)</span>
+        <span className="text-zinc-500"> ({data.votes.toLocaleString()} votes)</span>
       </div>
       {data.watchers !== null && (
         <div className="text-zinc-500 text-xs mt-0.5">

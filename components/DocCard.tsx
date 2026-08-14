@@ -57,7 +57,7 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs text-center p-2">
+            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs text-center p-2">
               No Poster
             </div>
           )}

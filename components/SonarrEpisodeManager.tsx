@@ -157,7 +157,7 @@ function SearchEpisodeButton({
         target="_blank"
         rel="noopener noreferrer"
         title="A season search already covered this episode - check Status for what's actually queued or downloading."
-        className="text-xs font-medium text-zinc-600 hover:underline"
+        className="text-xs font-medium text-zinc-500 hover:underline"
       >
         Sent to downloader
       </a>
@@ -371,7 +371,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
         <button
           type="button"
           onClick={toggleQualityOverride}
-          className="text-[11px] text-zinc-600 hover:text-zinc-400 underline decoration-dotted"
+          className="text-[11px] text-zinc-500 hover:text-zinc-400 underline decoration-dotted"
         >
           {showQualityOverride ? 'Hide quality override' : activeOverrideName ? `Quality: ${activeOverrideName}` : 'Quality override'}
         </button>
@@ -425,7 +425,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                   </p>
                   {e.hasFile ? (
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-zinc-600">{formatBytes(e.sizeOnDisk)}</span>
+                      <span className="text-xs text-zinc-500">{formatBytes(e.sizeOnDisk)}</span>
                       <DeleteEpisodeButton
                         seriesId={seriesId}
                         seasonNumber={e.seasonNumber}

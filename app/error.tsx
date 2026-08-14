@@ -29,7 +29,7 @@ export default function Error({
           Try Again
         </button>
         {error.digest && (
-          <p className="text-xs text-zinc-600">Digest: {error.digest}</p>
+          <p className="text-xs text-zinc-500">Digest: {error.digest}</p>
         )}
       </div>
     </main>

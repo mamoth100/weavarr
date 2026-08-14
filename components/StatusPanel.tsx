@@ -146,7 +146,7 @@ function DownloaderSection({ data }: { data: DownloaderData | null }) {
             </div>
           </div>
           {(!data.slots || data.slots.length === 0) ? (
-            <p className="text-xs text-zinc-600">Queue is empty.</p>
+            <p className="text-xs text-zinc-500">Queue is empty.</p>
           ) : (
             <div className="space-y-2">
               {data.slots.map((slot, i) => {
@@ -350,7 +350,7 @@ export default function StatusPanel() {
         {isArrError(data.sonarr) ? (
           <p className="text-red-400 text-sm">{data.sonarr.error}</p>
         ) : data.sonarr.length === 0 ? (
-          <p className="text-xs text-zinc-600">Nothing in the queue.</p>
+          <p className="text-xs text-zinc-500">Nothing in the queue.</p>
         ) : (
           <div className="space-y-2">
             {data.sonarr.map((item, i) => (
@@ -375,7 +375,7 @@ export default function StatusPanel() {
         {isArrError(data.radarr) ? (
           <p className="text-red-400 text-sm">{data.radarr.error}</p>
         ) : data.radarr.length === 0 ? (
-          <p className="text-xs text-zinc-600">Nothing in the queue.</p>
+          <p className="text-xs text-zinc-500">Nothing in the queue.</p>
         ) : (
           <div className="space-y-2">
             {data.radarr.map((item, i) => (
@@ -428,7 +428,7 @@ export default function StatusPanel() {
                 <p className="text-xs text-zinc-500">{timeAgo(item.date)}</p>
               </div>
               {item.inLibrary === null ? (
-                <span className="text-xs text-zinc-600">Not checked</span>
+                <span className="text-xs text-zinc-500">Not checked</span>
               ) : item.inLibrary ? (
                 <span className="text-xs font-medium text-green-400">In library</span>
               ) : (

@@ -370,14 +370,14 @@ export default function SettingsPanel() {
                             <div key={s.key} className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
                               <div className="sm:w-52 flex-shrink-0">
                                 <p className="text-sm font-medium">{s.label}</p>
-                                <p className="text-xs text-zinc-600">{s.key}</p>
+                                <p className="text-xs text-zinc-500">{s.key}</p>
                               </div>
                               {s.type === 'boolean' && s.key === 'ENABLE_WATCHED_SYNC' && !watchedSyncEligible ? (
                                 <select
                                   value="false"
                                   disabled
                                   title="Needs both Plex and Jellyfin enabled - there's nothing to sync between just one media server."
-                                  className="flex-1 bg-zinc-800 text-zinc-600 text-sm rounded-lg px-3 py-1.5 border border-zinc-700 opacity-50 cursor-not-allowed"
+                                  className="flex-1 bg-zinc-800 text-zinc-500 text-sm rounded-lg px-3 py-1.5 border border-zinc-700 opacity-50 cursor-not-allowed"
                                 >
                                   <option value="false">Disable</option>
                                 </select>
@@ -438,7 +438,7 @@ export default function SettingsPanel() {
                                         ? (s.isSet ? 'Set - leave blank to keep' : 'Not set')
                                         : ''
                                   }
-                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600 disabled:opacity-50"
+                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-50"
                                 />
                               )}
                               {s.secret && s.isSet && (
@@ -455,7 +455,7 @@ export default function SettingsPanel() {
                                 </button>
                               )}
                               {s.secret && (
-                                <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-600'}`}>
+                                <span className={`text-xs font-medium whitespace-nowrap ${s.isSet ? 'text-green-400' : 'text-zinc-500'}`}>
                                   {clearedKeys.has(s.key) ? 'will clear' : s.isSet ? 'set' : 'not set'}
                                 </span>
                               )}

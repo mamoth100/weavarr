@@ -17,13 +17,13 @@ export default function FavoritesPage() {
         {favorites.length === 0 ? (
           <div className="text-center py-24">
             <p className="text-zinc-500 text-lg">No favorites yet.</p>
-            <p className="text-zinc-600 text-sm mt-2">
+            <p className="text-zinc-500 text-sm mt-2">
               Hover over any card and tap the heart to save it here.
             </p>
           </div>
         ) : (
           <>
-            <p className="text-xs text-zinc-600 mb-4">
+            <p className="text-xs text-zinc-500 mb-4">
               {favorites.length} saved
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -59,7 +59,7 @@ export default function FavoritesPage() {
                             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs text-center p-2">
+                          <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs text-center p-2">
                             No Poster
                           </div>
                         )}
