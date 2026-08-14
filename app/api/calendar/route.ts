@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic';
 export interface CalendarItem {
   type: 'movie' | 'tv';
   id: number;
+  /** TMDB id when the backing service knows it - used to link entries to the in-app detail pages. */
+  tmdbId: number | null;
   title: string;
   subtitle?: string;
   date: string;
@@ -47,6 +49,7 @@ export async function GET(request: Request) {
       items.push({
         type: 'tv',
         id: e.seriesId,
+        tmdbId: e.tmdbId,
         title: e.seriesTitle,
         subtitle: `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')} - ${e.title}`,
         date: e.airDateUtc,
@@ -64,6 +67,7 @@ export async function GET(request: Request) {
       items.push({
         type: 'movie',
         id: m.movieId,
+        tmdbId: m.tmdbId,
         title: m.title,
         date: m.releaseDate,
         hasFile: m.hasFile,

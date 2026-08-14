@@ -280,6 +280,8 @@ export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryI
 export interface RadarrCalendarItem {
   movieId: number;
   title: string;
+  /** TMDB id - lets the calendar link to the in-app detail page. */
+  tmdbId: number | null;
   hasPoster: boolean;
   releaseDate: string;
   hasFile: boolean;
@@ -304,6 +306,7 @@ export async function getRadarrCalendar(start: string, end: string): Promise<Rad
         ? {
             movieId: m.id as number,
             title: m.title as string,
+            tmdbId: typeof m.tmdbId === 'number' && m.tmdbId > 0 ? m.tmdbId : null,
             hasPoster: images.some((img) => img.coverType === 'poster'),
             releaseDate,
             hasFile: Boolean(m.hasFile),

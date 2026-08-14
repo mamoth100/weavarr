@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 interface CalendarItem {
   type: 'movie' | 'tv';
   id: number;
+  tmdbId: number | null;
   title: string;
   subtitle?: string;
   date: string;
@@ -12,6 +14,37 @@ interface CalendarItem {
   hasPoster: boolean;
   watched: boolean;
   monitored: boolean;
+}
+
+/** In-app detail page for an entry, when the backing service gave us a TMDB id to link with. */
+function itemHref(item: CalendarItem): string | null {
+  if (!item.tmdbId) return null;
+  return item.type === 'tv' ? `/tv/${item.tmdbId}` : `/documentary/${item.tmdbId}`;
+}
+
+/** Same-show episodes stacked on one day collapse to a single chip with a count - "House of Stassi x3" instead of three identical rows. */
+interface ChipGroup {
+  rep: CalendarItem;
+  count: number;
+  subtitles: string[];
+}
+
+function groupDayItems(dayItems: CalendarItem[]): ChipGroup[] {
+  const groups: ChipGroup[] = [];
+  const byKey = new Map<string, ChipGroup>();
+  for (const item of dayItems) {
+    const key = `${item.type}-${item.id}-${itemStatus(item)}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (item.subtitle) existing.subtitles.push(item.subtitle);
+    } else {
+      const g: ChipGroup = { rep: item, count: 1, subtitles: item.subtitle ? [item.subtitle] : [] };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+  }
+  return groups;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -184,7 +217,10 @@ export default function CalendarPanel() {
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-zinc-600" /> Upcoming</span>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-zinc-800 rounded-lg overflow-hidden ring-1 ring-white/5">
+      {/* Month grid - desktop only. At phone widths each day cell is ~36px
+          wide (verified), which truncates every chip to two letters; the
+          agenda list below replaces it there. */}
+      <div className="hidden lg:grid grid-cols-7 gap-px bg-zinc-800 rounded-lg overflow-hidden ring-1 ring-white/5">
         {WEEKDAYS.map((d) => (
           <div key={d} className="bg-zinc-900 text-center text-xs font-semibold text-zinc-500 uppercase tracking-wider py-2">
             {d}
@@ -207,19 +243,89 @@ export default function CalendarPanel() {
               <div className="space-y-0.5">
                 {items === null
                   ? null
-                  : dayItems.map((item, i) => (
-                      <div
-                        key={`${item.type}-${item.id}-${item.date}-${item.subtitle ?? i}`}
-                        title={`${item.title}${item.subtitle ? ` - ${item.subtitle}` : ''}`}
-                        className={`text-[10px] leading-tight truncate rounded px-1 py-0.5 ${chipClass(item)}`}
-                      >
-                        {item.title}
-                      </div>
-                    ))}
+                  : groupDayItems(dayItems).map((g) => {
+                      const href = itemHref(g.rep);
+                      const label = g.count > 1 ? `${g.rep.title} ×${g.count}` : g.rep.title;
+                      const tooltip = g.subtitles.length > 0 ? `${g.rep.title} - ${g.subtitles.join(', ')}` : g.rep.title;
+                      const chip = (
+                        <div
+                          title={tooltip}
+                          className={`text-[11px] leading-tight truncate rounded px-1 py-0.5 ${chipClass(g.rep)} ${href ? 'hover:ring-1 hover:ring-white/30' : ''}`}
+                        >
+                          {label}
+                        </div>
+                      );
+                      const key2 = `${g.rep.type}-${g.rep.id}-${g.rep.date}-${g.rep.subtitle ?? ''}`;
+                      return href ? (
+                        <Link key={key2} href={href} className="block">
+                          {chip}
+                        </Link>
+                      ) : (
+                        <div key={key2}>{chip}</div>
+                      );
+                    })}
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Agenda list - phones/tablets. Only days in the current month that
+          actually have something, each entry readable at full width with its
+          episode info visible (the grid keeps that in a hover tooltip, which
+          touch can't see). */}
+      <div className="lg:hidden space-y-3">
+        {items === null ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-zinc-900 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          (() => {
+            const monthDays = days.filter(
+              (d) => d.getMonth() === monthStart.getMonth() && (itemsByDay.get(toDateKey(d)) ?? []).length > 0
+            );
+            if (monthDays.length === 0) {
+              return <p className="text-sm text-zinc-500">Nothing airing or releasing this month.</p>;
+            }
+            return monthDays.map((day) => {
+              const key = toDateKey(day);
+              const dayItems = itemsByDay.get(key) ?? [];
+              const isToday = isSameDay(day, today);
+              return (
+                <div key={key} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 overflow-hidden">
+                  <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider border-b border-zinc-800 ${isToday ? 'text-amber-400' : 'text-zinc-500'}`}>
+                    {day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {isToday ? ' · Today' : ''}
+                  </p>
+                  <div className="divide-y divide-zinc-800">
+                    {dayItems.map((item, i) => {
+                      const href = itemHref(item);
+                      const row = (
+                        <div className="px-3 py-2 flex items-center gap-2.5">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${chipClass(item).split(' ')[0].replace('/15', '/60')}`} />
+                          <span className="min-w-0">
+                            <span className="block text-sm truncate">{item.title}</span>
+                            {item.subtitle && <span className="block text-xs text-zinc-500 truncate">{item.subtitle}</span>}
+                          </span>
+                        </div>
+                      );
+                      const key2 = `${item.type}-${item.id}-${item.date}-${item.subtitle ?? i}`;
+                      return href ? (
+                        <Link key={key2} href={href} className="block hover:bg-zinc-800/60">
+                          {row}
+                        </Link>
+                      ) : (
+                        <div key={key2}>{row}</div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()
+        )}
       </div>
     </div>
   );
