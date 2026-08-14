@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Toggle from '@/components/Toggle';
 
 interface SettingStatus {
   key: string;
@@ -370,26 +371,23 @@ export default function SettingsPanel() {
                             <div key={s.key} className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
                               <div className="sm:w-52 flex-shrink-0">
                                 <p className="text-sm font-medium">{s.label}</p>
-                                <p className="text-xs text-zinc-500">{s.key}</p>
                               </div>
                               {s.type === 'boolean' && s.key === 'ENABLE_WATCHED_SYNC' && !watchedSyncEligible ? (
-                                <select
-                                  value="false"
-                                  disabled
-                                  title="Needs both Plex and Jellyfin enabled - there's nothing to sync between just one media server."
-                                  className="flex-1 bg-zinc-800 text-zinc-500 text-sm rounded-lg px-3 py-1.5 border border-zinc-700 opacity-50 cursor-not-allowed"
-                                >
-                                  <option value="false">Disable</option>
-                                </select>
+                                <div className="flex-1 flex items-center gap-3">
+                                  <Toggle checked={false} onChange={() => {}} disabled ariaLabel={s.label} />
+                                  {/* Visible instead of a hover-only title tooltip - touch and keyboard users can never see those. */}
+                                  <p className="text-xs text-zinc-500">
+                                    Needs both Plex and Jellyfin enabled - there&apos;s nothing to sync between just one media server.
+                                  </p>
+                                </div>
                               ) : s.type === 'boolean' ? (
-                                <select
-                                  value={edits[s.key] ?? s.value ?? s.defaultValue ?? 'false'}
-                                  onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                                  className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
-                                >
-                                  <option value="true">Enable</option>
-                                  <option value="false">Disable</option>
-                                </select>
+                                <div className="flex-1 flex items-center">
+                                  <Toggle
+                                    checked={(edits[s.key] ?? s.value ?? s.defaultValue ?? 'false') === 'true'}
+                                    onChange={(next) => setEdits((prev) => ({ ...prev, [s.key]: String(next) }))}
+                                    ariaLabel={s.label}
+                                  />
+                                </div>
                               ) : s.type === 'profile' ? (
                                 (() => {
                                   const profileOptions = testState.profiles ?? [];

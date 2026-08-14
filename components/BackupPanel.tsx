@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import Toggle from '@/components/Toggle';
 
 interface BackupInfo {
   filename: string;
@@ -268,19 +269,18 @@ function ScheduleSettings() {
             <p className="text-sm font-medium">Enable Scheduled Backups</p>
             <p className="text-xs text-zinc-500">On by default - runs daily, keeps the newest N automatically</p>
           </div>
-          <select
-            value={enabled}
-            onChange={(e) => setEnabled(e.target.value)}
-            className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
-          >
-            <option value="true">Enable</option>
-            <option value="false">Disable</option>
-          </select>
+          <div className="flex-1 flex items-center">
+            <Toggle
+              checked={enabled === 'true'}
+              onChange={(next) => setEnabled(String(next))}
+              ariaLabel="Enable Scheduled Backups"
+            />
+          </div>
         </div>
         <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="sm:w-52 flex-shrink-0">
             <p className="text-sm font-medium">Backups to Keep</p>
-            <p className="text-xs text-zinc-500">BACKUP_RETENTION_COUNT</p>
+            <p className="text-xs text-zinc-500">Oldest are pruned past this count</p>
           </div>
           <input
             type="text"
