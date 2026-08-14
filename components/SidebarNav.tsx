@@ -42,7 +42,7 @@ const UTILITY_LINKS = [
   },
 ];
 
-export default function SidebarNav({ config }: { config: MenuConfig }) {
+export default function SidebarNav({ config, mobileTitle }: { config: MenuConfig; mobileTitle?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -56,29 +56,49 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
     setMobileOpen(false);
   }, [pathname, searchParams]);
 
-  const items: NavItem[] = [
+  // Escape closes the drawer, matching backdrop tap and item selection.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [mobileOpen]);
+
+  // Two different kinds of thing share this nav: genres and tab-links change
+  // what the homepage shows, while page-links go to separate pages. They used
+  // to render as one flat undifferentiated list - grouped under headings now
+  // so browsing views and app pages read as distinct. Relative order within
+  // each group still follows the user's Menu settings.
+  const browseItems: NavItem[] = [
     ...config.genres.map((g) => ({
       key: `genre:${g.id}`,
       label: g.label,
       isActive: onDashboard && current === g.id,
       onClick: () => router.push(`/?genre=${g.id}`),
     })),
-    ...config.links.map((l) =>
-      l.kind === 'tab'
-        ? {
-            key: `tab:${l.id}`,
-            label: l.label,
-            isActive: onDashboard && current === l.id,
-            onClick: () => router.push(`/?genre=${l.id}`),
-          }
-        : {
-            key: `link:${l.id}`,
-            label: l.label,
-            isActive: pathname === l.href,
-            onClick: () => router.push(l.href!),
-          }
-    ),
+    ...config.links
+      .filter((l) => l.kind === 'tab')
+      .map((l) => ({
+        key: `tab:${l.id}`,
+        label: l.label,
+        isActive: onDashboard && current === l.id,
+        onClick: () => router.push(`/?genre=${l.id}`),
+      })),
   ];
+  const pageItems: NavItem[] = config.links
+    .filter((l) => l.kind === 'link')
+    .map((l) => ({
+      key: `link:${l.id}`,
+      label: l.label,
+      isActive: pathname === l.href,
+      onClick: () => router.push(l.href!),
+    }));
+
+  // The compact mobile bar wants the page's short name, not the full
+  // "Title - long explanatory subtitle" string the header shows.
+  const compactTitle = mobileTitle?.split(' - ')[0];
 
   return (
     <>
@@ -88,7 +108,7 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
           below this, so repeating it here would be redundant. Only below the
           lg breakpoint where the sidebar itself is off-canvas. */}
       <div
-        className="lg:hidden sticky top-0 z-30 px-4 pb-2 bg-zinc-950 border-b border-zinc-800"
+        className="lg:hidden sticky top-0 z-30 px-4 pb-2 bg-zinc-950 border-b border-zinc-800 flex items-center gap-2"
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
       >
         <button
@@ -100,6 +120,9 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
+        {compactTitle && (
+          <span className="text-sm font-semibold truncate text-zinc-200">{compactTitle}</span>
+        )}
       </div>
 
       {mobileOpen && (
@@ -130,7 +153,20 @@ export default function SidebarNav({ config }: { config: MenuConfig }) {
           </button>
         </div>
         <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-0.5">
-          {items.map((item) => (
+          <p className="px-3 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 select-none">
+            Browse
+          </p>
+          {browseItems.map((item) => (
+            <button key={item.key} onClick={item.onClick} className={itemClass(item.isActive)}>
+              {item.label}
+            </button>
+          ))}
+          {pageItems.length > 0 && (
+            <p className="px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 select-none">
+              Manage
+            </p>
+          )}
+          {pageItems.map((item) => (
             <button key={item.key} onClick={item.onClick} className={itemClass(item.isActive)}>
               {item.label}
             </button>

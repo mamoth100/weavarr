@@ -19,7 +19,7 @@ export default function AppShell({
 }) {
   return (
     <div className="min-h-screen bg-zinc-950 text-white lg:flex">
-      <Sidebar />
+      <Sidebar mobileTitle={typeof title === 'string' ? title : undefined} />
       <div className="flex-1 min-w-0">
         {(title || headerActions) && (
           <header className="border-b border-zinc-800 px-6 py-5">

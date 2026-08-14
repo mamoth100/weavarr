@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import SidebarNav from '@/components/SidebarNav';
 import type { MenuConfig } from '@/lib/settings';
 
-export default function Sidebar() {
+export default function Sidebar({ mobileTitle }: { mobileTitle?: string }) {
   const [config, setConfig] = useState<MenuConfig | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function Sidebar() {
 
   return (
     <Suspense>
-      <SidebarNav config={config} />
+      <SidebarNav config={config} mobileTitle={mobileTitle} />
     </Suspense>
   );
 }
