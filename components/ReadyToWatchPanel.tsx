@@ -20,12 +20,22 @@ interface ReadyToWatchItem {
 const MAX_EPISODE_TAGS = 6;
 
 function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNumber: number }[] }) {
-  const shown = episodes.slice(0, MAX_EPISODE_TAGS);
-  const remaining = episodes.length - shown.length;
+  // "+N more" used to be plain text that looked tappable but wasn't - it's a
+  // real expand/collapse toggle now.
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? episodes : episodes.slice(0, MAX_EPISODE_TAGS);
+  const remaining = episodes.length - MAX_EPISODE_TAGS;
   return (
     <span>
       {shown.map(formatEpisode).join(', ')}
-      {remaining > 0 && ` +${remaining} more`}
+      {remaining > 0 && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="ml-1 text-amber-400 hover:text-amber-300 font-medium"
+        >
+          {expanded ? 'show less' : `+${remaining} more`}
+        </button>
+      )}
     </span>
   );
 }
@@ -115,8 +125,15 @@ function ShowDeleteDropdown({
         setConfirming(null);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setOpen(false); setConfirming(null); }
+    }
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [open]);
 
   async function confirmDelete(seasonNumber: number, episodeNumber: number) {
@@ -233,13 +250,14 @@ function MovieWatchedButton({
       <button
         onClick={handleClick}
         disabled={disabled || status === 'loading'}
-        title={disabled ? "File already deleted - Plex no longer has this to mark watched" : undefined}
         className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
           status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
         }`}
       >
         {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Watched'}
       </button>
+      {/* Visible, not a hover-only title tooltip - touch/keyboard users could never see the reason. */}
+      {disabled && <p className="text-xs text-zinc-500 mt-1">File deleted - nothing left to mark</p>}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
@@ -264,8 +282,15 @@ function ShowWatchedDropdown({
         setOpen(false);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setOpen(false); }
+    }
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [open]);
 
   async function markEpisode(seasonNumber: number, episodeNumber: number) {
