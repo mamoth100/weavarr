@@ -64,19 +64,20 @@ export default function CardActions({
 
   return (
     <>
-      {/* Favorite (heart) - top-left; always visible when favorited, hover otherwise */}
+      {/* Favorite (heart) - top-left. Hover/focus-revealed on desktop; always
+          visible with a bigger tap target on touch, where hover doesn't exist. */}
       <button
         onClick={handleFavorite}
-        className={`absolute top-2 left-2 z-10 p-1.5 rounded-full transition-all duration-200
+        className={`absolute top-2 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
           ${
             favorited
               ? 'bg-amber-400 text-zinc-950 opacity-100'
-              : 'bg-zinc-900/80 text-white opacity-0 group-hover:opacity-100'
+              : 'bg-zinc-900/80 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
           }`}
         aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       >
         <svg
-          className="w-3.5 h-3.5"
+          className="w-3.5 h-3.5 touch:w-5 touch:h-5"
           fill={favorited ? 'currentColor' : 'none'}
           stroke="currentColor"
           strokeWidth="2"
@@ -90,18 +91,18 @@ export default function CardActions({
         </svg>
       </button>
 
-      {/* Thumbs down (sucks) - above watched, bottom-left */}
+      {/* Thumbs down (not interested) - above watched, bottom-left */}
       <button
         onClick={handleSucks}
-        className={`absolute bottom-12 left-2 z-10 p-1.5 rounded-full transition-all duration-200
+        className={`absolute bottom-12 touch:bottom-14 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
-              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100'
+              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
           }`}
-        aria-label={sucks ? 'Remove from sucks' : 'Mark as sucks'}
+        aria-label={sucks ? 'Remove from not interested' : 'Not interested'}
       >
-        <svg className="w-3.5 h-3.5" fill={sucks ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 touch:w-5 touch:h-5" fill={sucks ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15h2.25m8.024-9.75c.011.05.028.1.052.148.591 1.2.924 2.55.924 3.977a8.96 8.96 0 01-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.105 1.25-1.987 1.25H14.5m0 0l-4.072 1.957a1.5 1.5 0 01-2.181-1.341V16.5M7.5 15V9.75a.75.75 0 01.75-.75h1.5" />
         </svg>
       </button>
@@ -109,11 +110,11 @@ export default function CardActions({
       {/* Watched badge - bottom-left */}
       <button
           onClick={handleWatched}
-          className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold transition-all duration-200
+          className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
             ${
               watched
                 ? 'bg-green-600/90 text-white opacity-100'
-                : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100'
+                : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
             }`}
           aria-label={watched ? 'Mark as unwatched' : 'Mark as watched'}
         >

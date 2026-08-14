@@ -79,7 +79,7 @@ export default function FavoritesPage() {
                           ${
                             watched
                               ? 'bg-green-600/90 text-white opacity-100'
-                              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100'
+                              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
                           }`}
                         aria-label={
                           watched ? 'Mark as unwatched' : 'Mark as watched'
@@ -137,7 +137,7 @@ export default function FavoritesPage() {
                           ${
                             isSucks(item.id, item.mediaType)
                               ? 'bg-red-600/90 text-white opacity-100'
-                              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100'
+                              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
                           }`}
                         aria-label="Move to sucks"
                       >
@@ -149,7 +149,7 @@ export default function FavoritesPage() {
                       {/* Remove button - top-right on hover */}
                       <button
                         onClick={() => removeFavorite(item.id, item.mediaType)}
-                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-zinc-900/80 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100 transition-all duration-200"
                         aria-label="Remove from favorites"
                       >
                         <svg
