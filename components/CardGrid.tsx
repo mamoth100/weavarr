@@ -84,7 +84,7 @@ export default function CardGrid({ items, mediaType, variant = 'default' }: Prop
   return (
     <>
       {(hiddenWatchedCount > 0 || hiddenSucksCount > 0 || hiddenFavCount > 0) && (
-        <p className="text-xs text-zinc-600 mb-2">
+        <p className="text-xs text-zinc-500 mb-2">
           {[
             hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
             hiddenSucksCount > 0 && `${hiddenSucksCount} sucks hidden`,

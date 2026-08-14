@@ -139,7 +139,7 @@ export default async function DocumentaryPage({ params }: Props) {
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
               <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
-                Weavarr Score <span className="normal-case text-zinc-600">(Bayesian · IMDb-anchored)</span>
+                Weavarr Score <span className="normal-case text-zinc-500">(Bayesian · IMDb-anchored)</span>
               </div>
               <div className="flex items-center gap-4">
                 <ScoreBadge score={score.score} size="lg" />
@@ -147,13 +147,13 @@ export default async function DocumentaryPage({ params }: Props) {
                   {score.tmdbScore > 0 && (
                     <div>
                       TMDb: <span className="text-white">{score.tmdbScore.toFixed(1)}</span>
-                      <span className="text-zinc-600"> ({detail.vote_count.toLocaleString()} votes)</span>
+                      <span className="text-zinc-500"> ({detail.vote_count.toLocaleString()} votes)</span>
                     </div>
                   )}
                   {score.imdbScore !== null && (
                     <div>
                       IMDb: <span className="text-white">{score.imdbScore.toFixed(1)}</span>
-                      <span className="text-zinc-600"> ({omdb?.imdbVotes} votes)</span>
+                      <span className="text-zinc-500"> ({omdb?.imdbVotes} votes)</span>
                     </div>
                   )}
                   {imdbId && <TraktScore imdbId={imdbId} />}
@@ -175,7 +175,7 @@ export default async function DocumentaryPage({ params }: Props) {
                     ? 'text-green-400'
                     : score.confidence === 'medium'
                     ? 'text-yellow-400'
-                    : 'text-zinc-600'
+                    : 'text-zinc-500'
                 }`}
               >
                 {score.confidence} confidence
@@ -202,7 +202,7 @@ export default async function DocumentaryPage({ params }: Props) {
                 </h2>
                 {streamingProviders.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-zinc-600 mb-2">Stream</p>
+                    <p className="text-xs text-zinc-500 mb-2">Stream</p>
                     <div className="flex flex-wrap gap-2">
                       {streamingProviders.map((p) => (
                         <div
@@ -223,7 +223,7 @@ export default async function DocumentaryPage({ params }: Props) {
                 )}
                 {rentProviders.length > 0 && (
                   <div>
-                    <p className="text-xs text-zinc-600 mb-2">Rent / Buy</p>
+                    <p className="text-xs text-zinc-500 mb-2">Rent / Buy</p>
                     <div className="flex flex-wrap gap-2">
                       {rentProviders.map((p) => (
                         <div

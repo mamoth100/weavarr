@@ -53,7 +53,7 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
     <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{backup.filename}</p>
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-500">
           {new Date(backup.createdAt).toLocaleString()} · {formatBackupSize(backup.sizeBytes)}
         </p>
         {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
@@ -179,7 +179,7 @@ function BackupList() {
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
       {backups && backups.length === 0 && (
-        <p className="text-xs text-zinc-600">No backups yet - click Backup Now to create one.</p>
+        <p className="text-xs text-zinc-500">No backups yet - click Backup Now to create one.</p>
       )}
       {backups && backups.length > 0 && (
         <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
@@ -266,7 +266,7 @@ function ScheduleSettings() {
         <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="sm:w-52 flex-shrink-0">
             <p className="text-sm font-medium">Enable Scheduled Backups</p>
-            <p className="text-xs text-zinc-600">On by default - runs daily, keeps the newest N automatically</p>
+            <p className="text-xs text-zinc-500">On by default - runs daily, keeps the newest N automatically</p>
           </div>
           <select
             value={enabled}
@@ -280,7 +280,7 @@ function ScheduleSettings() {
         <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="sm:w-52 flex-shrink-0">
             <p className="text-sm font-medium">Backups to Keep</p>
-            <p className="text-xs text-zinc-600">BACKUP_RETENTION_COUNT</p>
+            <p className="text-xs text-zinc-500">BACKUP_RETENTION_COUNT</p>
           </div>
           <input
             type="text"

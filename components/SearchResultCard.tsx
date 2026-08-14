@@ -41,7 +41,7 @@ export default function SearchResultCard({ item }: Props) {
           {posterUrl ? (
             <Image src={posterUrl} alt={item.title} fill className="object-cover" sizes="64px" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-[10px] text-center p-1">
+            <div className="w-full h-full flex items-center justify-center text-zinc-500 text-[10px] text-center p-1">
               No Poster
             </div>
           )}

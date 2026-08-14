@@ -156,7 +156,7 @@ export default function RadarrLibraryPanel() {
             setPage(1);
           }}
           placeholder="Filter by title…"
-          className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+          className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500"
         />
       </div>
       <div className="space-y-2">

@@ -346,7 +346,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           type="button"
           onClick={toggleAdvanced}
           disabled={locked}
-          className="text-[11px] text-zinc-600 hover:text-zinc-400 underline decoration-dotted self-start disabled:opacity-60"
+          className="text-[11px] text-zinc-500 hover:text-zinc-400 underline decoration-dotted self-start disabled:opacity-60"
         >
           {showAdvanced ? 'Hide advanced' : 'Advanced: pick profile'}
         </button>

@@ -738,7 +738,7 @@ function MissingAiredSection({
                             S{String(e.seasonNumber).padStart(2, '0')}E{String(e.episodeNumber).padStart(2, '0')}
                           </span>{' '}
                           {e.title}
-                          <span className="text-zinc-600"> · aired {formatAirDate(e.airDateUtc)}</span>
+                          <span className="text-zinc-500"> · aired {formatAirDate(e.airDateUtc)}</span>
                         </p>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <SearchMissingButton
@@ -935,7 +935,7 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
                   <p className="text-sm font-medium truncate">
                     {m.title} <span className="text-zinc-500">({m.year})</span>
                   </p>
-                  {m.releaseDate && <p className="text-xs text-zinc-600">released {formatAirDate(m.releaseDate)}</p>}
+                  {m.releaseDate && <p className="text-xs text-zinc-500">released {formatAirDate(m.releaseDate)}</p>}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <SearchMissingMovieButton
@@ -1180,7 +1180,7 @@ export default function ReadyToWatchPanel() {
             setMoviePage(1);
           }}
           placeholder="Filter by title…"
-          className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-600"
+          className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500"
         />
       </div>
       {(tvItems.length > 0 ||
@@ -1203,7 +1203,7 @@ export default function ReadyToWatchPanel() {
         </div>
       )}
       {filtered.length === 0 && (
-        <p className="text-zinc-600 text-sm">Nothing unwatched right now - you're all caught up.</p>
+        <p className="text-zinc-500 text-sm">Nothing unwatched right now - you're all caught up.</p>
       )}
       {tvItems.length > 0 && (
         <div id="section-tv-shows" className="space-y-2">

@@ -184,7 +184,7 @@ export default async function Home({ searchParams }: PageProps) {
           </div>
         ) : isGlobalSearch ? (
           <>
-            <p className="text-xs text-zinc-600 mt-4 mb-2">
+            <p className="text-xs text-zinc-500 mt-4 mb-2">
               {data.total_results.toLocaleString()} results
             </p>
             <Suspense fallback={<div className="h-64 bg-zinc-900 rounded-lg animate-pulse" />}>
@@ -213,7 +213,7 @@ export default async function Home({ searchParams }: PageProps) {
           </>
         ) : (
           <>
-            <p className="text-xs text-zinc-600 mt-4 mb-2">
+            <p className="text-xs text-zinc-500 mt-4 mb-2">
               {data.total_results.toLocaleString()} results
             </p>
             <Suspense fallback={<div className="h-64 bg-zinc-900 rounded-lg animate-pulse" />}>
