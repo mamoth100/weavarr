@@ -51,7 +51,11 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
   }
 
   return (
-    <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
+    // Mobile stacks filename above the actions, but the actions themselves
+    // stay a horizontal row of natural-width controls - stacking them
+    // stretched them into full-width bars where the Download <a> (left-
+    // aligned by default) sat next to centered <button>s.
+    <div className="p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{backup.filename}</p>
         <p className="text-xs text-zinc-500">
@@ -60,6 +64,7 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
         {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
       </div>
 
+      <div className="flex items-center flex-wrap gap-2 sm:gap-3">
       <a
         href={`/api/backup/${encodeURIComponent(backup.filename)}`}
         download
@@ -126,6 +131,7 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
           {deleteStatus === 'error' ? 'Failed - retry' : 'Delete'}
         </button>
       )}
+      </div>
     </div>
   );
 }
