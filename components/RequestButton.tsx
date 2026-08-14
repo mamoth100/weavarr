@@ -269,12 +269,14 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
     }
   }
 
+  // Neutral labels - a user shouldn't need to know what Radarr/Sonarr are to
+  // add something (public-release jargon pass, UX review 2026-08-14).
   const label =
-    status === 'loading' ? 'Requesting…' :
-    status === 'added' ? 'Requested' :
-    status === 'already' ? 'Already in ' + (mediaType === 'movie' ? 'Radarr' : 'Sonarr') :
+    status === 'loading' ? 'Adding…' :
+    status === 'added' ? 'Added' :
+    status === 'already' ? 'Already added' :
     status === 'error' ? 'Failed - retry' :
-    mediaType === 'movie' ? 'Request (Radarr)' : 'Request (Sonarr)';
+    mediaType === 'movie' ? 'Add Movie' : 'Add Show';
 
   if (mediaType === 'movie' && radarrMovieId) {
     return <DeleteMovieButton movieId={radarrMovieId} />;
