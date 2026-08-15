@@ -60,20 +60,22 @@ export default function PlexSignIn({ onSaved }: { onSaved?: () => void }) {
     }
   }
 
-  if (status === 'saved') {
-    return <span className="text-xs font-medium text-green-400">Signed in - token saved. Restart to apply.</span>;
-  }
-
+  // The button never disappears - after a success it relabels to "Sign in
+  // again" so re-auth (revoked token, password change, new account) is always
+  // one click, not a hidden page-reload trick.
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-2 flex-wrap">
       <button
         type="button"
         onClick={handleClick}
         disabled={status === 'waiting'}
         className="px-2.5 py-1 rounded-md text-xs font-medium bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-60"
       >
-        {status === 'waiting' ? 'Waiting for Plex…' : 'Sign in with Plex'}
+        {status === 'waiting' ? 'Waiting for Plex…' : status === 'saved' ? 'Sign in again' : 'Sign in with Plex'}
       </button>
+      {status === 'saved' && (
+        <span className="text-xs font-medium text-green-400">Signed in - token saved. Restart to apply.</span>
+      )}
       {status === 'error' && <span className="text-xs text-red-400">{error}</span>}
     </span>
   );
