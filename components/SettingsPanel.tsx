@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Toggle from '@/components/Toggle';
+import PlexSignIn from '@/components/PlexSignIn';
 
 interface SettingStatus {
   key: string;
@@ -384,6 +385,17 @@ export default function SettingsPanel() {
                               <span className="text-xs font-medium text-red-400">{testState.message}</span>
                             )}
                           </>
+                        )}
+                        {/* PIN sign-in fills PLEX_TOKEN automatically - finding the token by hand is obscure enough that Seerr-style login is the sane default path. */}
+                        {group === 'Plex' && (
+                          <PlexSignIn
+                            onSaved={() =>
+                              fetch('/api/settings', { cache: 'no-store' })
+                                .then((r) => r.json())
+                                .then((d) => { if (!d.error) setSettings(d.settings); })
+                                .catch(() => {})
+                            }
+                          />
                         )}
                         <GroupInfoTooltip group={group} />
                       </div>
