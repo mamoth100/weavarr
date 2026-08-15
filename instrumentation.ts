@@ -1,4 +1,13 @@
 export async function register() {
+  // First thing, before any job can log: route console output into the
+  // in-memory ring buffer behind the Settings Logs tab.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { patchConsole } = await import('./lib/logBuffer');
+    patchConsole();
+    // Doubles as a restart marker in the Logs tab and proof the buffer works.
+    console.log('[weavarr] server started');
+  }
+
   // Local dev keeps its own untracked data/notified-imports.json (gitignored,
   // never synced with the Pi's) — starting `npm run dev` locally would treat
   // everything the Pi already notified about as new and re-send real
