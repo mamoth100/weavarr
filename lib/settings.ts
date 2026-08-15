@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, readdir, unlink, rename } from 'fs/promises';
+import { mkdir, readFile, writeFile, readdir, unlink } from 'fs/promises';
 import path from 'path';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS, type GenreDef } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/menuLinks';
@@ -211,9 +211,12 @@ async function applyUpdates(updates: Record<string, string>): Promise<void> {
     if (!updatedKeys.has(k)) newLines.push(`${k}=${v}`);
   }
 
-  // Write-then-rename so a crash or power cut mid-write can't leave a
-  // truncated .env.local - rename is atomic on the same filesystem.
-  const tmp = `${ENV_FILE}.tmp`;
-  await writeFile(tmp, newLines.join('\n'), 'utf8');
-  await rename(tmp, ENV_FILE);
+  // Direct write, deliberately NOT write-then-rename: in Docker, .env.local
+  // is a single-file bind mount - the mounted file itself is writable, but
+  // creating a sibling tmp file in /app is EACCES (root-owned dir) and
+  // renaming over a bind-mounted file fails regardless (the mount pins the
+  // inode). A tmp+rename version shipped briefly and broke every settings
+  // save in production. Torn-write risk on power loss is covered by the
+  // automatic pre-write backups above; the write queue covers concurrency.
+  await writeFile(ENV_FILE, newLines.join('\n'), 'utf8');
 }
