@@ -13,18 +13,18 @@ below was confirmed to exist in `src/` or `server/` that day. "Overseerr" and
 
 ## Tier 1 - Daily-use wins (do these first)
 
-- [ ] **Availability badges on browse cards** - Seerr's `StatusBadge` /
+- [x] **Availability badges on browse cards** (shipped 2026-08-15) - Seerr's `StatusBadge` /
       `StatusBadgeMini` shows at a glance, while browsing, whether a title is
       already in the library, partially available (some seasons), processing,
       or requested. Weavarr hides *watched* items but gives no "you already
       have this" signal until the detail page. Single biggest daily
       friendliness gap; moderate effort (Radarr/Sonarr membership data
       already flows through the app).
-- [ ] **Plex Watchlist sync** (`PlexWatchlistSlider`, watchlist pages) -
+- [x] **Plex Watchlist sync** (shipped 2026-08-15, opt-in toggle) (`PlexWatchlistSlider`, watchlist pages) -
       anything added to the Plex watchlist from ANY Plex app auto-requests.
       Solo value: queue things from the couch in the Plex mobile app without
       opening Weavarr.
-- [ ] **In-app log viewer** (`SettingsLogs`) - read the app's own logs in the
+- [x] **In-app log viewer** (shipped 2026-08-15) (`SettingsLogs`) - read the app's own logs in the
       UI instead of `docker logs` over SSH. Also matters heavily for the
       public-release goal: strangers can't SSH into their own box knowledge-
       free.
