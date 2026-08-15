@@ -105,6 +105,19 @@ function chipClass(item: CalendarItem): string {
   }
 }
 
+/** Solid status-dot color for the mobile agenda rows. Full literal class names
+ * on purpose - Tailwind only compiles classes it can see as literals in the
+ * source, so deriving these from chipClass via string replacement produced
+ * class names that don't exist in the built CSS (invisible dots). */
+function dotClass(item: CalendarItem): string {
+  switch (itemStatus(item)) {
+    case 'watched': return 'bg-blue-400';
+    case 'downloaded': return 'bg-green-400';
+    case 'missing': return 'bg-red-400';
+    default: return 'bg-zinc-500';
+  }
+}
+
 /** Missing (an actual gap) sorts first within a day so it's never buried by a less important item that just happens to also land that day. */
 function statusPriority(item: CalendarItem): number {
   switch (itemStatus(item)) {
@@ -318,7 +331,7 @@ export default function CalendarPanel() {
                       const href = itemHref(item);
                       const row = (
                         <div className="px-3 py-2 flex items-center gap-2.5">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${chipClass(item).split(' ')[0].replace('/15', '/60')}`} />
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass(item)}`} />
                           <span className="min-w-0">
                             <span className="block text-sm truncate">{item.title}</span>
                             {item.subtitle && <span className="block text-xs text-zinc-500 truncate">{item.subtitle}</span>}
