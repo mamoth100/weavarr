@@ -36,18 +36,22 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
   const href = mediaType === 'tv' ? `/tv/${doc.id}` : `/documentary/${doc.id}`;
 
   return (
-    <div className="group relative">
-      {/* CardActions is OUTSIDE the Link so clicks don't trigger navigation */}
-      <CardActions
-        id={doc.id}
-        mediaType={mediaType}
-        title={doc.title}
-        poster_path={doc.poster_path}
-        release_date={doc.release_date ?? ''}
-        original_language={doc.original_language}
-      />
-      <Link href={href}>
-        <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
+    <div className="group">
+      {/* This wrapper is the positioning context for CardActions - it spans
+          ONLY the poster. Anchoring to the whole card put bottom-2 below the
+          poster, rendering the Watched pill over the title text. */}
+      <div className="relative">
+        {/* CardActions is OUTSIDE the Link so clicks don't trigger navigation */}
+        <CardActions
+          id={doc.id}
+          mediaType={mediaType}
+          title={doc.title}
+          poster_path={doc.poster_path}
+          release_date={doc.release_date ?? ''}
+          original_language={doc.original_language}
+        />
+        <Link href={href}>
+          <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
           {posterUrl ? (
             <Image
               src={posterUrl}
@@ -75,7 +79,10 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               {doc.spoken_language ?? getLanguageName(doc.original_language!)}
             </div>
           )}
-        </div>
+          </div>
+        </Link>
+      </div>
+      <Link href={href}>
         <div className="mt-2 px-1">
           <p className="text-sm font-medium leading-tight truncate group-hover:text-amber-400 transition-colors">
             {doc.title}
