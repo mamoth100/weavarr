@@ -72,7 +72,7 @@ export default function CardActions({
           ${
             favorited
               ? 'bg-amber-400 text-zinc-950 opacity-100'
-              : 'bg-zinc-900/80 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
+              : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
           }`}
         aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       >
@@ -98,7 +98,7 @@ export default function CardActions({
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
-              : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
+              : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
           }`}
         aria-label={sucks ? 'Remove from not interested' : 'Not interested'}
       >
@@ -114,7 +114,7 @@ export default function CardActions({
             ${
               watched
                 ? 'bg-green-600/90 text-white opacity-100'
-                : 'bg-zinc-900/80 text-zinc-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
+                : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
             }`}
           aria-label={watched ? 'Mark as unwatched' : 'Mark as watched'}
         >
