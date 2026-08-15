@@ -44,6 +44,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_PLEX', label: 'Enable Plex', group: 'Plex', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'PLEX_URL', label: 'Plex URL', group: 'Plex', secret: false },
   { key: 'PLEX_TOKEN', label: 'Plex Token', group: 'Plex', secret: true },
+  { key: 'ENABLE_PLEX_WATCHLIST_SYNC', label: 'Auto-add Plex Watchlist Items', group: 'Plex', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'ENABLE_JELLYFIN', label: 'Enable Jellyfin', group: 'Jellyfin', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'JELLYFIN_URL', label: 'Jellyfin URL', group: 'Jellyfin', secret: false },
   { key: 'JELLYFIN_API_KEY', label: 'Jellyfin API Key', group: 'Jellyfin', secret: true },

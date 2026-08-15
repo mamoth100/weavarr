@@ -36,6 +36,23 @@ export async function register() {
     }, HEALTH_POLL_INTERVAL_MS);
   }
 
+  // Opt-in auto-acquisition: watch the plex.tv account watchlist and add new
+  // items to Radarr/Sonarr. Off by default on purpose.
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_PLEX_WATCHLIST_SYNC === 'true') {
+    const { syncPlexWatchlist } = await import('./lib/plexWatchlist');
+
+    syncPlexWatchlist().catch((err) => {
+      console.error('[watchlistSync] poll failed:', err instanceof Error ? err.message : err);
+    });
+
+    const WATCHLIST_POLL_INTERVAL_MS = 10 * 60 * 1000;
+    setInterval(() => {
+      syncPlexWatchlist().catch((err) => {
+        console.error('[watchlistSync] poll failed:', err instanceof Error ? err.message : err);
+      });
+    }, WATCHLIST_POLL_INTERVAL_MS);
+  }
+
   // Only meaningful with both media servers configured - same untracked
   // data/watched-sync-state.json caveat as above applies here too.
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_WATCHED_SYNC === 'true') {
