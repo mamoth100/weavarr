@@ -5,7 +5,37 @@ import Link from 'next/link';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import ScoreBadge from './ScoreBadge';
 import CardActions from './CardActions';
+import { useLibraryStatus, type Availability } from '@/hooks/useLibraryStatus';
 import type { TmdbMovie } from '@/types';
+
+const AVAILABILITY_LABEL: Record<Availability, string> = {
+  available: 'In your library',
+  partial: 'Partially in your library',
+  requested: 'Added - not downloaded yet',
+};
+
+/** Seerr-style at-a-glance badge: green = downloaded, amber = some episodes, grey = added but nothing on disk yet. Colors match the calendar legend. */
+function AvailabilityBadge({ availability }: { availability: Availability }) {
+  const color =
+    availability === 'available' ? 'bg-green-500' : availability === 'partial' ? 'bg-amber-400' : 'bg-zinc-600';
+  return (
+    <div
+      className={`absolute top-10 touch:top-12 left-2 z-10 w-5 h-5 rounded-full flex items-center justify-center ring-1 ring-black/40 shadow ${color}`}
+      title={AVAILABILITY_LABEL[availability]}
+      aria-label={AVAILABILITY_LABEL[availability]}
+    >
+      {availability === 'requested' ? (
+        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m0 0l-6-6m6 6l6-6" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   doc: TmdbMovie;
@@ -27,6 +57,10 @@ function getLanguageName(code: string): string {
 }
 
 export default function DocCard({ doc, mediaType = 'movie', variant = 'default' }: Props) {
+  const libraryStatus = useLibraryStatus();
+  const availability = libraryStatus
+    ? (mediaType === 'tv' ? libraryStatus.shows[doc.id] : libraryStatus.movies[doc.id])
+    : undefined;
   const year = doc.release_date
     ? new Date(doc.release_date).getFullYear()
     : null;
@@ -65,6 +99,7 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               No Poster
             </div>
           )}
+          {availability && <AvailabilityBadge availability={availability} />}
           <div className="absolute top-2 right-2">
             {variant === 'upcoming' && doc.release_date ? (
               <span className="bg-amber-400 text-zinc-950 text-xs font-semibold px-2 py-1 rounded-md">
