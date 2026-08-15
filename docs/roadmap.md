@@ -1,90 +1,110 @@
 # Feature roadmap (vs. Seerr, minus approval/users)
 
 Weavarr deliberately skips Seerr's approval workflow and multi-user system
-(explicit choice, not a gap). This tracks the real feature differences
-worth closing. First pass 2026-08-08 was from memory and had errors;
-corrected and expanded 2026-08-08 by actually reading
-https://github.com/seerr-team/seerr's source rather than relying on
-recall. Note: "Overseerr" and "Jellyseerr" merged into "Seerr" (unified
-project, now also supports Emby) - if researching this later, search for
-Seerr, not Overseerr.
+(explicit choice, not a gap). This tracks the real feature differences worth
+closing, prioritized for a single-user setup focused on media management and
+day-to-day friendliness.
 
-- [ ] **Plex Watchlist sync** - Seerr can auto-request whatever a user
-      adds to their own Plex Watchlist. Weavarr has its own favorites
-      system but nothing that watches Plex's built-in watchlist and acts
-      on it.
-- [ ] **Multiple Radarr/Sonarr instances** - Seerr lets you configure more
-      than one of each (e.g. a separate 4K instance, or an anime-specific
-      Sonarr) and pick per-request (`RadarrModal`/`SonarrModal` in their
-      Settings UI). Weavarr is single-instance only - one Radarr, one
-      Sonarr, full stop. Real architectural gap, not a small one -
-      touches `lib/settings.ts`'s schema, `lib/radarr.ts`/`lib/sonarr.ts`'s
-      single-URL/key model, and the request UI's instance picker (doesn't
-      exist yet).
-- [ ] **Broader notification agent list** - verified from
-      `server/lib/notifications/agents/` in their source. Weavarr has
-      Discord, generic Webhook, Pushover (3). Seerr also has: Email,
-      Gotify, ntfy, Pushbullet, Slack, Telegram, Webpush (10 total).
-      Webpush is worth prioritizing over the others - real-time browser
-      push notifications needing zero external account/service, just
-      browser permission, which fits this project's whole
-      avoid-external-dependencies direction better than Discord/Telegram/
-      Slack do.
-- [ ] **Emby support** - Seerr covers Jellyfin, Plex, and Emby. Weavarr
-      only does Plex + Jellyfin.
-- [ ] **In-app log viewer** - a Settings page (`SettingsLogs`) showing the
-      app's own logs in the UI. Weavarr has nothing like this - the only
-      way to see what's wrong right now is `docker logs`/`journalctl` over
-      SSH, which most public self-host users won't have access to at all.
-      Probably higher priority than it looks for the public-repo goal.
-- [ ] **Jobs/cache management page** - view and manually trigger scheduled
-      background jobs, clear caches, from the UI (`SettingsJobsCache`).
-      Weavarr's background jobs (the `instrumentation.ts` pollers -
-      import notifications, connection health, watched sync, scheduled
-      backups) are invisible and unmanageable once running - no way to
-      see last-run time, trigger one early, or know if one's silently
-      failing.
-- [ ] **Public REST API** - Seerr exposes a documented API
-      (`/api-docs` locally) for third-party tools to request/query
-      against. Scoped early in the 2026-08-08 session (`/api/v1/*` with
-      an API key: movie/show request, library list, status, search) but
-      never greenlit - deliberately deferred, not forgotten.
+Provenance: first pass 2026-08-08 verified by reading
+https://github.com/seerr-team/seerr's source (not memory); expanded and
+re-verified against the live source tree 2026-08-15 - every named component
+below was confirmed to exist in `src/` or `server/` that day. "Overseerr" and
+"Jellyseerr" merged into "Seerr" - search for Seerr when researching.
+
+## Tier 1 - Daily-use wins (do these first)
+
+- [ ] **Availability badges on browse cards** - Seerr's `StatusBadge` /
+      `StatusBadgeMini` shows at a glance, while browsing, whether a title is
+      already in the library, partially available (some seasons), processing,
+      or requested. Weavarr hides *watched* items but gives no "you already
+      have this" signal until the detail page. Single biggest daily
+      friendliness gap; moderate effort (Radarr/Sonarr membership data
+      already flows through the app).
+- [ ] **Plex Watchlist sync** (`PlexWatchlistSlider`, watchlist pages) -
+      anything added to the Plex watchlist from ANY Plex app auto-requests.
+      Solo value: queue things from the couch in the Plex mobile app without
+      opening Weavarr.
+- [ ] **In-app log viewer** (`SettingsLogs`) - read the app's own logs in the
+      UI instead of `docker logs` over SSH. Also matters heavily for the
+      public-release goal: strangers can't SSH into their own box knowledge-
+      free.
+
+## Tier 2 - Discovery depth
+
+- [ ] **Person pages** (`PersonDetails`) - click an actor/director anywhere
+      -> full filmography, requestable from there. Weavarr renders
+      Director/Actors as dead text on detail pages.
+- [ ] **Collections** (`CollectionDetails` + `CollectionRequestModal`) - a
+      collection page ("Star Wars Collection") with one-click request of the
+      whole set. No collections concept in Weavarr at all.
+- [ ] **Discover home rows** (`Trending`, discover sliders, studio/network
+      browsing) - trending/popular/upcoming surfaces. Weavarr's genre-browse
+      home is strong for its documentary roots but has no "what's hot" view.
+
+## Tier 3 - Power media management
+
+- [ ] **Root folder + tags per request** (`AdvancedRequester`) - pick the
+      destination root folder and apply Radarr/Sonarr tags at request time.
+      Weavarr's advanced picker covers quality profile only.
+- [ ] **Multiple Radarr/Sonarr instances + separate 4K status** - route
+      requests to a 4K instance vs standard, track 4K availability per title
+      (`status4k` fields throughout Seerr's request lifecycle). Real
+      architectural lift: touches lib/settings.ts's schema, the single-
+      URL/key model in lib/radarr.ts / lib/sonarr.ts, and needs an instance
+      picker in the request UI.
+
+## Tier 4 - Notifications & background-job visibility
+
+- [ ] **Webpush notifications** (`webpush.ts` agent) - native browser push,
+      zero external accounts, best effort-to-value of the missing agents and
+      the best fit for the avoid-external-dependencies philosophy.
+- [ ] **Jobs & cache management page** (`SettingsJobsCache`) - every
+      background job listed with last-run time and a manual trigger.
+      Weavarr's pollers (import notifications, connection health, watched
+      sync, scheduled backups) are invisible once running.
+- [ ] **More notification agents** - Seerr also ships email, Telegram,
+      Slack, Gotify, ntfy, Pushbullet (verified agent list 2026-08-15).
+      Weavarr has Discord, generic Webhook, Pushover. Add by demand, after
+      Webpush.
+
+## Tier 5 - Public-release-only (skip while personal)
+
+- [ ] **Emby support** - Seerr covers Plex/Jellyfin/Emby; Weavarr does
+      Plex + Jellyfin.
+- [ ] **Region/language-aware discovery + localization**
+      (`RegionSelector`/`LanguageSelector`, translated UI) - matters for
+      non-English users; the current English/all filter covers the owner.
+- [ ] **Issue reporting** (`IssueModal`) - "bad audio on this file"
+      tracking; mostly a multi-user workflow, marginal solo.
+- [ ] **Public REST API** - documented `/api/v1` with an API key for
+      third-party tools. Scoped 2026-08-08, deliberately deferred.
+
+## Parity already reached
+
+- **Plex PIN sign-in** (2026-08-15) - same plex.tv PIN flow Seerr uses;
+  no more hunting for the X-Plex-Token by hand. Verified end-to-end.
 
 ## Things Weavarr has that Seerr does not
 
-Verified 2026-08-08 by reading Seerr's source directly (not assumed):
+Verified 2026-08-08 by reading Seerr's source directly (not assumed), and
+still true on the 2026-08-15 re-check - Seerr acquires media and stops
+caring; Weavarr owns the lifecycle after the download:
 
-- **Calendar page** - scanned Seerr's full `src/components` listing (A-Z).
-  There's `AirDateBadge` (a small inline "airs in N days" badge on
-  individual media cards) but nothing resembling an actual month-grid
-  calendar merging Sonarr + Radarr release dates. No equivalent exists.
-- **In-app Backup/Restore** - checked Seerr's full `Settings` component
-  list (`SettingsAbout`, `SettingsJobsCache`, `SettingsLogs`,
-  `SettingsMain`, `SettingsNetwork`, `SettingsUsers`, `SettingsJellyfin`,
-  `SettingsMetadata`, `SettingsNotifications`, `SettingsPlex`,
-  `SettingsServices`) - no backup component. Seerr expects you to back up
-  the Postgres/SQLite file yourself, outside the app.
-- **"Not Found" give-up tracking** - traced this all the way through
-  Seerr's actual request lifecycle to be sure, not just a guess. Their
-  `MediaRequestStatus` enum (`server/constants/media.ts`) has a `FAILED`
-  state, but tracing `server/routes/request.ts` shows it's paired with
-  an admin-only `POST /:requestId/retry` endpoint that resets `FAILED`
-  back to `APPROVED` and resends the request to Radarr/Sonarr - meaning
-  `FAILED` represents the *initial API call to Radarr/Sonarr erroring*
-  (network hiccup, bad config), not "searched for weeks and there's
-  genuinely no release anywhere." Radarr/Sonarr's own `wanted/missing`
-  list (what Weavarr's Not Found section is built on) represents items
-  that *were* successfully added/monitored and just never turn up a
-  release - Seerr has no status, route, or UI for that state at all.
+- **Calendar page** - month grid + mobile agenda merging Sonarr/Radarr
+  release dates with watched/downloaded/missing status. Seerr has only a
+  small `AirDateBadge` on cards.
+- **In-app Backup/Restore** - scheduled zips of config+data, upload-to-
+  restore. Seerr expects you to back up its database yourself.
+- **"Not Found" give-up tracking** - surfacing items Radarr/Sonarr monitor
+  but can never find, with Search Again / Delete. Seerr's `FAILED` state
+  only covers the initial add-API call erroring, not "no release exists".
+- **Cleanup lifecycle** - Recently Watched with per-episode/movie delete,
+  disk-size visibility, watched-percent thresholds, excluded shows.
+- **Watched sync** between Plex and Jellyfin.
 
 ## Not gaps - Weavarr already has an equivalent
 
-- **Watchlisting & blocklisting** - Seerr's README lists this as a
-  feature; Weavarr's favorites + "sucks" list already cover the same
-  ground (want to watch / never recommend this).
-- **PostgreSQL option** - Seerr supports Postgres or SQLite. Weavarr is
-  SQLite-only, which is intentional (see [[backup_restore_feature]] /
-  the SQLite-vs-.env.local discussion) - not worth chasing Postgres
-  support unless a real scale need shows up, since SQLite was chosen
-  specifically to avoid exactly the kind of external-service setup
-  burden a Postgres option would reintroduce for most self-hosters.
+- **Watchlisting & blocklisting** - favorites + "Not interested" cover the
+  same ground.
+- **PostgreSQL option** - Weavarr is SQLite-only on purpose (zero-setup
+  self-hosting); not worth chasing unless a real scale need appears.
