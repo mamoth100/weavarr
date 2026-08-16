@@ -11,4 +11,15 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
+
+  /* Without this, moving between short pages (no scrollbar) and tall ones
+     (scrollbar) makes the classic desktop scrollbar pop in and steal ~15px,
+     visibly shifting the whole layout - most noticeable when switching
+     Settings tabs. `scrollbar-gutter: stable` is the modern fix but was
+     verified NOT to reserve any space on the root in embedded Chromium -
+     always showing the scrollbar track is the fix that measurably works
+     everywhere, at the cost of an empty track on short pages. */
+  html {
+    overflow-y: scroll;
+  }
 }
