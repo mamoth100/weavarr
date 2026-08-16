@@ -173,9 +173,9 @@ function BackupList() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
           Existing Backups{backups && backups.length > 0 ? ` (${backups.length})` : ''}
-        </h3>
+        </h2>
         <button
           onClick={handleBackupNow}
           disabled={creating}
@@ -268,7 +268,7 @@ function ScheduleSettings() {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Scheduled Backups</h3>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Scheduled Backups</h2>
       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
         <div className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="sm:w-52 flex-shrink-0">
@@ -351,7 +351,7 @@ function UploadBackup({ onUploaded }: { onUploaded: () => void }) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Upload a Backup to Restore</h3>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Upload a Backup to Restore</h2>
       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3 flex items-center gap-3">
         <p className="text-xs text-zinc-500 flex-1">
           Have a backup from a different install, or from this one before something went wrong? Upload it here - it'll

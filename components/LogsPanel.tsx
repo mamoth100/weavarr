@@ -43,11 +43,14 @@ export default function LogsPanel() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
         The app&apos;s own recent activity (last 500 lines, newest first, refreshes every 10s).
         Restarting the app clears it - for full history use the container logs.
       </div>
+
+      <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Recent Activity</h2>
 
       <div className="flex items-center gap-2">
         {([['all', 'All'], ['warn', 'Warnings+'], ['error', 'Errors only']] as const).map(([value, label]) => (
@@ -92,6 +95,7 @@ export default function LogsPanel() {
           ))}
         </div>
       )}
+      </section>
     </div>
   );
 }
