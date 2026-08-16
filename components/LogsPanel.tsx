@@ -23,6 +23,20 @@ const LEVEL_STYLE: Record<LogEntry['level'], string> = {
   error: 'text-red-400',
 };
 
+// The whole row reads in the level's color, not just the little LEVEL tag -
+// scanning a merged timeline for problems shouldn't require reading tags.
+const MESSAGE_STYLE: Record<LogEntry['level'], string> = {
+  log: 'text-zinc-300',
+  warn: 'text-amber-200',
+  error: 'text-red-300',
+};
+
+const ROW_STYLE: Record<LogEntry['level'], string> = {
+  log: '',
+  warn: 'bg-amber-500/5',
+  error: 'bg-red-500/10',
+};
+
 const SOURCE_LABEL: Record<LogSource, string> = {
   weavarr: 'Weavarr',
   radarr: 'Radarr',
@@ -159,11 +173,11 @@ export default function LogsPanel() {
       ) : (
         <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800/60 font-mono text-xs overflow-x-auto">
           {filtered.map((l, i) => (
-            <div key={`${l.source}-${l.ts}-${i}`} className="px-3 py-1.5 flex gap-3 items-baseline">
+            <div key={`${l.source}-${l.ts}-${i}`} className={`px-3 py-1.5 flex gap-3 items-baseline ${ROW_STYLE[l.level]}`}>
               <span className="text-zinc-500 whitespace-nowrap">{new Date(l.ts).toLocaleTimeString()}</span>
               <span className={`w-16 flex-shrink-0 truncate ${SOURCE_STYLE[l.source]}`}>{SOURCE_LABEL[l.source]}</span>
               <span className={`uppercase w-10 flex-shrink-0 ${LEVEL_STYLE[l.level]}`}>{l.level}</span>
-              <span className="text-zinc-300 whitespace-pre-wrap break-all">{l.message}</span>
+              <span className={`whitespace-pre-wrap break-all ${MESSAGE_STYLE[l.level]}`}>{l.message}</span>
             </div>
           ))}
         </div>
