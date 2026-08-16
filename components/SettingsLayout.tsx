@@ -5,12 +5,14 @@ import SettingsPanel from '@/components/SettingsPanel';
 import MenuSettingsPanel from '@/components/MenuSettingsPanel';
 import BackupPanel from '@/components/BackupPanel';
 import LogsPanel from '@/components/LogsPanel';
+import SystemStatusPanel from '@/components/SystemStatusPanel';
 
 const SECTIONS = [
   { id: 'connections', label: 'Connections' },
   { id: 'menu', label: 'Menu' },
   { id: 'backup', label: 'Backup/Restore' },
   { id: 'logs', label: 'Logs' },
+  { id: 'status', label: 'Status' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -35,7 +37,7 @@ export default function SettingsLayout() {
       </nav>
 
       <div className="flex-1 min-w-0">
-        {section === 'connections' ? <SettingsPanel /> : section === 'menu' ? <MenuSettingsPanel /> : section === 'backup' ? <BackupPanel /> : <LogsPanel />}
+        {section === 'connections' ? <SettingsPanel /> : section === 'menu' ? <MenuSettingsPanel /> : section === 'backup' ? <BackupPanel /> : section === 'logs' ? <LogsPanel /> : <SystemStatusPanel />}
       </div>
     </div>
   );
