@@ -4,7 +4,7 @@ import AppShell from '@/components/AppShell';
 
 export default function SettingsPage() {
   return (
-    <AppShell title="Settings - configuration stored in .env.local" headerActions={<BackLink />}>
+    <AppShell title="Settings" headerActions={<BackLink />}>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         <SettingsLayout />
       </div>
