@@ -25,7 +25,9 @@ function PlexExcuseModal({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-base font-semibold text-white">Where are the Plex logs?</h3>
-        <p className="text-sm text-zinc-300">There aren&apos;t any. Plex sucks.</p>
+        <p className="text-sm text-zinc-300">
+          There aren&apos;t any. Plex sucks with pulling logs with their API. No sugar coating this.
+        </p>
         <p className="text-sm text-zinc-400">
           Every other service here hands over its recent log entries through a simple API call. Plex has no way to
           read its logs remotely at all - its only mechanism is downloading a multi-megabyte diagnostics zip of every
