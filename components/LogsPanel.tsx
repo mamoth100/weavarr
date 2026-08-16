@@ -2,6 +2,54 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+/** The Plex chip's payoff: Plex is the one connected service with no way to read its logs, and the chip owes users an explanation. */
+function PlexExcuseModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Why there are no Plex logs"
+    >
+      <div
+        className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-w-md w-full p-5 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-base font-semibold text-white">Where are the Plex logs?</h3>
+        <p className="text-sm text-zinc-300">There aren&apos;t any. Plex sucks.</p>
+        <p className="text-sm text-zinc-400">
+          Every other service here hands over its recent log entries through a simple API call. Plex has no way to
+          read its logs remotely at all - its only mechanism is downloading a multi-megabyte diagnostics zip of every
+          rotated log file, which is not a thing a log viewer can politely do every 15 seconds.
+        </p>
+        <p className="text-sm text-zinc-400">
+          The good news: everything Weavarr does <span className="text-zinc-200">with</span> Plex - sign-in, watched
+          sync, watchlist sync - logs under the <span className="text-amber-300">Weavarr</span> source with real error
+          messages. Only Plex&apos;s internal chatter is missing, and that lives in its server settings if you ever
+          truly need it.
+        </p>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
+          >
+            Fair enough
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type LogSource = 'weavarr' | 'radarr' | 'sonarr' | 'sabnzbd' | 'nzbget' | 'jellyfin';
 
 interface LogEntry {
@@ -62,21 +110,28 @@ const REFRESH_INTERVAL_MS = 15_000;
 export default function LogsPanel() {
   const [logs, setLogs] = useState<LogEntry[] | null>(null);
   const [sources, setSources] = useState<SourceStatus[]>([]);
+  const [plexConfigured, setPlexConfigured] = useState(false);
+  const [showPlexModal, setShowPlexModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<'all' | 'warn' | 'error'>('all');
   const [sourceFilter, setSourceFilter] = useState<LogSource | 'all'>('all');
 
+  // SAB's full log is a multi-megabyte fetch on its side, so it's only
+  // requested while the SABnzbd chip is selected - the always-on feed
+  // carries just its warnings/errors. sourceFilter in the deps makes chip
+  // changes refetch immediately.
   const refresh = useCallback(() => {
-    fetch('/api/service-logs', { cache: 'no-store' })
+    fetch(`/api/service-logs${sourceFilter === 'sabnzbd' ? '?sabFull=1' : ''}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
         setLogs(data.logs ?? []);
         setSources(data.sources ?? []);
+        setPlexConfigured(Boolean(data.plexConfigured));
         setError(null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
-  }, []);
+  }, [sourceFilter]);
 
   useEffect(() => {
     refresh();
@@ -97,11 +152,8 @@ export default function LogsPanel() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>
           Recent activity from Weavarr and every connected service that exposes its logs (refreshes every 15s,
-          newest first). SABnzbd only shares warnings and errors, not its full log.
-        </p>
-        <p>
-          No Plex here - Plex has no way to read its logs remotely (yes, Plex sucks). Weavarr&apos;s own
-          conversations with Plex still show under the Weavarr source.
+          newest first). SABnzbd&apos;s always-on feed carries only its warnings and errors - select its chip to
+          load the full log (minus its very chatty debug lines).
         </p>
       </div>
 
@@ -129,7 +181,18 @@ export default function LogsPanel() {
             {SOURCE_LABEL[s.id]}
           </button>
         ))}
+        {plexConfigured && (
+          <button
+            onClick={() => setShowPlexModal(true)}
+            title="Why no Plex logs?"
+            className="px-3 py-1.5 rounded-full text-sm font-medium bg-zinc-800/60 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 border border-dashed border-zinc-700 transition-colors"
+          >
+            Plex*
+          </button>
+        )}
       </div>
+
+      {showPlexModal && <PlexExcuseModal onClose={() => setShowPlexModal(false)} />}
 
       <div className="flex items-center gap-2">
         {([['all', 'All levels'], ['warn', 'Warnings+'], ['error', 'Errors only']] as const).map(([value, label]) => (

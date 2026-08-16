@@ -14,7 +14,7 @@
  *   interactions still log under the "weavarr" source.
  */
 import { getLogs } from './logBuffer';
-import { jellyfinEnabled } from './mediaServer';
+import { jellyfinEnabled, plexEnabled } from './mediaServer';
 
 export type LogSource = 'weavarr' | 'radarr' | 'sonarr' | 'sabnzbd' | 'nzbget' | 'jellyfin';
 
@@ -32,7 +32,6 @@ export interface SourceStatus {
 }
 
 const MAX_PER_SOURCE = 100;
-const MAX_TOTAL = 300;
 const MAX_MESSAGE = 2000;
 
 function stripSlash(url: string | undefined): string | undefined {
@@ -99,6 +98,39 @@ async function fetchSabnzbdLog(): Promise<ServiceLogEntry[]> {
     }));
 }
 
+// SAB's full-log line: 2026-08-16 15:30:39,062::DEBUG::[interface:145] message
+const SAB_LINE = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+::(\w+)::(?:\[.+?\]\s*)?(.*)$/;
+
+/**
+ * SABnzbd's complete log via `mode=showlog` - a multi-megabyte support
+ * bundle (log + sanitized config), which is why this ONLY runs when the
+ * user selects the SABnzbd chip instead of on every refresh. DEBUG lines
+ * are dropped: SAB logs every incoming API poll at that level, which would
+ * bury everything real.
+ */
+async function fetchSabnzbdFullLog(): Promise<ServiceLogEntry[]> {
+  const url = stripSlash(process.env.SABNZBD_URL);
+  const res = await fetch(`${url}/api?mode=showlog&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`showlog fetch failed: ${res.status}`);
+  const text = await res.text();
+
+  const entries: ServiceLogEntry[] = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(SAB_LINE);
+    if (!m) continue;
+    const [, ts, level, message] = m;
+    if (level === 'DEBUG') continue;
+    entries.push({
+      // SAB logs in its server's local time with no offset - same box/tz as everything else here.
+      ts: new Date(ts.replace(' ', 'T')).toISOString(),
+      level: level === 'ERROR' ? 'error' : level === 'WARNING' ? 'warn' : 'log',
+      source: 'sabnzbd',
+      message: message.slice(0, MAX_MESSAGE),
+    });
+  }
+  return entries.slice(-MAX_PER_SOURCE);
+}
+
 // Jellyfin log lines look like:
 //   [2026-08-16 13:45:54.108 +00:00] [ERR] [95] Category.Name: the message
 // Stack-trace continuation lines have no timestamp prefix and get appended
@@ -149,8 +181,16 @@ function weavarrLog(): ServiceLogEntry[] {
     .map((l) => ({ ts: l.ts, level: l.level, source: 'weavarr' as const, message: l.message }));
 }
 
-/** Every enabled source's recent entries merged newest-first, plus per-source fetch status so the UI can say which panes are live. */
-export async function getAggregatedLogs(): Promise<{ logs: ServiceLogEntry[]; sources: SourceStatus[] }> {
+/**
+ * Every enabled source's recent entries merged newest-first (up to 100 per
+ * source, deliberately NO overall cap - a global cap silently hid quiet
+ * sources whose newest entries were older than everyone else's), plus
+ * per-source fetch status so the UI can say which panes are live.
+ * `plexConfigured` lets the UI show Plex's explain-why-absent chip only when
+ * Plex is actually in use. `sabFull` swaps SAB's always-cheap warnings feed
+ * for its heavyweight full log - pass it only on demand.
+ */
+export async function getAggregatedLogs(sabFull = false): Promise<{ logs: ServiceLogEntry[]; sources: SourceStatus[]; plexConfigured: boolean }> {
   const radarrOn = process.env.ENABLE_RADARR !== 'false' && Boolean(process.env.RADARR_URL && process.env.RADARR_KEY);
   const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
   const sabOn = process.env.ENABLE_SABNZBD !== 'false' && Boolean(process.env.SABNZBD_URL && process.env.SABNZBD_API_KEY);
@@ -161,7 +201,7 @@ export async function getAggregatedLogs(): Promise<{ logs: ServiceLogEntry[]; so
   ];
   if (radarrOn) jobs.push({ id: 'radarr', run: () => fetchArrLog(stripSlash(process.env.RADARR_URL)!, process.env.RADARR_KEY!, 'radarr') });
   if (sonarrOn) jobs.push({ id: 'sonarr', run: () => fetchArrLog(stripSlash(process.env.SONARR_URL)!, process.env.SONARR_KEY!, 'sonarr') });
-  if (sabOn) jobs.push({ id: 'sabnzbd', run: fetchSabnzbdLog });
+  if (sabOn) jobs.push({ id: 'sabnzbd', run: sabFull ? fetchSabnzbdFullLog : fetchSabnzbdLog });
   if (nzbgetOn) jobs.push({ id: 'nzbget', run: fetchNzbgetLog });
   if (jellyfinEnabled()) jobs.push({ id: 'jellyfin', run: fetchJellyfinLog });
 
@@ -178,5 +218,5 @@ export async function getAggregatedLogs(): Promise<{ logs: ServiceLogEntry[]; so
   });
 
   logs.sort((a, b) => b.ts.localeCompare(a.ts));
-  return { logs: logs.slice(0, MAX_TOTAL), sources };
+  return { logs, sources, plexConfigured: plexEnabled() };
 }
