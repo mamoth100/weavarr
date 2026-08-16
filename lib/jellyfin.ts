@@ -49,6 +49,11 @@ interface JellyfinItem {
   SeriesName?: string;
   ParentIndexNumber?: number;
   IndexNumber?: number;
+  // Jellyfin stores a double-length episode file as ONE item spanning a
+  // range (e.g. Friends S9E23-24 "The One in Barbados" has IndexNumber 23,
+  // IndexNumberEnd 24), while Plex lists each number separately - episode
+  // matching has to treat the item as covering every number in the range.
+  IndexNumberEnd?: number;
   UserData?: {
     Played?: boolean;
     LastPlayedDate?: string;
@@ -89,7 +94,14 @@ export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number
   if (!matchedShow?.Id) return false;
 
   const episodes = await getSeriesEpisodes(matchedShow.Id);
-  return episodes.some((ep) => ep.ParentIndexNumber === seasonNumber && ep.IndexNumber === episodeNumber);
+  return episodes.some((ep) => episodeCovers(ep, seasonNumber, episodeNumber));
+}
+
+/** Whether this Jellyfin episode item covers the given season/episode number, including double episodes spanning IndexNumber..IndexNumberEnd. */
+function episodeCovers(ep: JellyfinItem, seasonNumber: number, episodeNumber: number): boolean {
+  if (ep.ParentIndexNumber !== seasonNumber || ep.IndexNumber === undefined) return false;
+  const end = ep.IndexNumberEnd ?? ep.IndexNumber;
+  return episodeNumber >= ep.IndexNumber && episodeNumber <= end;
 }
 
 async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
@@ -150,13 +162,12 @@ export async function markJellyfinSeriesEpisodesWatchedById(
 ): Promise<void> {
   requireConfig();
   const allEpisodes = await getSeriesEpisodes(seriesId);
-  const wanted = new Set(episodes.map((e) => `${e.seasonNumber}:${e.episodeNumber}`));
   const ids = allEpisodes
-    .filter((e) => e.ParentIndexNumber !== undefined && e.IndexNumber !== undefined && wanted.has(`${e.ParentIndexNumber}:${e.IndexNumber}`) && e.Id)
+    .filter((e) => e.Id && episodes.some((w) => episodeCovers(e, w.seasonNumber, w.episodeNumber)))
     .map((e) => e.Id as string);
 
   if (ids.length === 0) throw new Error(`Could not find those episodes of "${showTitle}" in Jellyfin`);
-  await Promise.all(ids.map((id) => markPlayed(id)));
+  await Promise.all(Array.from(new Set(ids)).map((id) => markPlayed(id)));
 }
 
 /** Tells Jellyfin to rescan its libraries (e.g. after deleting a movie elsewhere). Jellyfin has no clean per-library-type refresh like Plex's per-section refresh, so this triggers a full library scan for both movie and TV refresh calls. */
@@ -284,14 +295,25 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
   if (!res.ok) throw new Error(`Jellyfin watched episodes failed: ${res.status}`);
   const data = await res.json();
   const items: JellyfinItem[] = data.Items ?? [];
+  // A watched double episode (IndexNumber..IndexNumberEnd) counts as every
+  // number in its range - Plex lists those numbers as separate episodes, so
+  // syncing only the start number would leave the rest unwatched there.
   return items
     .filter((i) => i.SeriesName && i.ParentIndexNumber !== undefined && i.IndexNumber !== undefined && i.UserData?.LastPlayedDate)
-    .map((i) => ({
-      showTitle: i.SeriesName as string,
-      seasonNumber: i.ParentIndexNumber as number,
-      episodeNumber: i.IndexNumber as number,
-      viewedAt: i.UserData!.LastPlayedDate as string,
-    }));
+    .flatMap((i) => {
+      const start = i.IndexNumber as number;
+      const end = Math.min(i.IndexNumberEnd ?? start, start + 10);
+      const out = [];
+      for (let n = start; n <= end; n++) {
+        out.push({
+          showTitle: i.SeriesName as string,
+          seasonNumber: i.ParentIndexNumber as number,
+          episodeNumber: n,
+          viewedAt: i.UserData!.LastPlayedDate as string,
+        });
+      }
+      return out;
+    });
 }
 
 /**
