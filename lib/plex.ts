@@ -78,6 +78,11 @@ async function scrobble(ratingKey: string): Promise<void> {
   if (!res.ok) throw new Error(`Plex scrobble failed: ${res.status}`);
 }
 
+/** Marks an already-resolved Plex item watched - for callers (watchedSync) that matched it by provider id instead of title search. */
+export async function markPlexRatingKeyWatched(ratingKey: string): Promise<void> {
+  await scrobble(ratingKey);
+}
+
 /** Resolves a movie title to its Plex ratingKey and marks it watched. */
 export async function markPlexMovieWatched(title: string): Promise<void> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
@@ -106,8 +111,19 @@ export async function markPlexEpisodesWatched(
   const matchedShow = shows.find((item) => titlesMatch(item.title ?? '', searchQuery));
   if (!matchedShow?.ratingKey) throw new Error(`Could not find "${showTitle}" in Plex`);
 
+  await markPlexShowEpisodesWatchedByKey(matchedShow.ratingKey, episodes, showTitle);
+}
+
+/** Same as markPlexEpisodesWatched but for a show already resolved to its ratingKey (watchedSync matches shows by provider id, not title search). */
+export async function markPlexShowEpisodesWatchedByKey(
+  showRatingKey: string,
+  episodes: { seasonNumber: number; episodeNumber: number }[],
+  showTitle = 'show'
+): Promise<void> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+
   const episodesRes = await fetch(
-    `${PLEX_URL}/library/metadata/${matchedShow.ratingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
+    `${PLEX_URL}/library/metadata/${showRatingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
   if (!episodesRes.ok) throw new Error(`Plex episode lookup failed: ${episodesRes.status}`);
@@ -173,6 +189,62 @@ export async function refreshPlexTvLibrary(): Promise<void> {
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`Plex library refresh failed: ${res.status}`);
+}
+
+export interface ProviderIds {
+  tmdbId: number | null;
+  imdbId: string | null;
+  tvdbId: number | null;
+}
+
+// Section listings return Guid entries like {id: "tmdb://1891"} when asked
+// with includeGuids=1 - same id scheme the watchlist code parses.
+function extractGuidIds(guids: { id?: string }[] | undefined): ProviderIds {
+  const ids: ProviderIds = { tmdbId: null, imdbId: null, tvdbId: null };
+  for (const g of guids ?? []) {
+    if (g.id?.startsWith('tmdb://')) ids.tmdbId = Number(g.id.slice('tmdb://'.length)) || null;
+    if (g.id?.startsWith('imdb://')) ids.imdbId = g.id.slice('imdb://'.length) || null;
+    if (g.id?.startsWith('tvdb://')) ids.tvdbId = Number(g.id.slice('tvdb://'.length)) || null;
+  }
+  return ids;
+}
+
+export interface PlexLibraryItem extends ProviderIds {
+  ratingKey: string;
+  title: string;
+  watched: boolean;
+}
+
+async function getAllPlexItemsWithIds(sectionType: 'movie' | 'show', itemType: 1 | 2): Promise<PlexLibraryItem[]> {
+  if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
+  const sectionKey = await getSectionKey(sectionType);
+  if (!sectionKey) return [];
+
+  const res = await fetch(
+    `${PLEX_URL}/library/sections/${sectionKey}/all?type=${itemType}&includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=2000&X-Plex-Token=${PLEX_TOKEN}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(`Plex library listing failed: ${res.status}`);
+  const data = await res.json();
+  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+  return items
+    .filter((i) => i.title && i.ratingKey)
+    .map((i) => ({
+      ratingKey: String(i.ratingKey),
+      title: i.title as string,
+      watched: ((i.viewCount as number) ?? 0) > 0,
+      ...extractGuidIds(i.Guid as { id?: string }[] | undefined),
+    }));
+}
+
+/** Every movie in the Plex library with its provider ids and watched flag - lets watchedSync match against Jellyfin by TMDB/IMDB id instead of display title. */
+export async function getAllPlexMoviesWithIds(): Promise<PlexLibraryItem[]> {
+  return getAllPlexItemsWithIds('movie', 1);
+}
+
+/** Every show in the Plex library with its provider ids - watchedSync resolves shows across servers by id, then matches episodes by season/episode number. */
+export async function getAllPlexShowsWithIds(): Promise<PlexLibraryItem[]> {
+  return getAllPlexItemsWithIds('show', 2);
 }
 
 export interface WatchedMovie {

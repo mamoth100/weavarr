@@ -5,11 +5,32 @@
  * One-way-forward only: nothing here ever un-marks a watched item, and once
  * a title/episode has been reconciled it's remembered so it isn't re-checked
  * (and re-written) on every poll.
+ *
+ * Matching is by provider id (TMDB, then IMDB, then TVDB), with normalized
+ * title as a last resort - the two servers routinely display different names
+ * for the same item ("The Empire Strikes Back" vs "Star Wars: Episode V -
+ * The Empire Strikes Back"), so title comparison alone permanently failed
+ * for those and logged an error every cycle.
  */
 import { mkdir, readFile, writeFile, rename } from 'fs/promises';
 import path from 'path';
-import { getPlexWatchedMovies, getPlexEpisodeWatchHistory, markPlexMovieWatched, markPlexEpisodesWatched } from './plex';
-import { getJellyfinWatchedMovies, getJellyfinEpisodeWatchHistory, markJellyfinMovieWatched, markJellyfinEpisodesWatched } from './jellyfin';
+import {
+  getPlexEpisodeWatchHistory,
+  getAllPlexMoviesWithIds,
+  getAllPlexShowsWithIds,
+  markPlexRatingKeyWatched,
+  markPlexShowEpisodesWatchedByKey,
+  type PlexLibraryItem,
+} from './plex';
+import {
+  getJellyfinEpisodeWatchHistory,
+  getAllJellyfinMoviesWithIds,
+  getAllJellyfinShowsWithIds,
+  markJellyfinItemWatched,
+  markJellyfinSeriesEpisodesWatchedById,
+  type JellyfinLibraryItem,
+} from './jellyfin';
+import { titlesMatch } from './titleMatch';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'watched-sync-state.json');
 const HISTORY_LIMIT = 500;
@@ -49,10 +70,67 @@ function norm(title: string): string {
   return title.toLowerCase().trim();
 }
 
-// Each reconcile is its own round-trip to Plex or Jellyfin (search + mark) -
-// running the whole backlog one at a time took minutes on the first sync.
-// A small worker pool keeps it fast without hammering either server with
-// hundreds of simultaneous requests.
+// Server-agnostic view of a library item: `serverKey` is whatever that server
+// needs to act on it later (Plex ratingKey / Jellyfin item id).
+interface LibItem {
+  serverKey: string;
+  title: string;
+  tmdbId: number | null;
+  imdbId: string | null;
+  tvdbId: number | null;
+  watched: boolean;
+}
+
+function fromPlex(i: PlexLibraryItem): LibItem {
+  return { serverKey: i.ratingKey, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched };
+}
+
+function fromJellyfin(i: JellyfinLibraryItem): LibItem {
+  return { serverKey: i.id, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched };
+}
+
+/**
+ * Stable identity for the seen-state file, independent of which server the
+ * item came from - both servers carry the same TMDB/IMDB/TVDB ids even when
+ * their display titles disagree. (Keys written by the old title-based format
+ * stay in the file harmlessly; those items re-reconcile once - a no-op mark
+ * at worst - and get re-remembered under their id key.)
+ */
+function canonical(i: LibItem): string {
+  if (i.tmdbId) return `tmdb:${i.tmdbId}`;
+  if (i.imdbId) return `imdb:${i.imdbId}`;
+  if (i.tvdbId) return `tvdb:${i.tvdbId}`;
+  return `title:${norm(i.title)}`;
+}
+
+interface LibIndex {
+  byTmdb: Map<number, LibItem>;
+  byImdb: Map<string, LibItem>;
+  byTvdb: Map<number, LibItem>;
+  all: LibItem[];
+}
+
+function buildIndex(items: LibItem[]): LibIndex {
+  const idx: LibIndex = { byTmdb: new Map(), byImdb: new Map(), byTvdb: new Map(), all: items };
+  for (const i of items) {
+    if (i.tmdbId) idx.byTmdb.set(i.tmdbId, i);
+    if (i.imdbId) idx.byImdb.set(i.imdbId, i);
+    if (i.tvdbId) idx.byTvdb.set(i.tvdbId, i);
+  }
+  return idx;
+}
+
+/** The other server's copy of this item: provider ids first, strict title match as the fallback for items missing ids on either side. */
+function findMatch(source: LibItem, target: LibIndex): LibItem | undefined {
+  if (source.tmdbId && target.byTmdb.has(source.tmdbId)) return target.byTmdb.get(source.tmdbId);
+  if (source.imdbId && target.byImdb.has(source.imdbId)) return target.byImdb.get(source.imdbId);
+  if (source.tvdbId && target.byTvdb.has(source.tvdbId)) return target.byTvdb.get(source.tvdbId);
+  return target.all.find((t) => titlesMatch(t.title, source.title));
+}
+
+// Each reconcile can be its own round-trip to Plex or Jellyfin - running a
+// large first-time backlog one at a time took minutes. A small worker pool
+// keeps it fast without hammering either server.
 const CONCURRENCY = 8;
 
 async function mapWithConcurrency<T>(items: T[], fn: (item: T) => Promise<void>): Promise<void> {
@@ -83,88 +161,136 @@ export async function syncWatchedBetweenServers(): Promise<void> {
     }
   }
 
-  const [plexMoviesR, jellyfinMoviesR, plexEpsR, jellyfinEpsR] = await Promise.allSettled([
-    getPlexWatchedMovies(),
-    getJellyfinWatchedMovies(),
+  const [plexMoviesR, jellyfinMoviesR, plexShowsR, jellyfinShowsR, plexEpsR, jellyfinEpsR] = await Promise.allSettled([
+    getAllPlexMoviesWithIds(),
+    getAllJellyfinMoviesWithIds(),
+    getAllPlexShowsWithIds(),
+    getAllJellyfinShowsWithIds(),
     getPlexEpisodeWatchHistory(HISTORY_LIMIT),
     getJellyfinEpisodeWatchHistory(HISTORY_LIMIT),
   ]);
 
-  const plexMovies = plexMoviesR.status === 'fulfilled' ? plexMoviesR.value : [];
-  const jellyfinMovies = jellyfinMoviesR.status === 'fulfilled' ? jellyfinMoviesR.value : [];
+  const plexMovies = (plexMoviesR.status === 'fulfilled' ? plexMoviesR.value : []).map(fromPlex);
+  const jellyfinMovies = (jellyfinMoviesR.status === 'fulfilled' ? jellyfinMoviesR.value : []).map(fromJellyfin);
+  const plexShows = (plexShowsR.status === 'fulfilled' ? plexShowsR.value : []).map(fromPlex);
+  const jellyfinShows = (jellyfinShowsR.status === 'fulfilled' ? jellyfinShowsR.value : []).map(fromJellyfin);
   const plexEps = plexEpsR.status === 'fulfilled' ? plexEpsR.value : [];
   const jellyfinEps = jellyfinEpsR.status === 'fulfilled' ? jellyfinEpsR.value : [];
 
-  const jellyfinMovieSet = new Set(jellyfinMovies.map((m) => norm(m.title)));
-  const plexMovieSet = new Set(plexMovies.map((m) => norm(m.title)));
-  const jellyfinEpSet = new Set(jellyfinEps.map((e) => `${norm(e.showTitle)}:${e.seasonNumber}:${e.episodeNumber}`));
-  const plexEpSet = new Set(plexEps.map((e) => `${norm(e.showTitle)}:${e.seasonNumber}:${e.episodeNumber}`));
+  // A failed library listing must not look like an empty library - reconciling
+  // against "nothing" would log a spurious not-found error for every watched
+  // item on the other side.
+  const plexMoviesOk = plexMoviesR.status === 'fulfilled';
+  const jellyfinMoviesOk = jellyfinMoviesR.status === 'fulfilled';
+  const plexShowsOk = plexShowsR.status === 'fulfilled';
+  const jellyfinShowsOk = jellyfinShowsR.status === 'fulfilled';
 
-  async function reconcileMovie(title: string, alreadyMatches: boolean, markOnOther: (t: string) => Promise<void>, direction: string) {
-    const key = `movie:${norm(title)}`;
+  const plexMovieIdx = buildIndex(plexMovies);
+  const jellyfinMovieIdx = buildIndex(jellyfinMovies);
+  const plexShowIdx = buildIndex(plexShows);
+  const jellyfinShowIdx = buildIndex(jellyfinShows);
+
+  const plexShowsByTitle = new Map(plexShows.map((s) => [norm(s.title), s]));
+  const jellyfinShowsByTitle = new Map(jellyfinShows.map((s) => [norm(s.title), s]));
+
+  async function reconcileMovie(
+    movie: LibItem,
+    targetIdx: LibIndex,
+    markTarget: (serverKey: string) => Promise<void>,
+    direction: string
+  ) {
+    const key = `movie:${canonical(movie)}`;
     if (seen.has(key)) return;
-    if (alreadyMatches) {
+    const match = findMatch(movie, targetIdx);
+    if (!match) {
+      console.error(`[watchedSync] failed to sync "${movie.title}" ${direction}: not in the other library`);
+      return;
+    }
+    if (match.watched) {
       seen.add(key);
       await markDirty();
       return;
     }
     try {
-      await markOnOther(title);
+      await markTarget(match.serverKey);
       seen.add(key);
       await markDirty();
-      console.log(`[watchedSync] marked "${title}" watched ${direction}`);
+      console.log(`[watchedSync] marked "${movie.title}" watched ${direction}`);
     } catch (err) {
-      console.error(`[watchedSync] failed to sync "${title}" ${direction}:`, err instanceof Error ? err.message : err);
+      console.error(`[watchedSync] failed to sync "${movie.title}" ${direction}:`, err instanceof Error ? err.message : err);
     }
   }
 
+  // Episode identity uses the show's canonical id - both servers' watch
+  // histories collapse onto the same key even when the show display names
+  // differ. Shows missing from their own library listing (e.g. history rows
+  // for a since-deleted show) fall back to the title.
+  function epKey(ownShow: LibItem | undefined, showTitle: string, seasonNumber: number, episodeNumber: number): string {
+    const base = ownShow ? canonical(ownShow) : `title:${norm(showTitle)}`;
+    return `ep:${base}:${seasonNumber}:${episodeNumber}`;
+  }
+
+  const jellyfinEpSet = new Set(
+    jellyfinEps.map((e) => epKey(jellyfinShowsByTitle.get(norm(e.showTitle)), e.showTitle, e.seasonNumber, e.episodeNumber))
+  );
+  const plexEpSet = new Set(
+    plexEps.map((e) => epKey(plexShowsByTitle.get(norm(e.showTitle)), e.showTitle, e.seasonNumber, e.episodeNumber))
+  );
+
   async function reconcileEpisode(
-    showTitle: string,
-    seasonNumber: number,
-    episodeNumber: number,
-    alreadyMatches: boolean,
-    markOnOther: (t: string, eps: { seasonNumber: number; episodeNumber: number }[]) => Promise<void>,
+    ep: { showTitle: string; seasonNumber: number; episodeNumber: number },
+    ownShowsByTitle: Map<string, LibItem>,
+    targetEpSet: Set<string>,
+    targetShowIdx: LibIndex,
+    markTargetEpisodes: (showServerKey: string, eps: { seasonNumber: number; episodeNumber: number }[], showTitle: string) => Promise<void>,
     direction: string
   ) {
-    const epKey = `${norm(showTitle)}:${seasonNumber}:${episodeNumber}`;
-    const key = `ep:${epKey}`;
+    const ownShow = ownShowsByTitle.get(norm(ep.showTitle));
+    const key = epKey(ownShow, ep.showTitle, ep.seasonNumber, ep.episodeNumber);
     if (seen.has(key)) return;
-    if (alreadyMatches) {
+    if (targetEpSet.has(key)) {
       seen.add(key);
       await markDirty();
       return;
     }
+    const targetShow = ownShow
+      ? findMatch(ownShow, targetShowIdx)
+      : targetShowIdx.all.find((t) => titlesMatch(t.title, ep.showTitle));
+    if (!targetShow) {
+      console.error(`[watchedSync] failed to sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}: show not in the other library`);
+      return;
+    }
     try {
-      await markOnOther(showTitle, [{ seasonNumber, episodeNumber }]);
+      await markTargetEpisodes(targetShow.serverKey, [{ seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber }], ep.showTitle);
       seen.add(key);
       await markDirty();
-      console.log(`[watchedSync] marked "${showTitle}" S${seasonNumber}E${episodeNumber} watched ${direction}`);
+      console.log(`[watchedSync] marked "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} watched ${direction}`);
     } catch (err) {
-      console.error(`[watchedSync] failed to sync "${showTitle}" S${seasonNumber}E${episodeNumber} ${direction}:`, err instanceof Error ? err.message : err);
+      console.error(`[watchedSync] failed to sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}:`, err instanceof Error ? err.message : err);
     }
   }
 
   await Promise.all([
-    mapWithConcurrency(plexMovies, (m) =>
-      reconcileMovie(m.title, jellyfinMovieSet.has(norm(m.title)), markJellyfinMovieWatched, '(Plex → Jellyfin)')
-    ),
-    mapWithConcurrency(jellyfinMovies, (m) =>
-      reconcileMovie(m.title, plexMovieSet.has(norm(m.title)), markPlexMovieWatched, '(Jellyfin → Plex)')
-    ),
-    mapWithConcurrency(plexEps, (e) =>
-      reconcileEpisode(
-        e.showTitle, e.seasonNumber, e.episodeNumber,
-        jellyfinEpSet.has(`${norm(e.showTitle)}:${e.seasonNumber}:${e.episodeNumber}`),
-        markJellyfinEpisodesWatched, '(Plex → Jellyfin)'
-      )
-    ),
-    mapWithConcurrency(jellyfinEps, (e) =>
-      reconcileEpisode(
-        e.showTitle, e.seasonNumber, e.episodeNumber,
-        plexEpSet.has(`${norm(e.showTitle)}:${e.seasonNumber}:${e.episodeNumber}`),
-        markPlexEpisodesWatched, '(Jellyfin → Plex)'
-      )
-    ),
+    jellyfinMoviesOk
+      ? mapWithConcurrency(plexMovies.filter((m) => m.watched), (m) =>
+          reconcileMovie(m, jellyfinMovieIdx, markJellyfinItemWatched, '(Plex → Jellyfin)')
+        )
+      : Promise.resolve(),
+    plexMoviesOk
+      ? mapWithConcurrency(jellyfinMovies.filter((m) => m.watched), (m) =>
+          reconcileMovie(m, plexMovieIdx, markPlexRatingKeyWatched, '(Jellyfin → Plex)')
+        )
+      : Promise.resolve(),
+    jellyfinShowsOk
+      ? mapWithConcurrency(plexEps, (e) =>
+          reconcileEpisode(e, plexShowsByTitle, jellyfinEpSet, jellyfinShowIdx, markJellyfinSeriesEpisodesWatchedById, '(Plex → Jellyfin)')
+        )
+      : Promise.resolve(),
+    plexShowsOk
+      ? mapWithConcurrency(jellyfinEps, (e) =>
+          reconcileEpisode(e, jellyfinShowsByTitle, plexEpSet, plexShowIdx, markPlexShowEpisodesWatchedByKey, '(Jellyfin → Plex)')
+        )
+      : Promise.resolve(),
   ]);
 
   if (changed) await persistSynced();

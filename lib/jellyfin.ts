@@ -112,6 +112,12 @@ async function markPlayed(itemId: string): Promise<void> {
   if (!res.ok) throw new Error(`Jellyfin mark-played failed: ${res.status}`);
 }
 
+/** Marks an already-resolved Jellyfin item watched - for callers (watchedSync) that matched it by provider id instead of title search. */
+export async function markJellyfinItemWatched(itemId: string): Promise<void> {
+  requireConfig();
+  await markPlayed(itemId);
+}
+
 /** Resolves a movie title to its Jellyfin item id and marks it watched. */
 export async function markJellyfinMovieWatched(title: string): Promise<void> {
   requireConfig();
@@ -133,7 +139,17 @@ export async function markJellyfinEpisodesWatched(
   const matchedShow = shows.find((s) => titlesMatch(s.Name ?? '', searchQuery));
   if (!matchedShow?.Id) throw new Error(`Could not find "${showTitle}" in Jellyfin`);
 
-  const allEpisodes = await getSeriesEpisodes(matchedShow.Id);
+  await markJellyfinSeriesEpisodesWatchedById(matchedShow.Id, episodes, showTitle);
+}
+
+/** Same as markJellyfinEpisodesWatched but for a series already resolved to its item id (watchedSync matches shows by provider id, not title search). */
+export async function markJellyfinSeriesEpisodesWatchedById(
+  seriesId: string,
+  episodes: { seasonNumber: number; episodeNumber: number }[],
+  showTitle = 'show'
+): Promise<void> {
+  requireConfig();
+  const allEpisodes = await getSeriesEpisodes(seriesId);
   const wanted = new Set(episodes.map((e) => `${e.seasonNumber}:${e.episodeNumber}`));
   const ids = allEpisodes
     .filter((e) => e.ParentIndexNumber !== undefined && e.IndexNumber !== undefined && wanted.has(`${e.ParentIndexNumber}:${e.IndexNumber}`) && e.Id)
@@ -148,6 +164,49 @@ export async function refreshJellyfinLibrary(): Promise<void> {
   requireConfig();
   const res = await fetch(`${JELLYFIN_URL}/Library/Refresh`, { method: 'POST', headers: headers() });
   if (!res.ok) throw new Error(`Jellyfin library refresh failed: ${res.status}`);
+}
+
+export interface JellyfinLibraryItem {
+  id: string;
+  title: string;
+  tmdbId: number | null;
+  imdbId: string | null;
+  tvdbId: number | null;
+  watched: boolean;
+}
+
+async function getAllJellyfinItemsWithIds(itemType: 'Movie' | 'Series'): Promise<JellyfinLibraryItem[]> {
+  requireConfig();
+  const params = new URLSearchParams({
+    userId: await resolveUserId(),
+    IncludeItemTypes: itemType,
+    Recursive: 'true',
+    Fields: 'ProviderIds,UserData',
+  });
+  const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) throw new Error(`Jellyfin library listing failed: ${res.status}`);
+  const data = await res.json();
+  const items: (JellyfinItem & { ProviderIds?: Record<string, string> })[] = data.Items ?? [];
+  return items
+    .filter((i) => i.Id && i.Name)
+    .map((i) => ({
+      id: i.Id as string,
+      title: i.Name as string,
+      tmdbId: Number(i.ProviderIds?.Tmdb) || null,
+      imdbId: i.ProviderIds?.Imdb || null,
+      tvdbId: Number(i.ProviderIds?.Tvdb) || null,
+      watched: i.UserData?.Played === true,
+    }));
+}
+
+/** Every movie in the Jellyfin library with its provider ids and watched flag - lets watchedSync match against Plex by TMDB/IMDB id instead of display title. */
+export async function getAllJellyfinMoviesWithIds(): Promise<JellyfinLibraryItem[]> {
+  return getAllJellyfinItemsWithIds('Movie');
+}
+
+/** Every series in the Jellyfin library with its provider ids - watchedSync resolves shows across servers by id, then matches episodes by season/episode number. */
+export async function getAllJellyfinShowsWithIds(): Promise<JellyfinLibraryItem[]> {
+  return getAllJellyfinItemsWithIds('Series');
 }
 
 export interface JellyfinWatchedMovie {
