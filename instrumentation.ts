@@ -4,6 +4,19 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { patchConsole } = await import('./lib/logBuffer');
     patchConsole();
+
+    // Node's default warning printer goes through console.error, so its
+    // "SQLite is an experimental feature" notice (from lib/watchlistDb.ts's
+    // node:sqlite import) lands in the user-facing Logs tab as a scary
+    // ERROR. Experimental-feature notices are developer chatter, not
+    // something a self-hoster can act on - drop them, keep everything else
+    // (deprecations, runtime warnings) flowing to the log as before.
+    process.removeAllListeners('warning');
+    process.on('warning', (warning) => {
+      if (warning.name === 'ExperimentalWarning') return;
+      console.error(warning.stack ?? `${warning.name}: ${warning.message}`);
+    });
+
     // Doubles as a restart marker in the Logs tab and proof the buffer works.
     console.log('[weavarr] server started');
   }
