@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import SimplePagination from '@/components/SimplePagination';
 import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
+import ConfirmButton from '@/components/ConfirmButton';
 
 const PAGE_SIZE = 50;
 
@@ -18,65 +19,28 @@ interface RadarrMovie {
 }
 
 function DeleteButton({ movieId }: { movieId: number }) {
-  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
-  async function handleConfirm() {
-    setStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/radarr/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ movieId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      setStatus('done');
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  if (status === 'done') {
+  if (done) {
     return <span className="text-xs font-medium text-green-400">Deleted</span>;
   }
 
-  if (status === 'confirm' || status === 'loading') {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-zinc-400">Delete this movie?</span>
-        <button
-          onClick={handleConfirm}
-          disabled={status === 'loading'}
-          className="px-2.5 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
-        >
-          {status === 'loading' ? 'Deleting…' : 'Yes, delete'}
-        </button>
-        <button
-          onClick={() => setStatus('idle')}
-          disabled={status === 'loading'}
-          className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <button
-        onClick={() => setStatus('confirm')}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
-        }`}
-      >
-        {status === 'error' ? 'Failed - retry' : 'Delete'}
-      </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
+    <ConfirmButton
+      label="Delete"
+      confirmLabel="Really delete?"
+      busyLabel="Deleting…"
+      onSuccess={() => setDone(true)}
+      action={async () => {
+        const res = await fetch('/api/radarr/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movieId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      }}
+    />
   );
 }
 

@@ -20,6 +20,7 @@ interface QualityProfileOption {
 // Canonical copy lives in RecentlyWatchedSection - re-exported for existing importers.
 export { formatBytes } from '@/components/RecentlyWatchedSection';
 import { formatBytes } from '@/components/RecentlyWatchedSection';
+import ConfirmButton from '@/components/ConfirmButton';
 
 function isDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
   return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();
@@ -36,65 +37,32 @@ function DeleteEpisodeButton({
   episodeNumber: number;
   onDeleted: () => void;
 }) {
-  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
-  async function handleConfirm() {
-    setStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/sonarr/delete-episode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seriesId, seasonNumber, episodeNumber }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      setStatus('done');
-      onDeleted();
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  if (status === 'done') {
+  if (done) {
     return <span className="text-xs font-medium text-green-400">Deleted</span>;
   }
 
-  if (status === 'confirm' || status === 'loading') {
-    return (
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleConfirm}
-          disabled={status === 'loading'}
-          className="px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
-        >
-          {status === 'loading' ? 'Deleting…' : 'Confirm'}
-        </button>
-        <button
-          onClick={() => setStatus('idle')}
-          disabled={status === 'loading'}
-          className="px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <button
-        onClick={() => setStatus('confirm')}
-        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-red-600 hover:text-white'
-        }`}
-      >
-        {status === 'error' ? 'Failed - retry' : 'Delete'}
-      </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
+    <ConfirmButton
+      compact
+      label="Delete"
+      confirmLabel="Really delete?"
+      busyLabel="Deleting…"
+      onSuccess={() => {
+        setDone(true);
+        onDeleted();
+      }}
+      action={async () => {
+        const res = await fetch('/api/sonarr/delete-episode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ seriesId, seasonNumber, episodeNumber }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      }}
+    />
   );
 }
 
@@ -196,7 +164,6 @@ function SeasonActions({
   onSeasonDeleted: () => void;
 }) {
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
-  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   async function handleDownloadSeason() {
@@ -214,24 +181,6 @@ function SeasonActions({
       setDownloadStatus('done');
     } catch (err) {
       setDownloadStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleConfirmDeleteSeason() {
-    setDeleteStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/sonarr/delete-season', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seriesId, seasonNumber }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      onSeasonDeleted();
-    } catch (err) {
-      setDeleteStatus('error');
       setError(err instanceof Error ? err.message : String(err));
     }
   }
@@ -263,34 +212,24 @@ function SeasonActions({
           </button>
         )
       )}
-      {hasFiles && (deleteStatus === 'confirm' || deleteStatus === 'loading' ? (
-        <>
-          <span className="text-xs text-zinc-400">Delete season?</span>
-          <button
-            onClick={handleConfirmDeleteSeason}
-            disabled={deleteStatus === 'loading'}
-            className="px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-500 disabled:opacity-60"
-          >
-            {deleteStatus === 'loading' ? 'Deleting…' : 'Yes, delete'}
-          </button>
-          <button
-            onClick={() => setDeleteStatus('idle')}
-            disabled={deleteStatus === 'loading'}
-            className="px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={() => setDeleteStatus('confirm')}
-          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-            deleteStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-red-600 hover:text-white'
-          }`}
-        >
-          {deleteStatus === 'error' ? 'Failed - retry' : 'Delete Season'}
-        </button>
-      ))}
+      {hasFiles && (
+        <ConfirmButton
+          compact
+          label="Delete Season"
+          confirmLabel="Really delete season?"
+          busyLabel="Deleting…"
+          onSuccess={onSeasonDeleted}
+          action={async () => {
+            const res = await fetch('/api/sonarr/delete-season', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ seriesId, seasonNumber }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+          }}
+        />
+      )}
       {error && <span className="text-xs text-red-400">{error}</span>}
     </div>
   );
