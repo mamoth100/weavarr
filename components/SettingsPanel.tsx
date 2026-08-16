@@ -355,10 +355,14 @@ export default function SettingsPanel() {
           <div key={section} className="border border-zinc-800 rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection(section)}
-              className="w-full flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800/70 text-left"
+              className="group w-full flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800/70 text-left"
             >
-              <span className={`inline-block transition-transform ${sectionCollapsed ? '-rotate-90' : ''}`}>▾</span>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">{section}</h2>
+              <span className={`inline-block text-zinc-400 transition-transform ${sectionCollapsed ? '-rotate-90' : ''}`}>▾</span>
+              {/* Same header treatment as every other Settings tab - each tab
+                  used to invent its own (bold white here, text-xs on Backup,
+                  nothing on Logs), which made switching tabs feel like
+                  switching apps. */}
+              <h2 className="text-sm font-semibold text-zinc-400 group-hover:text-white uppercase tracking-wider">{section}</h2>
             </button>
 
             {!sectionCollapsed && (

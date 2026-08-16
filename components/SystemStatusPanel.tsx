@@ -67,7 +67,11 @@ export default function SystemStatusPanel() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
+        <p>Disk space for the app&apos;s data volume and the media disks Radarr/Sonarr report, plus version and runtime details.</p>
+      </div>
+
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Disk Space</h2>
         {data.disks.length === 0 ? (
