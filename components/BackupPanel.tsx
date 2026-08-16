@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Toggle from '@/components/Toggle';
+import ConfirmButton from '@/components/ConfirmButton';
 
 interface BackupInfo {
   filename: string;
@@ -15,40 +16,7 @@ function formatBackupSize(bytes: number): string {
 }
 
 function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () => void }) {
-  const [restoreStatus, setRestoreStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle');
-  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRestore() {
-    setRestoreStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/backup/restore', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: backup.filename }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Restore failed');
-      setRestoreStatus('done');
-    } catch (err) {
-      setRestoreStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleDelete() {
-    setDeleteStatus('loading');
-    try {
-      const res = await fetch(`/api/backup/${encodeURIComponent(backup.filename)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      onDeleted();
-    } catch (err) {
-      setDeleteStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
+  const [restored, setRestored] = useState(false);
 
   return (
     // Mobile stacks filename above the actions, but the actions themselves
@@ -61,7 +29,6 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
         <p className="text-xs text-zinc-500">
           {new Date(backup.createdAt).toLocaleString()} · {formatBackupSize(backup.sizeBytes)}
         </p>
-        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
       </div>
 
       <div className="flex items-center flex-wrap gap-2 sm:gap-3">
@@ -73,64 +40,38 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
         Download
       </a>
 
-      {restoreStatus === 'done' ? (
+      {restored ? (
         <span className="text-xs font-medium text-green-400">Restored - restart to apply</span>
-      ) : restoreStatus === 'confirm' || restoreStatus === 'loading' ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-zinc-400">Overwrite current config/data?</span>
-          <button
-            onClick={handleRestore}
-            disabled={restoreStatus === 'loading'}
-            className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
-          >
-            {restoreStatus === 'loading' ? '…' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setRestoreStatus('idle')}
-            disabled={restoreStatus === 'loading'}
-            className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
-          >
-            No
-          </button>
-        </div>
       ) : (
-        <button
-          onClick={() => setRestoreStatus('confirm')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-            restoreStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-          }`}
-        >
-          {restoreStatus === 'error' ? 'Failed - retry' : 'Restore'}
-        </button>
+        <ConfirmButton
+          label="Restore"
+          confirmLabel="Overwrite config/data?"
+          busyLabel="Restoring…"
+          intent="neutral"
+          onSuccess={() => setRestored(true)}
+          action={async () => {
+            const res = await fetch('/api/backup/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename: backup.filename }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? 'Restore failed');
+          }}
+        />
       )}
 
-      {deleteStatus === 'confirm' || deleteStatus === 'loading' ? (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleDelete}
-            disabled={deleteStatus === 'loading'}
-            className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
-          >
-            {deleteStatus === 'loading' ? '…' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setDeleteStatus('idle')}
-            disabled={deleteStatus === 'loading'}
-            className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
-          >
-            No
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setDeleteStatus('confirm')}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-            deleteStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
-          }`}
-        >
-          {deleteStatus === 'error' ? 'Failed - retry' : 'Delete'}
-        </button>
-      )}
+      <ConfirmButton
+        label="Delete"
+        confirmLabel="Really delete?"
+        busyLabel="Deleting…"
+        onSuccess={onDeleted}
+        action={async () => {
+          const res = await fetch(`/api/backup/${encodeURIComponent(backup.filename)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+        }}
+      />
       </div>
     </div>
   );
