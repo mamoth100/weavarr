@@ -82,6 +82,21 @@ export async function register() {
     }
   }
 
+  // Always-on maintenance: prune cached posters for titles deleted directly
+  // in Radarr/Sonarr (Weavarr's own delete buttons already clean up their
+  // poster - this catches the external deletes). Fail-closed inside the
+  // sweep, so a down service just skips a round.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { sweepOrphanedPosters } = await import('./lib/posterSweep');
+
+    sweepOrphanedPosters().catch(() => {});
+
+    const POSTER_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    setInterval(() => {
+      sweepOrphanedPosters().catch(() => {});
+    }, POSTER_SWEEP_INTERVAL_MS);
+  }
+
   // Defaults ON (unlike the jobs above) - no external notification spam and
   // no multi-service prerequisite, so there's no real reason to make people
   // discover and opt into protecting their own data. Same !== 'false'
