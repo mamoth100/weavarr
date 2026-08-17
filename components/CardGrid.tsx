@@ -59,13 +59,16 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     }
   }, [favorites]);
 
+  // No display cap - the grid grows as InfiniteBrowse appends pages. (The
+  // old .slice(0, 20) cap is what forced the server to over-fetch two TMDB
+  // pages per pagination step.)
   const filtered = items.filter((doc) => {
     const key = `${doc.id}:${doc.mediaType ?? mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     if (!showFav && snapshotFavorites.has(key)) return false;
     return true;
-  }).slice(0, 20);
+  });
 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
