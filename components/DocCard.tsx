@@ -20,7 +20,9 @@ function AvailabilityBadge({ availability }: { availability: Availability }) {
     availability === 'available' ? 'bg-green-500' : availability === 'partial' ? 'bg-amber-400' : 'bg-zinc-600';
   return (
     <div
-      className={`absolute top-10 touch:top-12 left-2 z-10 w-5 h-5 rounded-full flex items-center justify-center ring-1 ring-black/40 shadow ${color}`}
+      // Right edge, under the score badge - the left edge belongs to the
+      // stacked action column (heart / not interested / Mark watched).
+      className={`absolute top-10 touch:top-12 right-2 z-10 w-5 h-5 rounded-full flex items-center justify-center ring-1 ring-black/40 shadow ${color}`}
       title={AVAILABILITY_LABEL[availability]}
       aria-label={AVAILABILITY_LABEL[availability]}
     >
@@ -101,10 +103,15 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
           )}
           {/* Seerr-style hover synopsis. mouse: only - touch devices have no
               hover, and the detail page carries the full overview there.
-              Rendered BEFORE the badges so score/availability stay on top. */}
+              Rendered BEFORE the badges so score/availability stay on top.
+              The action column sits top-left, so the text only needs to
+              clear the little language chip at bottom-right. */}
           {doc.overview && (
-            <div className="hidden mouse:flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <p className="text-xs text-zinc-100 leading-snug line-clamp-[8]">{doc.overview}</p>
+            <div className="hidden mouse:flex absolute inset-0 flex-col justify-end px-3 pt-3 pb-8 bg-gradient-to-t from-black/95 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* line-clamp-[7]: bracket syntax on purpose - Tailwind's core
+                  clamp utilities stop at 6, and the bare line-clamp-7 class
+                  silently compiles to nothing (text overflows the poster). */}
+              <p className="text-xs text-zinc-100 leading-snug line-clamp-[7]">{doc.overview}</p>
             </div>
           )}
           {availability && <AvailabilityBadge availability={availability} />}

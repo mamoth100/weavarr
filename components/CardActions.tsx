@@ -91,10 +91,12 @@ export default function CardActions({
         </svg>
       </button>
 
-      {/* Thumbs down (not interested) - above watched, bottom-left */}
+      {/* Thumbs down (not interested) - stacked under the heart. The action
+          column lives top-left so the hover synopsis owns the bottom of the
+          poster without the two fighting over the same pixels. */}
       <button
         onClick={handleSucks}
-        className={`absolute bottom-12 touch:bottom-14 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
+        className={`absolute top-11 touch:top-14 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
@@ -107,10 +109,10 @@ export default function CardActions({
         </svg>
       </button>
 
-      {/* Watched badge - bottom-left */}
+      {/* Watched badge - bottom of the top-left action column */}
       <button
           onClick={handleWatched}
-          className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
+          className={`absolute top-20 touch:top-[6.5rem] left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
             ${
               watched
                 ? 'bg-green-600/90 text-white opacity-100'
