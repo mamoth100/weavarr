@@ -64,11 +64,13 @@ export default function CardActions({
 
   return (
     <>
-      {/* Favorite (heart) - top-left. Hover/focus-revealed on desktop; always
-          visible with a bigger tap target on touch, where hover doesn't exist. */}
+      {/* One uniform action column, top-left: three identical icon+text
+          pills (Favorite / Not interested / Mark watched). Hover/focus-
+          revealed on desktop; always visible with bigger tap targets on
+          touch, where hover doesn't exist. */}
       <button
         onClick={handleFavorite}
-        className={`absolute top-2 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
+        className={`absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
           ${
             favorited
               ? 'bg-amber-400 text-zinc-950 opacity-100'
@@ -77,7 +79,7 @@ export default function CardActions({
         aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
       >
         <svg
-          className="w-3.5 h-3.5 touch:w-5 touch:h-5"
+          className="w-3 h-3"
           fill={favorited ? 'currentColor' : 'none'}
           stroke="currentColor"
           strokeWidth="2"
@@ -89,14 +91,12 @@ export default function CardActions({
             d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
           />
         </svg>
+        {favorited ? 'Favorited' : 'Favorite'}
       </button>
 
-      {/* Thumbs down (not interested) - stacked under the heart. The action
-          column lives top-left so the hover synopsis owns the bottom of the
-          poster without the two fighting over the same pixels. */}
       <button
         onClick={handleSucks}
-        className={`absolute top-11 touch:top-14 left-2 z-10 p-1.5 touch:p-2.5 rounded-full transition-all duration-200
+        className={`absolute top-11 touch:top-14 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
@@ -104,9 +104,10 @@ export default function CardActions({
           }`}
         aria-label={sucks ? 'Remove from not interested' : 'Not interested'}
       >
-        <svg className="w-3.5 h-3.5 touch:w-5 touch:h-5" fill={sucks ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <svg className="w-3 h-3" fill={sucks ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 15h2.25m8.024-9.75c.011.05.028.1.052.148.591 1.2.924 2.55.924 3.977a8.96 8.96 0 01-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.105 1.25-1.987 1.25H14.5m0 0l-4.072 1.957a1.5 1.5 0 01-2.181-1.341V16.5M7.5 15V9.75a.75.75 0 01.75-.75h1.5" />
         </svg>
+        Not interested
       </button>
 
       {/* Watched badge - bottom of the top-left action column */}
