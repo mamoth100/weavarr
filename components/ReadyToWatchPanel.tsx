@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import SimplePagination from '@/components/SimplePagination';
+import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
 
@@ -787,8 +787,6 @@ export default function ReadyToWatchPanel() {
   const [items, setItems] = useState<ReadyToWatchItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [tvPage, setTvPage] = useState(1);
-  const [moviePage, setMoviePage] = useState(1);
   const [missingAiredCount, setMissingAiredCount] = useState(0);
   const [missingMoviesCount, setMissingMoviesCount] = useState(0);
   const [recentlyWatchedCount, setRecentlyWatchedCount] = useState(0);
@@ -807,6 +805,12 @@ export default function ReadyToWatchPanel() {
     refreshItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reveal-on-scroll for both lists; the items themselves are derived below
+  // (after the early returns), so track counts via what the last render saw.
+  // Hooks must sit above the early returns.
+  const tvReveal = useInfiniteReveal((items ?? []).filter((i) => i.type === 'tv').length, query, PAGE_SIZE);
+  const movieReveal = useInfiniteReveal((items ?? []).filter((i) => i.type === 'movie').length, query, PAGE_SIZE);
 
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load: {error}</p>;
@@ -840,13 +844,8 @@ export default function ReadyToWatchPanel() {
   const tvItems = filtered.filter((i) => i.type === 'tv');
   const movieItems = filtered.filter((i) => i.type === 'movie');
 
-  const tvTotalPages = Math.max(1, Math.ceil(tvItems.length / PAGE_SIZE));
-  const tvPageSafe = Math.min(tvPage, tvTotalPages);
-  const tvPaged = tvItems.slice((tvPageSafe - 1) * PAGE_SIZE, tvPageSafe * PAGE_SIZE);
-
-  const movieTotalPages = Math.max(1, Math.ceil(movieItems.length / PAGE_SIZE));
-  const moviePageSafe = Math.min(moviePage, movieTotalPages);
-  const moviePaged = movieItems.slice((moviePageSafe - 1) * PAGE_SIZE, moviePageSafe * PAGE_SIZE);
+  const tvPaged = tvItems.slice(0, tvReveal.visible);
+  const moviePaged = movieItems.slice(0, movieReveal.visible);
 
   function renderRow(item: ReadyToWatchItem) {
     return (
@@ -866,11 +865,7 @@ export default function ReadyToWatchPanel() {
         <input
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setTvPage(1);
-            setMoviePage(1);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter by title…"
           className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500"
         />
@@ -903,7 +898,7 @@ export default function ReadyToWatchPanel() {
             TV Shows ({tvItems.length})
           </h2>
           <div className="space-y-2">{tvPaged.map(renderRow)}</div>
-          <SimplePagination page={tvPageSafe} totalPages={tvTotalPages} onChange={setTvPage} />
+          <div ref={tvReveal.sentinelRef} />
         </div>
       )}
       {movieItems.length > 0 && (
@@ -912,7 +907,7 @@ export default function ReadyToWatchPanel() {
             Movies ({movieItems.length})
           </h2>
           <div className="space-y-2">{moviePaged.map(renderRow)}</div>
-          <SimplePagination page={moviePageSafe} totalPages={movieTotalPages} onChange={setMoviePage} />
+          <div ref={movieReveal.sentinelRef} />
         </div>
       )}
       <MissingAiredSection onEpisodeAvailable={refreshItems} onCountChange={setMissingAiredCount} />
