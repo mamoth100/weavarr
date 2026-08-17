@@ -88,6 +88,22 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
 
 const EMPTY_PAGE = { page: 1, results: [] as TmdbMovie[], total_pages: 1, total_results: 0 };
 
+/**
+ * Search ordering: exact title matches first, then TMDB popularity.
+ * Popularity alone is a TRENDING metric - searching "friends" put the
+ * currently-airing "Among Friends" above the sitcom Friends itself, which
+ * is never what someone typing an exact title means.
+ */
+function rankSearchResults(results: TmdbMovie[], query: string): TmdbMovie[] {
+  const q = query.toLowerCase().trim();
+  return [...results].sort((a, b) => {
+    const aExact = (a.title ?? '').toLowerCase().trim() === q ? 1 : 0;
+    const bExact = (b.title ?? '').toLowerCase().trim() === q ? 1 : 0;
+    if (aExact !== bExact) return bExact - aExact;
+    return (b.popularity ?? 0) - (a.popularity ?? 0);
+  });
+}
+
 /** One page of browse results for the given filters - the infinite-scroll unit. */
 export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<BrowsePage> {
   const {
@@ -100,8 +116,11 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
   if (isGlobalSearch) {
     if (!query) return { results: [], totalPages: 1, totalResults: 0 };
     const [movieData, tvData] = await Promise.all([searchMovies(query, page), searchTv(query, page)]);
+    // A plain movies-then-TV concat buried the most popular match whenever
+    // it was a show (searching "friends" listed every Friends-titled movie
+    // above the sitcom) - rank instead.
     return {
-      results: [...movieData.results, ...tvData.results],
+      results: rankSearchResults([...movieData.results, ...tvData.results], query),
       totalPages: Math.max(movieData.total_pages, tvData.total_pages),
       totalResults: movieData.total_results + tvData.total_results,
     };
@@ -148,8 +167,9 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
 
   if (query) {
     const [movieData, tvData] = await Promise.all([searchMovies(query, page), searchTv(query, page)]);
+    // Same exact-match + popularity ranking as global search.
     return {
-      results: [...movieData.results, ...tvData.results],
+      results: rankSearchResults([...movieData.results, ...tvData.results], query),
       totalPages: Math.max(movieData.total_pages, tvData.total_pages),
       totalResults: movieData.total_results + tvData.total_results,
     };
