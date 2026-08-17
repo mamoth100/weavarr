@@ -895,7 +895,7 @@ export default function ReadyToWatchPanel() {
         </div>
       )}
       {filtered.length === 0 && (
-        <p className="text-zinc-500 text-sm">Nothing unwatched right now - you're all caught up.</p>
+        <p className="text-zinc-500 text-sm">Nothing unwatched right now - you&apos;re all caught up.</p>
       )}
       {tvItems.length > 0 && (
         <div id="section-tv-shows" className="space-y-2">
