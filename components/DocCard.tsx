@@ -99,6 +99,14 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               No Poster
             </div>
           )}
+          {/* Seerr-style hover synopsis. mouse: only - touch devices have no
+              hover, and the detail page carries the full overview there.
+              Rendered BEFORE the badges so score/availability stay on top. */}
+          {doc.overview && (
+            <div className="hidden mouse:flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <p className="text-xs text-zinc-100 leading-snug line-clamp-[8]">{doc.overview}</p>
+            </div>
+          )}
           {availability && <AvailabilityBadge availability={availability} />}
           <div className="absolute top-2 right-2">
             {variant === 'upcoming' && doc.release_date ? (
