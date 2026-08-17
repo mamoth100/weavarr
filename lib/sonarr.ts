@@ -2,6 +2,7 @@ import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
+import { findTvIdByTvdbId, findTvIdByImdbId } from './tmdb';
 
 // Enable defaults on (unset !== 'false') - Sonarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -261,8 +262,9 @@ export interface SonarrSeries {
   title: string;
   year: number;
   imdbId: string | null;
-  /** TMDB id when Sonarr knows it (v4+) - lets library rows link to the in-app detail page. */
+  /** TMDB id when Sonarr knows it (v4+), else resolved from tvdbId via TMDB's external-id lookup - lets library rows link to the in-app detail page. */
   tmdbId: number | null;
+  tvdbId: number | null;
   episodeFileCount: number;
   episodeCount: number;
   sizeOnDisk: number;
@@ -282,7 +284,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
   const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
   const data: Record<string, unknown>[] = await res.json();
-  return data.map((s) => {
+  const series = data.map((s) => {
     const stats = s.statistics as Record<string, unknown> | undefined;
     const images = (s.images as SonarrImage[] | undefined) ?? [];
     return {
@@ -291,6 +293,7 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
       year: s.year as number,
       imdbId: (s.imdbId as string) ?? null,
       tmdbId: typeof s.tmdbId === 'number' && s.tmdbId > 0 ? s.tmdbId : null,
+      tvdbId: typeof s.tvdbId === 'number' && s.tvdbId > 0 ? (s.tvdbId as number) : null,
       episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
       episodeCount: (stats?.episodeCount as number) ?? 0,
       sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
@@ -298,6 +301,22 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
       posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
     };
   });
+
+  // Sonarr's own metadata lacks tmdbId for some shows - resolve those via
+  // TMDB's external-id lookup (week-long cache in lib/tmdb, so this costs
+  // one call per missing show per week, not per page load). Gives those
+  // shows their Details link and availability badge; a failed lookup just
+  // leaves tmdbId null as before.
+  await Promise.all(
+    series
+      .filter((s) => !s.tmdbId && (s.tvdbId || s.imdbId))
+      .map(async (s) => {
+        if (s.tvdbId) s.tmdbId = await findTvIdByTvdbId(s.tvdbId);
+        if (!s.tmdbId && s.imdbId) s.tmdbId = await findTvIdByImdbId(s.imdbId);
+      })
+  );
+
+  return series;
 }
 
 /**

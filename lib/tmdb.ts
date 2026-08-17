@@ -318,3 +318,31 @@ export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
     keywords: { keywords: data.keywords?.results ?? [] },
   };
 }
+
+/**
+ * TMDB tv id for a TVDB id via /find - fills the gap when Sonarr's own
+ * metadata lacks tmdbId (true for a handful of shows). Cached a week:
+ * external-id mappings don't change.
+ */
+export async function findTvIdByTvdbId(tvdbId: number): Promise<number | null> {
+  return findTvIdByExternalId(String(tvdbId), 'tvdb_id');
+}
+
+/** Same lookup keyed by IMDB id - the fallback when TMDB has no TVDB mapping for a show. */
+export async function findTvIdByImdbId(imdbId: string): Promise<number | null> {
+  return findTvIdByExternalId(imdbId, 'imdb_id');
+}
+
+async function findTvIdByExternalId(externalId: string, source: 'tvdb_id' | 'imdb_id'): Promise<number | null> {
+  try {
+    const res = await tmdbFetch(`${BASE_URL}/find/${externalId}?external_source=${source}`, {
+      headers: authHeaders(),
+      next: { revalidate: 604800 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.tv_results as { id: number }[] | undefined)?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
