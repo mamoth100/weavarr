@@ -1,0 +1,13 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["tailwindcss"],
+  "rules": {
+    "tailwindcss/no-custom-classname": "error",
+    "tailwindcss/no-contradicting-classname": "error"
+  },
+  "settings": {
+    "tailwindcss": {
+      "callees": ["clsx", "cn"]
+    }
+  }
+}

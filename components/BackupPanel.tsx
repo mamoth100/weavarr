@@ -295,7 +295,7 @@ function UploadBackup({ onUploaded }: { onUploaded: () => void }) {
       <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Upload a Backup to Restore</h2>
       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3 flex items-center gap-3">
         <p className="text-xs text-zinc-500 flex-1">
-          Have a backup from a different install, or from this one before something went wrong? Upload it here - it'll
+          Have a backup from a different install, or from this one before something went wrong? Upload it here - it&apos;ll
           show up below with the same Restore option as any other backup.
         </p>
         <label
