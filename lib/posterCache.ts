@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, unlink } from 'fs/promises';
+import { mkdir, readFile, writeFile, unlink, readdir } from 'fs/promises';
 import path from 'path';
 
 /**
@@ -44,4 +44,33 @@ export async function deleteCachedPoster(service: 'radarr' | 'sonarr', id: numbe
   } catch {
     // wasn't cached - nothing to clean up
   }
+}
+
+/**
+ * Deletes every cached poster whose id is NOT in validIds - catches titles
+ * deleted directly in Radarr/Sonarr, which bypass deleteCachedPoster and
+ * would otherwise accumulate forever. Returns how many files were removed.
+ * Callers must only pass a validIds set built from a SUCCESSFUL id listing -
+ * never sweep on a failed fetch, or an outage would wipe a healthy cache.
+ */
+export async function prunePosterCache(service: 'radarr' | 'sonarr', validIds: Set<number>): Promise<number> {
+  let files: string[];
+  try {
+    files = await readdir(path.join(POSTER_DIR, service));
+  } catch {
+    return 0; // cache dir doesn't exist yet - nothing to prune
+  }
+
+  let removed = 0;
+  for (const file of files) {
+    const id = Number(file.replace(/\.jpg$/, ''));
+    if (!Number.isFinite(id) || validIds.has(id)) continue;
+    try {
+      await unlink(path.join(POSTER_DIR, service, file));
+      removed += 1;
+    } catch {
+      // already gone or unreadable - skip
+    }
+  }
+  return removed;
 }
