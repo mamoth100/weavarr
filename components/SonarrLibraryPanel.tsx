@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
 import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
-import SimplePagination from '@/components/SimplePagination';
 import ConfirmButton from '@/components/ConfirmButton';
+import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 
 const PAGE_SIZE = 50;
 
@@ -72,7 +72,6 @@ export default function SonarrLibraryPanel() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetch('/api/sonarr/series', { cache: 'no-store' })
@@ -94,6 +93,9 @@ export default function SonarrLibraryPanel() {
     [series, query]
   );
 
+  // Must sit above the early returns - hooks can't be conditional.
+  const { visible, sentinelRef } = useInfiniteReveal(filtered.length, query, PAGE_SIZE);
+
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load Sonarr library: {error}</p>;
   }
@@ -109,10 +111,7 @@ export default function SonarrLibraryPanel() {
   }
 
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageSafe = Math.min(page, totalPages);
-  const pageStart = (pageSafe - 1) * PAGE_SIZE;
-  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const paged = filtered.slice(0, visible);
 
   return (
     <div className="space-y-4">
@@ -121,15 +120,11 @@ export default function SonarrLibraryPanel() {
           {filtered.length === series.length
             ? `${series.length} shows in Sonarr`
             : `${filtered.length} of ${series.length} shows`}
-          {filtered.length > 0 && ` · showing ${pageStart + 1}-${Math.min(pageStart + PAGE_SIZE, filtered.length)}`}
         </span>
         <input
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter by title…"
           className="bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500"
         />
@@ -175,7 +170,7 @@ export default function SonarrLibraryPanel() {
           </div>
         ))}
       </div>
-      <SimplePagination page={pageSafe} totalPages={totalPages} onChange={setPage} />
+      <div ref={sentinelRef} />
     </div>
   );
 }
