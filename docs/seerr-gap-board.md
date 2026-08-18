@@ -26,18 +26,16 @@ Legend: `[ ]` open · `[x]` done · **GAP** = Seerr has it, we don't ·
 - **DIFF** Per-connection `useSsl`/hostname/port/urlBase (radarr/sonarr/plex/jellyfin) - Seerr splits these into fields; we take full URLs, which already carry scheme/port/path. Covered, arguably better. Nothing to do.
 - **SKIP** `locale` + full UI i18n - roadmap Tier 5 already parks localization.
 
-## 2. Auth & users
+Not on this board by design: user management, permissions, quotas, approval
+queues, request-as-user, per-user anything. Weavarr is single-user on
+purpose - that entire Seerr subsystem is out of scope, permanently.
 
-- [x] Plex PIN sign-in (parity - shipped 2026-08-15).
-- **SKIP** Local (email/password) login, `mediaServerLogin`, user import from Plex/Jellyfin, permissions bitmask, `defaultPermissions`, per-user quotas (`movieQuotaLimit/Days`, `tvQuotaLimit/Days`), per-user notification routing, avatars, password recovery links - all multi-user machinery. Single-user stance stands. Revisit only at public release.
-- [ ] **GAP** (M) Any auth at all on Weavarr itself - Seerr gates its UI; ours is open on the LAN. Fine today, required before exposing beyond LAN. (Public-release blocker, listed for honesty.)
-
-## 3. Service connections (Radarr/Sonarr)
+## 2. Service connections (Radarr/Sonarr)
 
 - [ ] **GAP** (L) Multiple instances + `is4k` per instance + `isDefault` routing - roadmap Tier 3, the real architectural lift.
 - [ ] **GAP** (S) `minimumAvailability` for Radarr adds (announced/inCinemas/released) - we always add with Radarr's default.
 - [ ] **GAP** (M) Root folder picker at request time (`activeDirectory` + per-request override) - roadmap Tier 3; we use Radarr/Sonarr's first root folder, no choice.
-- [ ] **GAP** (M) Tags: default tags per service, `animeTags`, `tagRequests` (tag with requester name) - we send no tags ever.
+- [ ] **GAP** (M) Tags: default tags per service, `animeTags` - we send no tags ever.
 - [ ] **GAP** (S) `enableSeasonFolders` toggle on Sonarr adds - we inherit whatever the lookup returns.
 - [x] `monitorNewItems` on Sonarr adds - shipped with the request modal (future-seasons toggle).
 - [ ] **GAP** (M) Override rules (`/api/v1/overrideRule`) - condition-based routing: "if genre anime -> this profile/folder/tags". Powerful, niche.
@@ -45,7 +43,7 @@ Legend: `[ ]` open · `[x]` done · **GAP** = Seerr has it, we don't ·
 - **DIFF** `syncEnabled` (Seerr scans arr libraries into its own DB) - we query live instead of syncing. No DB drift, slightly slower pages. Deliberate.
 - [ ] **GAP** (S) `metadataSettings` (tv/anime metadata source) - anime handling generally; we treat everything as TMDB-shaped.
 
-## 4. Media status & sync
+## 3. Media status & sync
 
 - [ ] **GAP** (M) Download progress on detail pages/cards ("Processing" state with percent, from `download-sync` job every minute) - our Status page has queue progress but cards/detail pages don't show "downloading, 43%".
 - [ ] **GAP** (S) Per-season availability display on the show detail page (Seerr colors each season) - we show counts, not per-season state colors.
@@ -55,14 +53,13 @@ Legend: `[ ]` open · `[x]` done · **GAP** = Seerr has it, we don't ·
 - [ ] **GAP** (S) `enableSpecialEpisodes` - allow requesting season 0/specials. Our modal filters specials out unconditionally.
 - [x] Partial/season requests (`partialRequestsEnabled`) - shipped with the request modal, ours does arbitrary combinations.
 
-## 5. Requests workflow
+## 4. Requests workflow
 
-- **SKIP** Approval queue, auto-approve permissions, request-as-user, per-user request list - multi-user machinery.
 - [ ] **GAP** (M) A requests/activity page: everything requested through Weavarr with status (pending download/downloading/available), retry/delete per row - we have Status (queue) and Recently Imported, but no unified "what did I ask for and where is it" ledger that survives restarts.
 - [ ] **GAP** (M) Issues system (audio/video/subtitle/other + comments + notifications) - roadmap Tier 5 called it marginal solo; still a gap.
 - [ ] **GAP** (S) Blocklist media (`hideBlocklisted`, `blocklistedTags`, auto-blocklist by tag job) - our "Not interested" covers the manual case; tag-based auto-blocklist ("talk-show", "reality") is a genuinely nice discovery filter.
 
-## 6. Discovery
+## 5. Discovery
 
 - [ ] **GAP** (M) Discover home: slider rows (trending / popular movies / popular TV / upcoming / genre sliders / studios / networks) - roadmap Tier 2. Seerr ships 12 builtin sliders.
 - [ ] **GAP** (M) Custom discover sliders (user-defined TMDB keyword/genre/studio lists, reorderable, can be marked built from the sliders API) - the power version of our menu-genre customization.
@@ -76,10 +73,10 @@ Legend: `[ ]` open · `[x]` done · **GAP** = Seerr has it, we don't ·
 - [x] Hover synopsis on cards (ours; Seerr shows text under poster).
 - [x] Availability badges on cards (parity).
 
-## 7. Notifications
+## 6. Notifications
 
 Ours: Discord, Pushover, generic webhook - flat "send everything" per channel.
-Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigned`/`senderName`), Telegram (thread id, silent send), Slack, Gotify (priority), ntfy (topic/priority), Pushbullet, Webpush (PWA push, VAPID), Discord (role mentions, locale), webhook with **templated JSON payload** (`{{notification_type}}`, `{{media}}`, `{{request}}` variables).
+Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigned`/`senderName`), Telegram (thread id, silent send), Slack, Gotify (priority), ntfy (topic/priority), Pushbullet, Webpush (PWA push, VAPID), Discord (role mentions, locale), webhook with **templated JSON payload** (`{{notification_type}}`, `{{media}}` variables).
 
 - [ ] **GAP** (M) Webpush - roadmap Tier 4 pick (no external account needed, best fit).
 - [ ] **GAP** (S) Per-event-type granularity (`types` bitmask per agent) - ours is all-or-nothing per channel; "only tell me about failures" is a real want.
@@ -88,7 +85,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 - [ ] **GAP** (M) Email/SMTP agent (with the full TLS knob set).
 - [ ] **GAP** (S each) Telegram, ntfy, Gotify, Slack, Pushbullet - add by demand after Webpush.
 
-## 8. Jobs & maintenance
+## 7. Jobs & maintenance
 
 - [ ] **GAP** (M) Jobs page: every background job listed with next-run, **editable cron schedule**, run-now and cancel buttons - roadmap Tier 4. Ours run on fixed code intervals, invisible. (Our jobs today: import notifications 2m, connection health 10m, watchlist sync 10m, watched sync 5m, poster sweep 24h, backups 24h.)
 - [x] Image cache cleanup - our poster sweep (2026-08-17) covers the equivalent.
@@ -96,10 +93,10 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 - [x] Backup/restore - Weavarr only. Advantage.
 - [ ] **GAP** (S) About page basics we lack: total media items / total requests counters, timezone display. (Our Settings > Status has version/uptime/disks - add the counts.)
 
-## 9. API & integrations
+## 8. API & integrations
 
 - [ ] **GAP** (L) Public documented REST API (`/api/v1` + Swagger, API key with regenerate) - roadmap Tier 5, deliberately deferred.
-- [ ] **GAP** (M) Tautulli integration (watch stats source for Plex) - powers their per-user watch history; our watched-sync reads Plex/Jellyfin directly. Partially DIFF, listed because Tautulli unlocks richer stats.
+- [ ] **GAP** (M) Tautulli integration (richer Plex watch stats); our watched-sync reads Plex/Jellyfin directly. Partially DIFF, listed because Tautulli unlocks deeper history.
 - **DIFF** PWA installability - Seerr is a full PWA with manifest + webpush; we have responsive web only. Fold into the Webpush item.
 
 ---
