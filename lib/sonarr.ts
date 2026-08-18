@@ -34,6 +34,8 @@ export async function addSeriesToSonarr({
   title,
   monitor = 'all',
   seasonNumber,
+  seasonNumbers,
+  monitorFuture = false,
   highestQuality = false,
   profileOverride,
 }: {
@@ -41,6 +43,10 @@ export async function addSeriesToSonarr({
   title: string;
   monitor?: string;
   seasonNumber?: number;
+  /** Multiple hand-picked seasons (request modal). Wins over seasonNumber and the monitor preset. */
+  seasonNumbers?: number[];
+  /** With seasonNumbers: also monitor seasons that don't exist yet (Sonarr's monitorNewItems). */
+  monitorFuture?: boolean;
   highestQuality?: boolean;
   /** An exact profile name that wins over the Settings default/highest pick for this one request. */
   profileOverride?: string | null;
@@ -86,11 +92,14 @@ export async function addSeriesToSonarr({
     ).catch(() => {});
   }
 
-  // A specific season number wins over the preset monitor strategy: hand-pick
-  // which season is monitored and leave addOptions.monitor out so Sonarr
-  // doesn't overwrite that per-season choice.
-  const seasons = seasonNumber !== undefined
-    ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: s.seasonNumber === seasonNumber }))
+  // Hand-picked seasons win over the preset monitor strategy: set per-season
+  // monitored flags and leave addOptions.monitor out so Sonarr doesn't
+  // overwrite that choice. seasonNumbers (request modal, any combination)
+  // supersedes the older single seasonNumber, kept for existing callers.
+  const picked = seasonNumbers ?? (seasonNumber !== undefined ? [seasonNumber] : null);
+  const pickedSet = picked ? new Set(picked) : null;
+  const seasons = pickedSet
+    ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: pickedSet.has(s.seasonNumber) }))
     : series.seasons;
 
   const addRes = await fetch(`${SONARR_URL}/api/v3/series`, {
@@ -102,7 +111,11 @@ export async function addSeriesToSonarr({
       qualityProfileId: profile.id,
       rootFolderPath: folders[0].path,
       monitored: true,
-      addOptions: seasonNumber !== undefined
+      // monitorNewItems controls whether seasons that don't exist yet get
+      // monitored when Sonarr discovers them - the modal's "future seasons"
+      // toggle. Preset path keeps Sonarr's default behavior.
+      ...(pickedSet ? { monitorNewItems: monitorFuture ? 'all' : 'none' } : {}),
+      addOptions: pickedSet
         ? { searchForMissingEpisodes: true }
         : { monitor, searchForMissingEpisodes: monitor !== 'future' },
     }),

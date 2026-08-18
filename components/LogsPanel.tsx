@@ -1,30 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Modal from '@/components/Modal';
 
 /** The Plex chip's payoff: Plex is the one connected service with no way to read its logs, and the chip owes users an explanation. */
 function PlexExcuseModal({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Why there are no Plex logs"
+    <Modal
+      open
+      onClose={onClose}
+      title="Where are the Plex logs?"
+      footer={
+        <button
+          onClick={onClose}
+          className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
+        >
+          Fair enough
+        </button>
+      }
     >
-      <div
-        className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-w-md w-full p-5 space-y-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-base font-semibold text-white">Where are the Plex logs?</h3>
+      <div className="space-y-3">
         <p className="text-sm text-zinc-300">
           There aren&apos;t any. Plex sucks with pulling logs with their API. No sugar coating this.
         </p>
@@ -39,16 +34,8 @@ function PlexExcuseModal({ onClose }: { onClose: () => void }) {
           messages. Only Plex&apos;s internal chatter is missing, and that lives in its server settings if you ever
           truly need it.
         </p>
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
-          >
-            Fair enough
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

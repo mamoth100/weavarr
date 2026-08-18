@@ -5,6 +5,7 @@ import { useWatchlist } from '@/hooks/useWatchlist';
 import type { WatchlistItem } from '@/lib/watchlist';
 import type { TmdbSeason } from '@/types';
 import ConfirmButton from '@/components/ConfirmButton';
+import RequestShowModal from '@/components/RequestShowModal';
 
 interface Props {
   id: number;
@@ -97,11 +98,6 @@ interface QualityProfileOption {
   name: string;
 }
 
-const PRESET_OPTIONS = [
-  { value: 'all', label: 'All Seasons' },
-  { value: 'future', label: 'Future Only' },
-  { value: 'pilot', label: 'Pilot Only' },
-] as const;
 
 export default function RequestButton({ id, mediaType, title, poster_path, release_date, imdbId, seasons, radarrMovieId, sonarrSeriesId }: Props) {
   const [status, setStatus] = useState<Status>('idle');
@@ -120,16 +116,10 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
 
   // Real seasons from TMDB, numbered and with episodes - excludes Specials (season 0)
   const realSeasons = (seasons ?? fetchedSeasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
-  const latestSeason = realSeasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
 
-  const [selection, setSelection] = useState<string>(latestSeason > 0 ? `season:${latestSeason}` : 'all');
-  const userTouchedSelection = useRef(false);
-  useEffect(() => {
-    if (!userTouchedSelection.current && latestSeason > 0) {
-      setSelection(`season:${latestSeason}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestSeason]);
+  // TV requests go through the modal (season checkboxes, quality) - the old
+  // inline <select> could only pick a single season or preset.
+  const [modalOpen, setModalOpen] = useState(false);
 
   const [highestQuality, setHighestQuality] = useState(false);
   // Assume configured until told otherwise, so the common (already-set-up) case never flickers.
@@ -169,21 +159,15 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   // Settings check resolved false out from under it.
   const effectiveHighestQuality = highestQuality && highestConfigured;
 
+  /** Movie-only instant add - TV goes through RequestShowModal instead. */
   async function handleClick() {
     setStatus('loading');
     setError(null);
-    const isSeasonPick = selection.startsWith('season:');
-    const seasonNumber = isSeasonPick ? Number(selection.split(':')[1]) : undefined;
-    const monitor = isSeasonPick ? undefined : selection;
     try {
-      const res = await fetch(mediaType === 'movie' ? '/api/radarr/add' : '/api/sonarr/add', {
+      const res = await fetch('/api/radarr/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          mediaType === 'movie'
-            ? { tmdbId: id, highestQuality: effectiveHighestQuality, profileOverride: profileOverride || undefined }
-            : { imdbId, title, monitor, seasonNumber, highestQuality: effectiveHighestQuality, profileOverride: profileOverride || undefined }
-        ),
+        body: JSON.stringify({ tmdbId: id, highestQuality: effectiveHighestQuality, profileOverride: profileOverride || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
@@ -213,30 +197,43 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
     return <DeleteSeriesButton seriesId={sonarrSeriesId} />;
   }
 
+  if (mediaType === 'tv') {
+    return (
+      <>
+        <button
+          onClick={() => setModalOpen(true)}
+          disabled={locked}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+            ${
+              status === 'added' || status === 'already'
+                ? 'bg-green-600 text-white'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+            }`}
+          aria-label={`Request "${title}" download`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          {label}
+        </button>
+        <RequestShowModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title={title}
+          imdbId={imdbId ?? null}
+          seasons={realSeasons}
+          highestConfigured={highestConfigured}
+          onSuccess={(alreadyAdded) => {
+            setStatus(alreadyAdded ? 'already' : 'added');
+            addFavorite({ id, mediaType, title, poster_path, release_date, addedAt: Date.now() });
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      {mediaType === 'tv' && (
-        <select
-          value={selection}
-          onChange={(e) => { userTouchedSelection.current = true; setSelection(e.target.value); }}
-          disabled={locked}
-          aria-label="Which seasons to download"
-          className="px-2 py-1.5 rounded-lg text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 disabled:opacity-60"
-        >
-          {PRESET_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-          {realSeasons.length > 0 && (
-            <optgroup label="Specific Season">
-              {realSeasons.map((s) => (
-                <option key={s.season_number} value={`season:${s.season_number}`}>
-                  Season {s.season_number} ({s.episode_count} ep)
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-      )}
       <div className="flex flex-col gap-1.5">
         <button
           onClick={handleClick}
