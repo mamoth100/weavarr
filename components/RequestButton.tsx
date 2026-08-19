@@ -219,8 +219,31 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   if (mediaType === 'tv' && sonarrSeriesId) {
     return (
       <div>
-        <DeleteSeriesButton seriesId={sonarrSeriesId} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Get more
+          </button>
+          <DeleteSeriesButton seriesId={sonarrSeriesId} />
+        </div>
         <DetailDownloadProgress id={id} mediaType="tv" />
+        <RequestShowModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title={title}
+          imdbId={imdbId ?? null}
+          seasons={realSeasons}
+          tmdbId={id}
+          highestConfigured={highestConfigured}
+          onSuccess={() => {
+            refreshDownloadProgressSoon();
+          }}
+        />
       </div>
     );
   }
@@ -251,6 +274,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           title={title}
           imdbId={imdbId ?? null}
           seasons={realSeasons}
+          tmdbId={id}
           highestConfigured={highestConfigured}
           onSuccess={(alreadyAdded) => {
             setStatus(alreadyAdded ? 'already' : 'added');
