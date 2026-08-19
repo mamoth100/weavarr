@@ -3,9 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
+import { useState } from 'react';
 import ScoreBadge from './ScoreBadge';
 import CardActions from './CardActions';
+import CardRequestPill from './CardRequestPill';
 import { useLibraryStatus, type Availability } from '@/hooks/useLibraryStatus';
+import { useDownloadProgress } from '@/hooks/useDownloadProgress';
 import type { TmdbMovie } from '@/types';
 
 const AVAILABILITY_LABEL: Record<Availability, string> = {
@@ -60,8 +63,17 @@ function getLanguageName(code: string): string {
 
 export default function DocCard({ doc, mediaType = 'movie', variant = 'default' }: Props) {
   const libraryStatus = useLibraryStatus();
-  const availability = libraryStatus
-    ? (mediaType === 'tv' ? libraryStatus.shows[doc.id] : libraryStatus.movies[doc.id])
+  const progressMap = useDownloadProgress();
+  // Requested from THIS card this session - flips the state instantly while
+  // the library-status cache (one fetch per page load) still says unknown.
+  const [justRequested, setJustRequested] = useState(false);
+  const cardMediaType = doc.mediaType ?? mediaType;
+  const availability: Availability | undefined =
+    (libraryStatus
+      ? (cardMediaType === 'tv' ? libraryStatus.shows[doc.id] : libraryStatus.movies[doc.id])
+      : undefined) ?? (justRequested ? 'requested' : undefined);
+  const progress = progressMap
+    ? (cardMediaType === 'tv' ? progressMap.shows[doc.id] : progressMap.movies[doc.id])
     : undefined;
   const year = doc.release_date
     ? new Date(doc.release_date).getFullYear()
@@ -86,6 +98,19 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
           release_date={doc.release_date ?? ''}
           original_language={doc.original_language}
         />
+        {/* Request pill only while the title isn't in the library - once
+            requested/downloading/owned, the badge and progress strip tell
+            that story instead. */}
+        {libraryStatus && !availability && !progress && (
+          <CardRequestPill
+            id={doc.id}
+            mediaType={cardMediaType}
+            title={doc.title}
+            poster_path={doc.poster_path}
+            release_date={doc.release_date ?? ''}
+            onRequested={() => setJustRequested(true)}
+          />
+        )}
         <Link href={href}>
           <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
           {posterUrl ? (
@@ -128,6 +153,19 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
             <div className="absolute bottom-2 right-2 bg-zinc-900/80 text-zinc-300 text-xs px-1.5 py-0.5 rounded">
               {doc.spoken_language ?? getLanguageName(doc.original_language!)}
             </div>
+          )}
+          {/* Live download state: chip + bottom progress strip. Replaces the
+              request pill / requested badge while active - the card walks
+              Request -> Requested -> downloading % -> In your library. */}
+          {progress && (
+            <>
+              <div className="absolute bottom-2 left-2 bg-sky-600/90 text-white text-xs font-semibold px-1.5 py-0.5 rounded shadow">
+                {progress.state === 'importing' ? 'Importing…' : progress.state === 'queued' ? 'Queued' : `↓ ${progress.percent}%`}
+              </div>
+              <div className="absolute bottom-0 inset-x-0 h-1 bg-zinc-800/80">
+                <div className="h-full bg-sky-500 transition-all" style={{ width: `${progress.percent}%` }} />
+              </div>
+            </>
           )}
           </div>
         </Link>

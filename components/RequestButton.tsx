@@ -6,6 +6,24 @@ import type { WatchlistItem } from '@/lib/watchlist';
 import type { TmdbSeason } from '@/types';
 import ConfirmButton from '@/components/ConfirmButton';
 import RequestShowModal from '@/components/RequestShowModal';
+import { useDownloadProgress, refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
+
+/** Live download bar under the detail-page action - appears whenever this title has something in the Radarr/Sonarr queue. */
+function DetailDownloadProgress({ id, mediaType }: { id: number; mediaType: 'movie' | 'tv' }) {
+  const progressMap = useDownloadProgress();
+  const progress = progressMap ? (mediaType === 'tv' ? progressMap.shows[id] : progressMap.movies[id]) : undefined;
+  if (!progress) return null;
+  return (
+    <div className="flex items-center gap-2 mt-1.5 w-48">
+      <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${progress.percent}%` }} />
+      </div>
+      <span className="text-xs text-sky-400 font-medium whitespace-nowrap">
+        {progress.state === 'importing' ? 'Importing…' : progress.state === 'queued' ? 'Queued' : `${progress.percent}%`}
+      </span>
+    </div>
+  );
+}
 
 interface Props {
   id: number;
@@ -190,11 +208,21 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
     mediaType === 'movie' ? 'Add Movie' : 'Add Show';
 
   if (mediaType === 'movie' && radarrMovieId) {
-    return <DeleteMovieButton movieId={radarrMovieId} />;
+    return (
+      <div>
+        <DeleteMovieButton movieId={radarrMovieId} />
+        <DetailDownloadProgress id={id} mediaType="movie" />
+      </div>
+    );
   }
 
   if (mediaType === 'tv' && sonarrSeriesId) {
-    return <DeleteSeriesButton seriesId={sonarrSeriesId} />;
+    return (
+      <div>
+        <DeleteSeriesButton seriesId={sonarrSeriesId} />
+        <DetailDownloadProgress id={id} mediaType="tv" />
+      </div>
+    );
   }
 
   if (mediaType === 'tv') {
@@ -216,6 +244,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           </svg>
           {label}
         </button>
+        <DetailDownloadProgress id={id} mediaType="tv" />
         <RequestShowModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
@@ -226,6 +255,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           onSuccess={(alreadyAdded) => {
             setStatus(alreadyAdded ? 'already' : 'added');
             addFavorite({ id, mediaType, title, poster_path, release_date, addedAt: Date.now() });
+            refreshDownloadProgressSoon();
           }}
         />
       </>
@@ -298,6 +328,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           </div>
         )}
         {error && <p className="text-xs text-red-400 max-w-xs">{error}</p>}
+        <DetailDownloadProgress id={id} mediaType="movie" />
       </div>
     </>
   );

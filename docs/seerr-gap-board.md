@@ -45,7 +45,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 ## 3. Media status & sync
 
-- [ ] **GAP** (M) Download progress on detail pages/cards ("Processing" state with percent, from `download-sync` job every minute) - our Status page has queue progress but cards/detail pages don't show "downloading, 43%".
+- [x] Download progress on cards AND detail pages (shipped 2026-08-18) - live percent chip + bar, adaptive 12s/60s polling, plus a Request pill on cards (armed two-click for movies, modal for shows) so the card walks Request -> Requested -> downloading % -> In your library. Goes beyond Seerr's static "Processing" badge.
 - [ ] **GAP** (S) Per-season availability display on the show detail page (Seerr colors each season) - we show counts, not per-season state colors.
 - **DIFF** Library scanning (`plex-recently-added-scan` 5min, `plex-full-scan` 3am, per-library enable) - Seerr maintains its own media DB (75 items on this instance); we ask Plex/Jellyfin/arr live. Deliberate, keeps zero drift.
 - [x] Watchlist sync (both have it; theirs every 3min, ours 10 - fine).
