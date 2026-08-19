@@ -142,14 +142,14 @@ function ShowListEditor({ value, onChange, disabled }: { value: string; onChange
       {items.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {items.map((t) => (
-            <span key={t} className="inline-flex items-center gap-1 bg-zinc-800 ring-1 ring-zinc-700 text-zinc-200 text-xs rounded-full pl-2.5 pr-1 py-1">
+            <span key={t} className="inline-flex items-center gap-1 bg-zinc-800 ring-1 ring-zinc-700 text-zinc-200 text-xs rounded-full pl-2.5 pr-1 py-1 touch:py-1.5">
               {t}
               <button
                 type="button"
                 onClick={() => onChange(items.filter((i) => i !== t).join(','))}
                 disabled={disabled}
                 aria-label={`Remove ${t}`}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-600"
+                className="w-4 h-4 touch:w-6 touch:h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-600"
               >
                 ×
               </button>
@@ -170,7 +170,7 @@ function ShowListEditor({ value, onChange, disabled }: { value: string; onChange
             }
           }}
           placeholder={sonarrTitles.length ? 'Add a show from Sonarr, or type any title…' : 'Type a show title…'}
-          className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-50"
+          className="flex-1 min-w-0 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 touch:py-2 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-50"
         />
         <datalist id="showlist-suggestions">
           {suggestions.map((t) => (
@@ -181,7 +181,7 @@ function ShowListEditor({ value, onChange, disabled }: { value: string; onChange
           type="button"
           onClick={() => add(draft)}
           disabled={disabled || !draft.trim()}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+          className="px-3 py-1.5 touch:px-4 touch:py-2 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
         >
           Add
         </button>
