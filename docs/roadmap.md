@@ -76,10 +76,12 @@ below was confirmed to exist in `src/` or `server/` that day. "Overseerr" and
       non-English users; the current English/all filter covers the owner.
 - [ ] **Issue reporting** (`IssueModal`) - "bad audio on this file"
       tracking; mostly a multi-user workflow, marginal solo.
-- ~~**Public REST API**~~ - **SKIPPED 2026-08-19**: Seerr needs one as a
-      community project with third-party integrators; Weavarr IS the
-      integration layer, audience of one. If an automation ever needs an
-      endpoint, add that endpoint then.
+- [ ] **Public REST API** - parked until post-release demand (2026-08-19):
+      public release is the plan, but the integrator audience (dashboard
+      widgets, companion apps) only exists after adoption, and a published
+      API is a compatibility promise. Launch needs the network-hardening
+      items (trustProxy, CSRF, versionCheck, applicationUrl) first, not
+      this.
 
 ## Parity already reached
 

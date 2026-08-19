@@ -95,7 +95,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 
 ## 8. API & integrations
 
-- **SKIP** ~~(L) Public documented REST API (`/api/v1` + Swagger, API key with regenerate)~~ - **2026-08-19**: Seerr needs it as a community project with third-party integrators; Weavarr IS the integration layer and has an audience of one. If an automation ever needs an endpoint, add that endpoint then - no versioned public surface commitment.
+- [ ] **GAP** (L) Public documented REST API (`/api/v1` + Swagger, API key with regenerate) - **PARKED until post-release demand (2026-08-19)**: public release is the plan, but the API's audience (dashboard widgets, companion apps, scripts) only exists after adoption, and a published API is a compatibility promise you can't reshape freely. Build it when integrators show up and their requests define the shape. NOT a launch requirement - the launch checklist is the §1 hardening pile (trustProxy, CSRF, versionCheck, applicationUrl, timeouts) plus a documented "no-users by design, gate it at your reverse proxy" deployment stance.
 - [ ] **GAP** (M) Tautulli integration (richer Plex watch stats); our watched-sync reads Plex/Jellyfin directly. Partially DIFF, listed because Tautulli unlocks deeper history.
 - **DIFF** PWA installability - Seerr is a full PWA with manifest + webpush; we have responsive web only. Fold into the Webpush item.
 
