@@ -4,6 +4,7 @@ import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 import { findTvIdByTvdbId, findTvIdByImdbId } from './tmdb';
 import { recordRequest } from './requestLedger';
+import { readableApiError } from './httpError';
 
 // Enable defaults on (unset !== 'false') - Sonarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -124,7 +125,7 @@ export async function addSeriesToSonarr({
         : { monitor, searchForMissingEpisodes: monitor !== 'future' },
     }),
   });
-  if (!addRes.ok) throw new Error(`Sonarr add failed: ${await addRes.text()}`);
+  if (!addRes.ok) throw new Error(await readableApiError(addRes, 'Sonarr add failed'));
 
   // The permanent request ledger - never let a bookkeeping failure break the add itself.
   try {
@@ -211,7 +212,7 @@ export async function forceImportSonarr(downloadId: string) {
     headers: headers(),
     body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
   });
-  if (!cmdRes.ok) throw new Error(`Sonarr import command failed: ${await cmdRes.text()}`);
+  if (!cmdRes.ok) throw new Error(await readableApiError(cmdRes, 'Sonarr import command failed'));
   return { triggered: true };
 }
 
@@ -374,7 +375,8 @@ export async function deleteSonarrSeries(seriesId: number): Promise<void> {
       method: 'DELETE',
       headers: headers(),
     });
-    if (!res.ok) throw new Error(`Sonarr series delete failed: ${await res.text()}`);
+    // 404 = already gone - the goal state, not an error worth surfacing.
+    if (!res.ok && res.status !== 404) throw new Error(await readableApiError(res, 'Sonarr series delete failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     notifyAllChannels('Delete failed', `Sonarr series ${seriesId}: ${message}`, 'alert').catch(() => {});
@@ -482,14 +484,14 @@ async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<number 
     headers: headers(),
     body: JSON.stringify({ episodeIds, monitored: true }),
   });
-  if (!monitorRes.ok) throw new Error(`Sonarr monitor failed: ${await monitorRes.text()}`);
+  if (!monitorRes.ok) throw new Error(await readableApiError(monitorRes, 'Sonarr monitor failed'));
 
   const searchRes = await fetch(`${SONARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ name: 'EpisodeSearch', episodeIds }),
   });
-  if (!searchRes.ok) throw new Error(`Sonarr episode search failed: ${await searchRes.text()}`);
+  if (!searchRes.ok) throw new Error(await readableApiError(searchRes, 'Sonarr episode search failed'));
   const command = await searchRes.json();
   return (command?.id as number) ?? null;
 }
@@ -535,7 +537,7 @@ async function withTemporaryQualityProfile<T>(
       headers: headers(),
       body: JSON.stringify({ ...series, qualityProfileId: profileId }),
     });
-    if (!res.ok) throw new Error(`Sonarr series update failed: ${await res.text()}`);
+    if (!res.ok) throw new Error(await readableApiError(res, 'Sonarr series update failed'));
   }
 
   await setProfile(overrideProfileId);
@@ -584,14 +586,15 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
       method: 'DELETE',
       headers: headers(),
     });
-    if (!deleteRes.ok) throw new Error(`Sonarr episode file delete failed: ${await deleteRes.text()}`);
+    // 404 = the file is already gone - proceed to the unmonitor step anyway.
+    if (!deleteRes.ok && deleteRes.status !== 404) throw new Error(await readableApiError(deleteRes, 'Sonarr episode file delete failed'));
 
     const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
     });
-    if (!monitorRes.ok) throw new Error(`Sonarr unmonitor failed: ${await monitorRes.text()}`);
+    if (!monitorRes.ok) throw new Error(await readableApiError(monitorRes, 'Sonarr unmonitor failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'alert').catch(() => {});
@@ -608,7 +611,7 @@ export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
       headers: headers(),
       body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
     });
-    if (!res.ok) throw new Error(`Sonarr unmonitor failed: ${await res.text()}`);
+    if (!res.ok) throw new Error(await readableApiError(res, 'Sonarr unmonitor failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'alert').catch(() => {});

@@ -3,6 +3,7 @@ import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 import { recordRequest } from './requestLedger';
+import { readableApiError } from './httpError';
 
 // Enable defaults on (unset !== 'false') - Radarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -91,7 +92,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
       addOptions: { searchForMovie: true },
     }),
   });
-  if (!addRes.ok) throw new Error(`Radarr add failed: ${await addRes.text()}`);
+  if (!addRes.ok) throw new Error(await readableApiError(addRes, 'Radarr add failed'));
 
   // The permanent request ledger - never let a bookkeeping failure break the add itself.
   try {
@@ -166,7 +167,7 @@ export async function forceImportRadarr(downloadId: string) {
     headers: headers(),
     body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
   });
-  if (!cmdRes.ok) throw new Error(`Radarr import command failed: ${await cmdRes.text()}`);
+  if (!cmdRes.ok) throw new Error(await readableApiError(cmdRes, 'Radarr import command failed'));
   return { triggered: true };
 }
 
@@ -207,7 +208,7 @@ export async function searchRadarrMovie(movieId: number): Promise<void> {
     headers: headers(),
     body: JSON.stringify({ name: 'MoviesSearch', movieIds: [movieId] }),
   });
-  if (!res.ok) throw new Error(`Radarr movie search failed: ${await res.text()}`);
+  if (!res.ok) throw new Error(await readableApiError(res, 'Radarr movie search failed'));
 }
 
 export interface RadarrMovie {
@@ -253,7 +254,9 @@ export async function deleteRadarrMovie(movieId: number): Promise<void> {
       method: 'DELETE',
       headers: headers(),
     });
-    if (!res.ok) throw new Error(`Radarr movie delete failed: ${await res.text()}`);
+    // 404 = the movie is already gone (deleted elsewhere, or a stale row) -
+    // that IS the goal state, so it's success, not an error to show the user.
+    if (!res.ok && res.status !== 404) throw new Error(await readableApiError(res, 'Radarr movie delete failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     notifyAllChannels('Delete failed', `Radarr movie ${movieId}: ${message}`, 'alert').catch(() => {});

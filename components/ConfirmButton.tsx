@@ -86,7 +86,9 @@ export default function ConfirmButton({
           Failed - retry
         </button>
       )}
-      {status === 'error' && error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {/* Clamped: error messages are humanized at the source (lib/httpError),
+          but no failure mode should ever be able to paint a wall of text. */}
+      {status === 'error' && error && <p className="text-xs text-red-400 mt-1 max-w-xs break-words line-clamp-3">{error}</p>}
     </div>
   );
 }
