@@ -32,7 +32,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 ## 2. Service connections (Radarr/Sonarr)
 
-- [ ] **GAP** (L) Multiple instances + `is4k` per instance + `isDefault` routing - roadmap Tier 3, the real architectural lift.
+- **SKIP** ~~(L) Multiple instances + `is4k` per instance + `isDefault` routing~~ - **2026-08-19**: solves the two-library problem of internet-facing multi-viewer servers (cheap-transcode 1080p + reserved 4K). Single user + LAN-only + the "download highest quality" option covers the entire quality decision already. Largest effort on the board for zero local value.
 - [ ] **GAP** (S) `minimumAvailability` for Radarr adds (announced/inCinemas/released) - we always add with Radarr's default.
 - [ ] **GAP** (M) Root folder picker at request time (`activeDirectory` + per-request override) - roadmap Tier 3; we use Radarr/Sonarr's first root folder, no choice.
 - [ ] **GAP** (M) Tags: default tags per service, `animeTags` - we send no tags ever.
@@ -95,7 +95,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 
 ## 8. API & integrations
 
-- [ ] **GAP** (L) Public documented REST API (`/api/v1` + Swagger, API key with regenerate) - roadmap Tier 5, deliberately deferred.
+- **SKIP** ~~(L) Public documented REST API (`/api/v1` + Swagger, API key with regenerate)~~ - **2026-08-19**: Seerr needs it as a community project with third-party integrators; Weavarr IS the integration layer and has an audience of one. If an automation ever needs an endpoint, add that endpoint then - no versioned public surface commitment.
 - [ ] **GAP** (M) Tautulli integration (richer Plex watch stats); our watched-sync reads Plex/Jellyfin directly. Partially DIFF, listed because Tautulli unlocks deeper history.
 - **DIFF** PWA installability - Seerr is a full PWA with manifest + webpush; we have responsive web only. Fold into the Webpush item.
 
