@@ -66,10 +66,10 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 - [ ] **GAP** (S) `discoverRegion` + `originalLanguage` + `streamingRegion` filters - region-aware discovery; we filter English/all only.
 - [ ] **GAP** (M) Person pages (actor/director filmography) - roadmap Tier 2.
 - [ ] **GAP** (M) Collections page + request-whole-collection - roadmap Tier 2.
-- [ ] **GAP** (S) "Where to watch" streaming providers on detail pages (JustWatch data via TMDB) - we don't show it.
-- [ ] **GAP** (S) Trailers on detail pages (YouTube embed).
-- [ ] **GAP** (S) Recommendations / "similar titles" rows on detail pages.
-- [ ] **GAP** (S) Keywords/genres as clickable chips on detail pages -> filtered browse.
+- [x] "Where to watch" providers - audit error: this already existed (stream + rent logos, JustWatch attribution).
+- [x] Trailers (2026-08-18) - existed as an external YouTube link; now embeds in-app in the shared Modal.
+- [x] "More Like This" rows (shipped 2026-08-18) - TMDB recommendations as full cards (badges/request pills/progress all live there too).
+- [x] Genre chips (shipped 2026-08-18) - detail.genres now render as chips linking into the browse grid via catalog mapping; keywords remain informational pills.
 - [x] Hover synopsis on cards (ours; Seerr shows text under poster).
 - [x] Availability badges on cards (parity).
 

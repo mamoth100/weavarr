@@ -41,6 +41,7 @@ export interface TmdbDetailResponse extends TmdbMovie {
   runtime: number | null;
   tagline: string;
   videos?: { results: TmdbVideo[] };
+  recommendations?: { results: TmdbMovie[] };
   status?: string;
   spoken_languages?: { iso_639_1: string; english_name: string }[];
   seasons?: TmdbSeason[];

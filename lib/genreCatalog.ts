@@ -43,3 +43,20 @@ export const ALL_GENRE: GenreDef = GENRE_CATALOG.find((g) => g.id === ALL_GENRES
 export function getGenre(id: string | undefined, fallback: GenreDef = ALL_GENRE): GenreDef {
   return GENRE_CATALOG.find((g) => g.id === id) ?? fallback;
 }
+
+/**
+ * The catalog genre a TMDB genre id belongs to, for the given media type -
+ * lets detail-page genre chips link into the browse grid. Handles the
+ * "28|12" OR-string ids. Null when no catalog genre covers it (chip renders
+ * as plain text instead of a link).
+ */
+export function catalogGenreForTmdbId(tmdbGenreId: number, mediaType: 'movie' | 'tv'): GenreDef | null {
+  for (const genre of GENRE_CATALOG) {
+    if (genre.id === ALL_GENRES_ID) continue;
+    const field = mediaType === 'movie' ? genre.movieGenreId : genre.tvGenreId;
+    if (field === undefined) continue;
+    const ids = String(field).split('|').map(Number);
+    if (ids.includes(tmdbGenreId)) return genre;
+  }
+  return null;
+}
