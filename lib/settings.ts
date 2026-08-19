@@ -18,6 +18,10 @@ export interface SettingField {
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
+  { key: 'APP_TITLE', label: 'Application Title (browser tab + notification links)', group: 'Application', secret: false },
+  { key: 'APP_URL', label: 'Application URL (public address - makes notifications link back to the app)', group: 'Application', secret: false },
+  { key: 'ENABLE_CSRF_PROTECTION', label: 'CSRF Protection (block cross-site API calls; restart to apply)', group: 'Network', secret: false, type: 'boolean', defaultValue: 'true' },
+  { key: 'TRUST_PROXY', label: 'Trust Reverse Proxy Headers (X-Forwarded-*; restart to apply)', group: 'Network', secret: false, type: 'boolean', defaultValue: 'false' },
   { key: 'TMDB_TOKEN', label: 'TMDB Read Access Token', group: 'TMDB', secret: true },
   { key: 'ENABLE_OMDB', label: 'Enable OMDb', group: 'OMDb', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
