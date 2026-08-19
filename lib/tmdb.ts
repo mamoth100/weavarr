@@ -356,3 +356,24 @@ async function findTvIdByExternalId(externalId: string, source: 'tvdb_id' | 'imd
     return null;
   }
 }
+
+export interface TmdbSeasonEpisode {
+  episode_number: number;
+  name: string;
+  air_date: string | null;
+}
+
+/** One season's episode list - feeds the request modal's expanded season rows. Cached an hour like the detail fetches. */
+export async function getTvSeasonEpisodes(tvId: number, seasonNumber: number): Promise<TmdbSeasonEpisode[]> {
+  const res = await tmdbFetch(`${BASE_URL}/tv/${tvId}/season/${seasonNumber}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb season fetch failed: ${res.status}`);
+  const data = await res.json();
+  return ((data.episodes ?? []) as Record<string, unknown>[]).map((e) => ({
+    episode_number: e.episode_number as number,
+    name: (e.name as string) ?? `Episode ${e.episode_number as number}`,
+    air_date: (e.air_date as string) ?? null,
+  }));
+}

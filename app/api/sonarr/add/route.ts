@@ -6,14 +6,22 @@ export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: Request) {
-  const { imdbId, title, monitor, seasonNumber, seasonNumbers, monitorFuture, highestQuality, profileOverride } = await request.json();
+  const { imdbId, title, monitor, seasonNumber, seasonNumbers, episodePicks, monitorFuture, highestQuality, profileOverride } = await request.json();
   if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 });
   const seasonList = Array.isArray(seasonNumbers)
     ? seasonNumbers.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
     : undefined;
+  const episodeList = Array.isArray(episodePicks)
+    ? episodePicks
+        .map((p: { seasonNumber?: unknown; episodeNumber?: unknown }) => ({
+          seasonNumber: Number(p.seasonNumber),
+          episodeNumber: Number(p.episodeNumber),
+        }))
+        .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber > 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
+    : undefined;
 
   try {
-    const result = await addSeriesToSonarr({ imdbId: imdbId ?? null, title, monitor, seasonNumber, seasonNumbers: seasonList, monitorFuture: Boolean(monitorFuture), highestQuality, profileOverride });
+    const result = await addSeriesToSonarr({ imdbId: imdbId ?? null, title, monitor, seasonNumber, seasonNumbers: seasonList, episodePicks: episodeList, monitorFuture: Boolean(monitorFuture), highestQuality, profileOverride });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

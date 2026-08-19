@@ -37,6 +37,7 @@ export async function addSeriesToSonarr({
   monitor = 'all',
   seasonNumber,
   seasonNumbers,
+  episodePicks,
   monitorFuture = false,
   highestQuality = false,
   profileOverride,
@@ -48,6 +49,8 @@ export async function addSeriesToSonarr({
   seasonNumber?: number;
   /** Multiple hand-picked seasons (request modal). Wins over seasonNumber and the monitor preset. */
   seasonNumbers?: number[];
+  /** Hand-picked individual episodes (request modal's expanded rows) - monitored and searched after the add. */
+  episodePicks?: { seasonNumber: number; episodeNumber: number }[];
   /** With seasonNumbers: also monitor seasons that don't exist yet (Sonarr's monitorNewItems). */
   monitorFuture?: boolean;
   highestQuality?: boolean;
@@ -102,7 +105,9 @@ export async function addSeriesToSonarr({
   // overwrite that choice. seasonNumbers (request modal, any combination)
   // supersedes the older single seasonNumber, kept for existing callers.
   const picked = seasonNumbers ?? (seasonNumber !== undefined ? [seasonNumber] : null);
-  const pickedSet = picked ? new Set(picked) : null;
+  const hasEpisodePicks = Boolean(episodePicks && episodePicks.length > 0);
+  // Episode picks force the hand-picked path even with zero full seasons.
+  const pickedSet = picked ? new Set(picked) : hasEpisodePicks ? new Set<number>() : null;
   const seasons = pickedSet
     ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: pickedSet.has(s.seasonNumber) }))
     : series.seasons;
@@ -126,11 +131,33 @@ export async function addSeriesToSonarr({
     }),
   });
   if (!addRes.ok) throw new Error(await readableApiError(addRes, 'Sonarr add failed'));
+  const added = await addRes.json();
+
+  // Hand-picked episodes: Sonarr populates a new series' episode records
+  // asynchronously after the add, so poll briefly, then monitor + search
+  // exactly those episodes.
+  if (hasEpisodePicks && added?.id) {
+    const wanted = new Set(episodePicks!.map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const episodes = await getSonarrSeriesEpisodes(added.id).catch(() => []);
+      if (episodes.length === 0) continue;
+      const ids = episodes.filter((e) => wanted.has(`${e.seasonNumber}:${e.episodeNumber}`)).map((e) => e.id);
+      if (ids.length > 0) {
+        await monitorSonarrEpisodes(ids, true);
+        await triggerSonarrEpisodeSearch(ids);
+      }
+      break;
+    }
+  }
 
   // The permanent request ledger - never let a bookkeeping failure break the add itself.
   try {
     const posterUrl =
       (series.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
+    const episodeSummary = hasEpisodePicks
+      ? episodePicks!.map((p) => `S${p.seasonNumber}E${p.episodeNumber}`)
+      : [];
     recordRequest({
       tmdbId: typeof series.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null,
       tvdbId: typeof series.tvdbId === 'number' && series.tvdbId > 0 ? series.tvdbId : null,
@@ -138,7 +165,7 @@ export async function addSeriesToSonarr({
       title: series.title ?? title,
       posterUrl,
       source,
-      seasons: picked ? JSON.stringify(picked) : monitor,
+      seasons: picked || hasEpisodePicks ? JSON.stringify([...(picked ?? []), ...episodeSummary]) : monitor,
     });
   } catch (err) {
     console.error('[requestLedger] failed to record show request:', err instanceof Error ? err.message : err);
@@ -714,4 +741,110 @@ export async function getSonarrCalendar(start: string, end: string): Promise<Son
       monitored: Boolean(e.monitored),
     };
   });
+}
+
+/** Set monitored on a batch of episodes in one call. */
+export async function monitorSonarrEpisodes(episodeIds: number[], monitored: boolean): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify({ episodeIds, monitored }),
+  });
+  if (!res.ok) throw new Error(await readableApiError(res, 'Sonarr episode monitor failed'));
+}
+
+export interface SonarrSeriesState {
+  seriesId: number;
+  monitorFuture: boolean;
+  episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean }[];
+}
+
+/**
+ * What Sonarr already has for this TMDB show - feeds the request modal's
+ * owned/locked rendering and its editable future-seasons toggle. Null when
+ * the show isn't added, which is what tells the modal to run in add mode.
+ */
+export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<SonarrSeriesState | null> {
+  const all = await getAllSonarrSeries();
+  const match = all.find((s) => s.tmdbId === tmdbId);
+  if (!match) return null;
+
+  const [detailRes, episodes] = await Promise.all([
+    fetch(`${SONARR_URL}/api/v3/series/${match.id}`, { headers: headers(), cache: 'no-store' }),
+    getSonarrSeriesEpisodes(match.id),
+  ]);
+  if (!detailRes.ok) throw new Error(`Sonarr series fetch failed: ${detailRes.status}`);
+  const detail = await detailRes.json();
+
+  return {
+    seriesId: match.id,
+    monitorFuture: detail.monitorNewItems === 'all',
+    episodes: episodes
+      .filter((e) => e.seasonNumber > 0)
+      .map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile })),
+  };
+}
+
+/**
+ * "Get more" of an already-added series: monitor + search newly chosen full
+ * seasons and hand-picked episodes, optionally change future-season
+ * monitoring. Owned files are never touched - Sonarr searches only grab
+ * what's missing, and hand-picked episodes that already have files are
+ * filtered out here as a second guard.
+ */
+export async function expandSonarrSeries({
+  seriesId,
+  seasonNumbers = [],
+  episodePicks = [],
+  monitorFuture,
+}: {
+  seriesId: number;
+  seasonNumbers?: number[];
+  episodePicks?: { seasonNumber: number; episodeNumber: number }[];
+  /** undefined = leave the setting as-is. */
+  monitorFuture?: boolean;
+}): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+
+  // 1. Series-level update: season monitored flags + monitorNewItems.
+  if (seasonNumbers.length > 0 || monitorFuture !== undefined) {
+    const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+    if (!res.ok) throw new Error(`Sonarr series fetch failed: ${res.status}`);
+    const series = await res.json();
+    if (seasonNumbers.length > 0) {
+      const chosen = new Set(seasonNumbers);
+      series.seasons = (series.seasons as { seasonNumber: number; monitored: boolean }[]).map((s) =>
+        chosen.has(s.seasonNumber) ? { ...s, monitored: true } : s
+      );
+    }
+    if (monitorFuture !== undefined) series.monitorNewItems = monitorFuture ? 'all' : 'none';
+    series.monitored = true;
+    const putRes = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(series),
+    });
+    if (!putRes.ok) throw new Error(await readableApiError(putRes, 'Sonarr series update failed'));
+  }
+
+  // 2. Hand-picked episodes: monitor + one batched episode search.
+  if (episodePicks.length > 0) {
+    const episodes = await getSonarrSeriesEpisodes(seriesId);
+    const wanted = new Set(episodePicks.map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
+    const ids = episodes
+      .filter((e) => wanted.has(`${e.seasonNumber}:${e.episodeNumber}`) && !e.hasFile)
+      .map((e) => e.id);
+    if (ids.length > 0) {
+      await monitorSonarrEpisodes(ids, true);
+      await triggerSonarrEpisodeSearch(ids);
+    }
+  }
+
+  // 3. Full-season searches (missing episodes only, by design of searchSonarrSeason).
+  for (const seasonNumber of seasonNumbers) {
+    await searchSonarrSeason(seriesId, seasonNumber).catch(() => {
+      // a season with nothing aired/missing simply has nothing to search
+    });
+  }
 }
