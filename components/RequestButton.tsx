@@ -6,6 +6,37 @@ import ConfirmButton from '@/components/ConfirmButton';
 import RequestShowModal from '@/components/RequestShowModal';
 import { useDownloadProgress, refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
 
+/** "Is this show watching for new episodes?" chip - answers the monitoring question right on the page instead of requiring a trip into the Get more modal. */
+function MonitoringChip({ tmdbId, refreshKey }: { tmdbId: number; refreshKey: number }) {
+  const [monitorFuture, setMonitorFuture] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/sonarr/series-state?tmdbId=${tmdbId}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && !data.error) setMonitorFuture(Boolean(data.monitorFuture));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tmdbId, refreshKey]);
+
+  if (monitorFuture === null) return null;
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${
+        monitorFuture
+          ? 'bg-green-500/15 text-green-400 ring-green-500/25'
+          : 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/25'
+      }`}
+      title='Change this with "Get more" - the future-episodes toggle'
+    >
+      {monitorFuture ? 'Auto-grabbing new episodes' : 'Not watching for new episodes'}
+    </span>
+  );
+}
+
 /** Live download bar under the detail-page action - appears whenever this title has something in the Radarr/Sonarr queue. */
 function DetailDownloadProgress({ id, mediaType }: { id: number; mediaType: 'movie' | 'tv' }) {
   const progressMap = useDownloadProgress();
@@ -136,6 +167,8 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   // TV requests go through the modal (season checkboxes, quality) - the old
   // inline <select> could only pick a single season or preset.
   const [modalOpen, setModalOpen] = useState(false);
+  // Bumped after a modal save so the monitoring chip refetches its state.
+  const [monitoringRefresh, setMonitoringRefresh] = useState(0);
 
   const [highestQuality, setHighestQuality] = useState(false);
   // Assume configured until told otherwise, so the common (already-set-up) case never flickers.
@@ -230,6 +263,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
             Get more
           </button>
           <DeleteSeriesButton seriesId={sonarrSeriesId} />
+          <MonitoringChip tmdbId={id} refreshKey={monitoringRefresh} />
         </div>
         <DetailDownloadProgress id={id} mediaType="tv" />
         <RequestShowModal
@@ -242,6 +276,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           highestConfigured={highestConfigured}
           onSuccess={() => {
             refreshDownloadProgressSoon();
+            setMonitoringRefresh((k) => k + 1);
           }}
         />
       </div>

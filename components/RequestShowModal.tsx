@@ -266,6 +266,21 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
           </p>
         ) : (
           <div className="space-y-2">
+            {/* Above the season list on purpose - below a long scrollable
+                list it was invisible enough that its existence got reported
+                as a missing feature. */}
+            <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer select-none touch:py-1">
+              <input
+                type="checkbox"
+                checked={monitorFuture}
+                onChange={(e) => {
+                  setTouched(true);
+                  setMonitorFuture(e.target.checked);
+                }}
+                className="accent-amber-400 touch:w-5 touch:h-5"
+              />
+              Also grab future episodes as they air
+            </label>
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Seasons</h4>
               {owned && <span className="text-xs text-zinc-500">already-downloaded items are locked</span>}
@@ -279,11 +294,11 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                 const eps = seasonEpisodes.get(n);
                 return (
                   <div key={n}>
-                    <div className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-800/50">
+                    <div className="flex items-center gap-2 px-3 py-2 touch:py-3 text-sm hover:bg-zinc-800/50">
                       <button
                         onClick={() => toggleExpand(n)}
                         aria-label={`${expanded.has(n) ? 'Collapse' : 'Expand'} season ${n} episodes`}
-                        className="w-5 text-zinc-500 hover:text-zinc-200"
+                        className="w-5 touch:w-9 touch:h-9 touch:-my-1 flex items-center justify-center text-zinc-500 hover:text-zinc-200 touch:text-base"
                       >
                         <span className={`inline-block transition-transform ${expanded.has(n) ? 'rotate-90' : ''}`}>▸</span>
                       </button>
@@ -293,7 +308,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                           checked={fullyOwned || fullSeasons.has(n)}
                           disabled={fullyOwned}
                           onChange={() => toggleSeason(n)}
-                          className="accent-amber-400"
+                          className="accent-amber-400 touch:w-5 touch:h-5"
                         />
                         <span className="flex-1">Season {n}</span>
                         {fullyOwned ? (
@@ -319,14 +334,14 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                             return (
                               <label
                                 key={e.episode_number}
-                                className={`flex items-center gap-2.5 py-1 text-xs ${has ? 'opacity-60' : 'cursor-pointer'}`}
+                                className={`flex items-center gap-2.5 py-1 touch:py-2 text-xs ${has ? 'opacity-60' : 'cursor-pointer'}`}
                               >
                                 <input
                                   type="checkbox"
                                   checked={has || seasonTicked || episodePicks.has(key)}
                                   disabled={has || seasonTicked}
                                   onChange={() => toggleEpisode(n, e.episode_number)}
-                                  className="accent-amber-400"
+                                  className="accent-amber-400 touch:w-5 touch:h-5"
                                 />
                                 <span className="text-zinc-500 w-8">E{e.episode_number}</span>
                                 <span className={`flex-1 truncate ${has ? 'text-zinc-500' : 'text-zinc-300'}`}>{e.name}</span>
@@ -341,18 +356,6 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                 );
               })}
             </div>
-            <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={monitorFuture}
-                onChange={(e) => {
-                  setTouched(true);
-                  setMonitorFuture(e.target.checked);
-                }}
-                className="accent-amber-400"
-              />
-              Also grab future episodes as they air
-            </label>
           </div>
         )}
 
