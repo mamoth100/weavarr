@@ -14,8 +14,10 @@ interface Props {
   onClose: () => void;
   title: string;
   imdbId: string | null;
-  /** Real, numbered seasons (no Specials). Empty = TMDB season list unavailable - falls back to adding all seasons. */
+  /** Real, numbered seasons (no Specials). Empty = the modal fetches them itself when tmdbId is given, else falls back to adding all seasons. */
   seasons: TmdbSeason[];
+  /** Lets the modal fetch the season list itself - card callers don't have it on hand. */
+  tmdbId?: number;
   /** Whether Settings has a Highest Quality profile configured - gates that toggle. */
   highestConfigured: boolean;
   onSuccess: (alreadyAdded: boolean) => void;
@@ -27,7 +29,19 @@ interface Props {
  * monitor future seasons, and set quality, all in one gathered decision.
  * Movies deliberately skip this - nothing to choose there.
  */
-export default function RequestShowModal({ open, onClose, title, imdbId, seasons, highestConfigured, onSuccess }: Props) {
+export default function RequestShowModal({ open, onClose, title, imdbId, seasons: seasonsProp, tmdbId, highestConfigured, onSuccess }: Props) {
+  // Card callers pass tmdbId instead of a season list - fetch it on first open.
+  const [fetchedSeasons, setFetchedSeasons] = useState<TmdbSeason[] | null>(null);
+  useEffect(() => {
+    if (!open || seasonsProp.length > 0 || !tmdbId || fetchedSeasons !== null) return;
+    fetch(`/api/tmdb/seasons?id=${tmdbId}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setFetchedSeasons(((data.seasons ?? []) as TmdbSeason[]).filter((s) => s.season_number > 0 && s.episode_count > 0)))
+      .catch(() => setFetchedSeasons([]));
+  }, [open, seasonsProp.length, tmdbId, fetchedSeasons]);
+
+  const seasons = seasonsProp.length > 0 ? seasonsProp : fetchedSeasons ?? [];
+  const seasonsPending = seasonsProp.length === 0 && Boolean(tmdbId) && fetchedSeasons === null;
   const latestSeason = seasons.reduce((max, s) => (s.season_number > max ? s.season_number : max), 0);
   const [checked, setChecked] = useState<Set<number>>(new Set(latestSeason > 0 ? [latestSeason] : []));
   const [monitorFuture, setMonitorFuture] = useState(false);
@@ -121,7 +135,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || nothingSelected}
+            disabled={submitting || nothingSelected || seasonsPending}
             title={nothingSelected ? 'Pick at least one season (or future seasons)' : undefined}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40"
           >
@@ -131,7 +145,13 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       }
     >
       <div className="space-y-4">
-        {seasons.length === 0 ? (
+        {seasonsPending ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 bg-zinc-800 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : seasons.length === 0 ? (
           <p className="text-sm text-zinc-400">
             Season list unavailable for this show - all seasons will be added and monitored.
           </p>
