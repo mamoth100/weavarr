@@ -22,16 +22,21 @@ comparison. The no-users rule survives release: the stance is "no accounts
 by design - gate access at your reverse proxy / VPN," stated in the README,
 not an auth system.
 
-1. [ ] **RELEASE** (S) `trustProxy` - correct client IPs behind reverse
-   proxies (every public deployment will sit behind one).
-2. [ ] **RELEASE** (S) CSRF protection - state-changing routes need a story
-   before strangers expose this to the internet.
+1. [x] **RELEASE** (S) `trustProxy` - **SHIPPED 2026-08-19** as TRUST_PROXY
+   setting (default off): trusted X-Forwarded-Host joins the CSRF allow-set,
+   X-Forwarded-For becomes the logged client IP.
+2. [x] **RELEASE** (S) CSRF protection - **SHIPPED 2026-08-19**: middleware
+   on all state-changing /api calls, on by default, Origin-vs-host match
+   (+ APP_URL + trusted forwarded host); non-browser clients pass through.
+   Verified: forged-Origin 403, same-origin browser 200, no-Origin curl 200.
 3. [ ] **RELEASE** (S) Deployment-stance docs - README section: no users by
    design, gate at reverse proxy/VPN, what to expose and what never to.
 4. [ ] **RELEASE** (S) `versionCheck` - "update available" notice; strangers
    won't be pulling git like we do.
-5. [ ] **RELEASE** (S) Application title + URL - notification deep-links
-   must work at addresses that aren't 10.0.0.254:6767.
+5. [x] **RELEASE** (S) Application title + URL - **SHIPPED 2026-08-19**:
+   APP_TITLE drives the browser tab + link labels, APP_URL deep-links every
+   notification (Pushover url, Discord clickable embed, webhook url field;
+   imports land on /ready-to-watch, alerts on /status).
 6. [ ] **RELEASE** (S) `apiRequestTimeout` defaults - other people's arr
    stacks are slower and weirder; hung fetches need a bound.
 
@@ -40,10 +45,10 @@ knobs, cacheImages, then the public API when integrators appear (§8).
 
 ## 1. Network & server config
 
-- [ ] **GAP** (S) **RELEASE #5** Application title + URL (`applicationTitle`, `applicationUrl`) - used in notifications/links; we hardcode "Weavarr" and have no canonical URL setting (matters for notification deep-links).
+- [x] **RELEASE #5** Application title + URL - shipped 2026-08-19 (see §0).
 - [ ] **GAP** (M) HTTP(S) proxy support (`network.proxy`: host/port/ssl/auth/bypass list/bypass-local) - all outbound TMDB/Plex traffic through a proxy. Matters for some self-hosters. Release second wave.
-- [ ] **GAP** (S) **RELEASE #1** `trustProxy` - correct client IPs behind a reverse proxy (needed before any rate limiting/audit logging).
-- [ ] **GAP** (S) **RELEASE #2** `csrfProtection` - we have no CSRF story at all (single-user LAN today, required for public release).
+- [x] **RELEASE #1** `trustProxy` - shipped 2026-08-19 (see §0).
+- [x] **RELEASE #2** `csrfProtection` - shipped 2026-08-19 (see §0).
 - [ ] **GAP** (S) `forceIpv4First` + DNS cache controls (`dnsCache.forceMinTtl/forceMaxTtl`) - escape hatches for broken IPv6/DNS setups. Release second wave.
 - [ ] **GAP** (S) **RELEASE #6** `apiRequestTimeout` (theirs: 10s default, configurable) - our fetches ride default timeouts.
 - [ ] **GAP** (M) `cacheImages` - proxy + cache TMDB images locally (bandwidth/privacy). We cache Radarr/Sonarr posters but hotlink TMDB. Release second wave.
