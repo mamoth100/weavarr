@@ -69,9 +69,14 @@ async function fetchClientFractions(): Promise<Map<string, number>> {
     for (const g of nzbget.value.result ?? []) {
       const size = g.FileSizeMB;
       const left = g.RemainingSizeMB;
-      if (g.NZBID && size > 0 && typeof left === 'number') {
-        map.set(String(g.NZBID).toLowerCase(), Math.max(0, Math.min(1, (size - left) / size)));
-      }
+      if (!(size > 0) || typeof left !== 'number') continue;
+      const frac = Math.max(0, Math.min(1, (size - left) / size));
+      // Radarr/Sonarr's downloadId for NZBGet is NOT the NZBID - it's the
+      // GUID they attach as the "drone" parameter (verified live 2026-08-18:
+      // downloadId 313d8f8b... vs NZBID 2, drone param carried the GUID).
+      const drone = (g.Parameters ?? []).find((p: { Name?: string }) => (p.Name ?? '').toLowerCase() === 'drone');
+      if (drone?.Value) map.set(String(drone.Value).toLowerCase(), frac);
+      if (g.NZBID) map.set(String(g.NZBID).toLowerCase(), frac);
     }
   }
   return map;
