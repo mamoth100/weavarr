@@ -105,7 +105,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 
 Graded gut-check: value to a self-hosted household, not novelty.
 
-- [ ] **(S) Calendar ICS feed** - subscribe to Weavarr's merged movie+TV calendar from a phone/desktop calendar app. One read-only endpoint, huge convenience. Nobody does the *merged* + watched-aware version.
+- ~~**(S) Calendar ICS feed**~~ **SKIP 2026-08-19** - the app is LAN-only, so server-side calendar fetchers (Google Calendar) can't reach the feed and device-side ones only refresh at home. Verdict: a bookmark to the Calendar page covers the actual use case.
 - [ ] **(M) Storage forecast** - we already read disk space (Status tab) and grab history; project "at this month's pace, /media is full ~Oct 3" with a Logs/Status warning at 30 days out. Seerr shows nothing; Radarr shows raw free space only.
 - [ ] **(M) Cleanup advisor** - rank the watched-and-still-on-disk list by "safe to delete" (watched long ago, not favorited, big on disk, ratings you gave it) instead of chronological. We have all the inputs and the delete plumbing already; this is the brain on top of our existing cleanup lifecycle.
 - [ ] **(M) Year in review ("Weavarr Wrapped")** - once a year, a page: hours watched, top genres, fastest-binged show, storage churned. All derivable from Plex/Jellyfin history we already read. Pure delight feature.
