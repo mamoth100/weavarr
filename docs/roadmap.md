@@ -46,12 +46,12 @@ below was confirmed to exist in `src/` or `server/` that day. "Overseerr" and
 - [ ] **Root folder + tags per request** (`AdvancedRequester`) - pick the
       destination root folder and apply Radarr/Sonarr tags at request time.
       Weavarr's advanced picker covers quality profile only.
-- [ ] **Multiple Radarr/Sonarr instances + separate 4K status** - route
-      requests to a 4K instance vs standard, track 4K availability per title
-      (`status4k` fields throughout Seerr's request lifecycle). Real
-      architectural lift: touches lib/settings.ts's schema, the single-
-      URL/key model in lib/radarr.ts / lib/sonarr.ts, and needs an instance
-      picker in the request UI.
+- ~~**Multiple Radarr/Sonarr instances + separate 4K status**~~ - **SKIPPED
+      2026-08-19**: the dual-library pattern exists for internet-facing
+      multi-viewer servers (cheap-transcode 1080p + reserved 4K). Single
+      user + LAN-only + the "download highest quality" option already
+      covers the whole quality decision. Largest lift on the board for
+      zero local value.
 
 ## Tier 4 - Notifications & background-job visibility
 
@@ -76,8 +76,10 @@ below was confirmed to exist in `src/` or `server/` that day. "Overseerr" and
       non-English users; the current English/all filter covers the owner.
 - [ ] **Issue reporting** (`IssueModal`) - "bad audio on this file"
       tracking; mostly a multi-user workflow, marginal solo.
-- [ ] **Public REST API** - documented `/api/v1` with an API key for
-      third-party tools. Scoped 2026-08-08, deliberately deferred.
+- ~~**Public REST API**~~ - **SKIPPED 2026-08-19**: Seerr needs one as a
+      community project with third-party integrators; Weavarr IS the
+      integration layer, audience of one. If an automation ever needs an
+      endpoint, add that endpoint then.
 
 ## Parity already reached
 
