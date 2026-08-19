@@ -3,6 +3,7 @@ import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 import { findTvIdByTvdbId, findTvIdByImdbId } from './tmdb';
+import { recordRequest } from './requestLedger';
 
 // Enable defaults on (unset !== 'false') - Sonarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -38,6 +39,7 @@ export async function addSeriesToSonarr({
   monitorFuture = false,
   highestQuality = false,
   profileOverride,
+  source = 'app',
 }: {
   imdbId: string | null;
   title: string;
@@ -50,6 +52,8 @@ export async function addSeriesToSonarr({
   highestQuality?: boolean;
   /** An exact profile name that wins over the Settings default/highest pick for this one request. */
   profileOverride?: string | null;
+  /** Request-ledger attribution: 'app' (human click) or 'watchlist' (auto-add). */
+  source?: 'app' | 'watchlist';
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
@@ -121,6 +125,24 @@ export async function addSeriesToSonarr({
     }),
   });
   if (!addRes.ok) throw new Error(`Sonarr add failed: ${await addRes.text()}`);
+
+  // The permanent request ledger - never let a bookkeeping failure break the add itself.
+  try {
+    const posterUrl =
+      (series.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
+    recordRequest({
+      tmdbId: typeof series.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null,
+      tvdbId: typeof series.tvdbId === 'number' && series.tvdbId > 0 ? series.tvdbId : null,
+      mediaType: 'tv',
+      title: series.title ?? title,
+      posterUrl,
+      source,
+      seasons: picked ? JSON.stringify(picked) : monitor,
+    });
+  } catch (err) {
+    console.error('[requestLedger] failed to record show request:', err instanceof Error ? err.message : err);
+  }
+
   return { alreadyAdded: false };
 }
 
