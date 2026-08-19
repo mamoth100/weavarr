@@ -32,15 +32,17 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
   if (!open) return null;
 
   return (
+    // Phones get a bottom sheet (full-width, pinned to the bottom edge,
+    // taller); sm+ keeps the centered card. Same dialog, different skin.
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div
-        className={`bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl ${wide ? 'max-w-3xl' : 'max-w-md'} w-full max-h-[85vh] flex flex-col`}
+        className={`bg-zinc-900 border border-zinc-700 rounded-t-xl sm:rounded-xl shadow-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-md'} w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3">
