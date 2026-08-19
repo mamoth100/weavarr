@@ -22,9 +22,16 @@ interface QualityProfileOption {
 
 const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
 
-// Where to get a key/token for groups that need one from an external site -
-// shown as a hover tooltip next to the group's Test button.
-const GROUP_INFO: Record<string, { text: string; linkLabel: string; linkHref: string }> = {
+// What a group is for, shown as a "?" tooltip in the group header. The link
+// points at where to get a key/token, for groups that need one from an
+// external site.
+const GROUP_INFO: Record<string, { text: string; linkLabel?: string; linkHref?: string }> = {
+  Application: {
+    text: 'How the app names and finds itself. Application Title renames the browser tab and labels notification links. Application URL is the address notifications deep-link back to - set it to how you reach the app (e.g. http://10.0.0.254:6767, or your domain if proxied). Leave blank and notifications simply carry no link.',
+  },
+  Network: {
+    text: 'For deployments behind a reverse proxy or reachable beyond your LAN. CSRF Protection blocks state-changing API calls made by other websites\' pages (a browser-only attack - your own scripts and curl are unaffected); leave it on. Trust Reverse Proxy Headers makes X-Forwarded-* headers count for client IPs and the CSRF allow-list - enable only when a proxy you control fronts the app, since anyone can send those headers directly. Both apply after a restart.',
+  },
   TMDB: {
     text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Works out of the box with a bundled key. Setting your own isn\'t about rate limits (TMDB limits per-IP, not per-key) - it just means you\'re not affected if the shared bundled key ever gets abused and revoked.',
     linkLabel: 'Get a TMDB key',
@@ -80,15 +87,17 @@ function GroupInfoTooltip({ group }: { group: string }) {
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg p-3 text-xs text-zinc-300">
-          <p className="mb-2">{info.text}</p>
-          <a
-            href={info.linkHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-400 hover:text-amber-300 font-medium"
-          >
-            {info.linkLabel} →
-          </a>
+          <p className={info.linkHref ? 'mb-2' : ''}>{info.text}</p>
+          {info.linkHref && (
+            <a
+              href={info.linkHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:text-amber-300 font-medium"
+            >
+              {info.linkLabel} →
+            </a>
+          )}
         </div>
       )}
     </div>
@@ -101,7 +110,7 @@ const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
 
 // Groups each service's Settings fields into a broader category so the page
 // reads as ~7 sections instead of 12 flat, equally-weighted blocks.
-const SECTION_ORDER = ['Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
+const SECTION_ORDER = ['App Config', 'Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Notifications', 'Misc'];
 const GROUP_TO_SECTION: Record<string, string> = {
   TMDB: 'Metadata',
   OMDb: 'Metadata',
@@ -116,9 +125,12 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Pushover: 'Notifications',
   Webhook: 'Notifications',
   Discord: 'Notifications',
-  'App Behavior': 'Misc',
-  Application: 'Misc',
-  Network: 'Misc',
+  // All app-level knobs in one section: identity/links, network posture,
+  // and behavior toggles. 'Misc' stays in SECTION_ORDER only as the
+  // fallback bucket for any group without a mapping.
+  Application: 'App Config',
+  Network: 'App Config',
+  'App Behavior': 'App Config',
 };
 
 // Backup gets its own top-level tab in SettingsLayout.tsx (BackupPanel.tsx),
