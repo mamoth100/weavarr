@@ -9,20 +9,45 @@ field inventory, down to the allow-SSL tier, plus ideas neither app has.
 
 Legend: `[ ]` open · `[x]` done · **GAP** = Seerr has it, we don't ·
 **DIFF** = we cover it a different way · **SKIP** = deliberately not doing
-(single-user stance) · (S/M/L) = effort.
+(single-user stance) · (S/M/L) = effort · **RELEASE** = launch-blocking for
+the public release (stated goal 2026-08-19).
 
 ---
 
+## 0. Public release checklist
+
+Decided 2026-08-19: Weavarr is going public. These are the launch-blockers,
+in build order - everything else on the board is optional polish by
+comparison. The no-users rule survives release: the stance is "no accounts
+by design - gate access at your reverse proxy / VPN," stated in the README,
+not an auth system.
+
+1. [ ] **RELEASE** (S) `trustProxy` - correct client IPs behind reverse
+   proxies (every public deployment will sit behind one).
+2. [ ] **RELEASE** (S) CSRF protection - state-changing routes need a story
+   before strangers expose this to the internet.
+3. [ ] **RELEASE** (S) Deployment-stance docs - README section: no users by
+   design, gate at reverse proxy/VPN, what to expose and what never to.
+4. [ ] **RELEASE** (S) `versionCheck` - "update available" notice; strangers
+   won't be pulling git like we do.
+5. [ ] **RELEASE** (S) Application title + URL - notification deep-links
+   must work at addresses that aren't 10.0.0.254:6767.
+6. [ ] **RELEASE** (S) `apiRequestTimeout` defaults - other people's arr
+   stacks are slower and weirder; hung fetches need a bound.
+
+Second wave (post-launch, demand-driven): proxy support, forceIpv4First/DNS
+knobs, cacheImages, then the public API when integrators appear (§8).
+
 ## 1. Network & server config
 
-- [ ] **GAP** (S) Application title + URL (`applicationTitle`, `applicationUrl`) - used in notifications/links; we hardcode "Weavarr" and have no canonical URL setting (matters for notification deep-links).
-- [ ] **GAP** (M) HTTP(S) proxy support (`network.proxy`: host/port/ssl/auth/bypass list/bypass-local) - all outbound TMDB/Plex traffic through a proxy. Matters for some self-hosters.
-- [ ] **GAP** (S) `trustProxy` - correct client IPs behind a reverse proxy (needed before any rate limiting/audit logging).
-- [ ] **GAP** (S) `csrfProtection` toggle - we have no CSRF story at all (single-user LAN today, required for public release).
-- [ ] **GAP** (S) `forceIpv4First` + DNS cache controls (`dnsCache.forceMinTtl/forceMaxTtl`) - escape hatches for broken IPv6/DNS setups.
-- [ ] **GAP** (S) `apiRequestTimeout` (theirs: 10s default, configurable) - our fetches ride default timeouts.
-- [ ] **GAP** (M) `cacheImages` - proxy + cache TMDB images locally (bandwidth/privacy). We cache Radarr/Sonarr posters but hotlink TMDB.
-- [ ] **GAP** (S) `versionCheck` - "an update is available" notice. We have no update awareness at all.
+- [ ] **GAP** (S) **RELEASE #5** Application title + URL (`applicationTitle`, `applicationUrl`) - used in notifications/links; we hardcode "Weavarr" and have no canonical URL setting (matters for notification deep-links).
+- [ ] **GAP** (M) HTTP(S) proxy support (`network.proxy`: host/port/ssl/auth/bypass list/bypass-local) - all outbound TMDB/Plex traffic through a proxy. Matters for some self-hosters. Release second wave.
+- [ ] **GAP** (S) **RELEASE #1** `trustProxy` - correct client IPs behind a reverse proxy (needed before any rate limiting/audit logging).
+- [ ] **GAP** (S) **RELEASE #2** `csrfProtection` - we have no CSRF story at all (single-user LAN today, required for public release).
+- [ ] **GAP** (S) `forceIpv4First` + DNS cache controls (`dnsCache.forceMinTtl/forceMaxTtl`) - escape hatches for broken IPv6/DNS setups. Release second wave.
+- [ ] **GAP** (S) **RELEASE #6** `apiRequestTimeout` (theirs: 10s default, configurable) - our fetches ride default timeouts.
+- [ ] **GAP** (M) `cacheImages` - proxy + cache TMDB images locally (bandwidth/privacy). We cache Radarr/Sonarr posters but hotlink TMDB. Release second wave.
+- [ ] **GAP** (S) **RELEASE #4** `versionCheck` - "an update is available" notice. We have no update awareness at all.
 - **DIFF** Per-connection `useSsl`/hostname/port/urlBase (radarr/sonarr/plex/jellyfin) - Seerr splits these into fields; we take full URLs, which already carry scheme/port/path. Covered, arguably better. Nothing to do.
 - **SKIP** `locale` + full UI i18n - roadmap Tier 5 already parks localization.
 
