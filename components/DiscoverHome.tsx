@@ -37,10 +37,13 @@ const SECTIONS: Section[] = [
  * whole landing page down; if everything failed, say so once.
  */
 export default async function DiscoverHome() {
+  // Pass the FULL first page (20 items) and let CardGrid cap at SLICE after
+  // the watched/not-interested filter runs - pre-slicing to 10 meant a
+  // hidden item left a visible hole in the grid instead of being topped up.
   const settled = await Promise.allSettled(SECTIONS.map((s) => s.fetchItems()));
   const sections = SECTIONS.map((s, i) => ({
     ...s,
-    items: settled[i].status === 'fulfilled' ? (settled[i] as PromiseFulfilledResult<TmdbMovie[]>).value.slice(0, SLICE) : null,
+    items: settled[i].status === 'fulfilled' ? (settled[i] as PromiseFulfilledResult<TmdbMovie[]>).value : null,
   }));
 
   if (sections.every((s) => !s.items || s.items.length === 0)) {
@@ -65,7 +68,7 @@ export default async function DiscoverHome() {
                 See all →
               </Link>
             </div>
-            <CardGrid items={s.items} mediaType="movie" variant={s.variant} quiet />
+            <CardGrid items={s.items} mediaType="movie" variant={s.variant} quiet maxItems={SLICE} />
           </section>
         )
       )}
