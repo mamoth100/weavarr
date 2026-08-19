@@ -41,11 +41,19 @@ function buildWorkingOrder(
   return ordered;
 }
 
+// The sidebar renders links in two groups (Browse = 'tab' kind after the
+// genre tabs, Manage = 'link' kind), so the settings lists mirror that split.
+// Storage stays one MENU_LINKS value - tabs first, then pages.
+const TAB_CATALOG = MENU_LINK_CATALOG.filter((l) => l.kind === 'tab');
+const PAGE_CATALOG = MENU_LINK_CATALOG.filter((l) => l.kind === 'link');
+const TAB_IDS = new Set(TAB_CATALOG.map((l) => l.id));
+
 export default function MenuSettingsPanel() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [genreItems, setGenreItems] = useState<DraggableItem[]>([]);
-  const [linkItems, setLinkItems] = useState<DraggableItem[]>([]);
+  const [tabItems, setTabItems] = useState<DraggableItem[]>([]);
+  const [pageItems, setPageItems] = useState<DraggableItem[]>([]);
   const [originalGenres, setOriginalGenres] = useState<string[]>([]);
   const [originalLinks, setOriginalLinks] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -65,7 +73,8 @@ export default function MenuSettingsPanel() {
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
         setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
-        setLinkItems(buildWorkingOrder(MENU_LINK_CATALOG, linkIds));
+        setTabItems(buildWorkingOrder(TAB_CATALOG, linkIds.filter((id) => TAB_IDS.has(id))));
+        setPageItems(buildWorkingOrder(PAGE_CATALOG, linkIds.filter((id) => !TAB_IDS.has(id))));
         setLoaded(true);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
@@ -112,7 +121,7 @@ export default function MenuSettingsPanel() {
   );
 
   const currentGenreIds = genreItems.filter((it) => it.checked).map((it) => it.id);
-  const currentLinkIds = linkItems.filter((it) => it.checked).map((it) => it.id);
+  const currentLinkIds = [...tabItems, ...pageItems].filter((it) => it.checked).map((it) => it.id);
   const genresChanged = currentGenreIds.join(',') !== originalGenres.join(',');
   const linksChanged = currentLinkIds.join(',') !== originalLinks.join(',');
   const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0);
@@ -147,12 +156,12 @@ export default function MenuSettingsPanel() {
   return (
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
-        <p>Drag the grip on the left to reorder. Order here is the order in the dashboard&apos;s top menu - the first genre is what the dashboard shows by default.</p>
-        <p>Items that don&apos;t fit in the menu bar automatically fall into a &quot;More&quot; dropdown. Takes effect immediately - no restart needed.</p>
+        <p>Drag the grip on the left to reorder. The sections below mirror the sidebar&apos;s groups - Browse first (genres, then browse views), then Manage.</p>
+        <p>The first genre is what the dashboard shows by default. Takes effect on save - no restart needed.</p>
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Genre tabs</h2>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Browse - genres</h2>
         <DraggableCheckList
           items={displayGenreItems}
           onReorder={(ids) => reorder(genreItems, setGenreItems, ids)}
@@ -161,11 +170,21 @@ export default function MenuSettingsPanel() {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Other menu items</h2>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Browse - views</h2>
+        <p className="text-xs text-zinc-500">Shown under Browse, after the genres.</p>
         <DraggableCheckList
-          items={linkItems}
-          onReorder={(ids) => reorder(linkItems, setLinkItems, ids)}
-          onToggle={(id) => toggle(linkItems, setLinkItems, id)}
+          items={tabItems}
+          onReorder={(ids) => reorder(tabItems, setTabItems, ids)}
+          onToggle={(id) => toggle(tabItems, setTabItems, id)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Manage - pages</h2>
+        <DraggableCheckList
+          items={pageItems}
+          onReorder={(ids) => reorder(pageItems, setPageItems, ids)}
+          onToggle={(id) => toggle(pageItems, setPageItems, id)}
         />
       </div>
 

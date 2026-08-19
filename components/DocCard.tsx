@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ScoreBadge from './ScoreBadge';
 import CardActions from './CardActions';
 import CardRequestPill from './CardRequestPill';
@@ -67,6 +67,26 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
   // Requested from THIS card this session - flips the state instantly while
   // the library-status cache (one fetch per page load) still says unknown.
   const [justRequested, setJustRequested] = useState(false);
+  // The hover synopsis is bottom-anchored while the action pills hang from the
+  // top - a fixed 7-line clamp overlapped the Request pill on smaller cards
+  // (More Like This grids). Clamp to however many lines fit below the pills.
+  const posterRef = useRef<HTMLDivElement>(null);
+  const [synopsisLines, setSynopsisLines] = useState(7);
+  useEffect(() => {
+    const el = posterRef.current;
+    if (!el) return;
+    const compute = () => {
+      // 140px = bottom of the Request pill (top-[7.25rem] + pill height),
+      // 36px = overlay bottom padding + breathing room, 16.5px per
+      // text-xs/leading-snug line.
+      const room = el.clientHeight - 140 - 36;
+      setSynopsisLines(Math.max(0, Math.min(7, Math.floor(room / 16.5))));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const cardMediaType = doc.mediaType ?? mediaType;
   const availability: Availability | undefined =
     (libraryStatus
@@ -112,7 +132,7 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
           />
         )}
         <Link href={href}>
-          <div className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
+          <div ref={posterRef} className="relative aspect-[2/3] bg-zinc-800 rounded-lg overflow-hidden">
           {posterUrl ? (
             <Image
               src={posterUrl}
@@ -131,12 +151,16 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
               Rendered BEFORE the badges so score/availability stay on top.
               The action column sits top-left, so the text only needs to
               clear the little language chip at bottom-right. */}
-          {doc.overview && (
+          {doc.overview && synopsisLines >= 2 && (
             <div className="hidden mouse:flex absolute inset-0 flex-col justify-end px-3 pt-3 pb-8 bg-gradient-to-t from-black/95 via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {/* line-clamp-[7]: bracket syntax on purpose - Tailwind's core
                   clamp utilities stop at 6, and the bare line-clamp-7 class
-                  silently compiles to nothing (text overflows the poster). */}
-              <p className="text-xs text-zinc-100 leading-snug line-clamp-[7]">{doc.overview}</p>
+                  silently compiles to nothing (text overflows the poster).
+                  The inline style tightens the clamp on cards too short for
+                  all 7 lines to clear the action-pill column. */}
+              <p className="text-xs text-zinc-100 leading-snug line-clamp-[7]" style={{ WebkitLineClamp: synopsisLines }}>
+                {doc.overview}
+              </p>
             </div>
           )}
           {availability && <AvailabilityBadge availability={availability} />}
