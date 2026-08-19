@@ -146,6 +146,63 @@ export async function searchTv(
   };
 }
 
+/** Normalize a raw TMDB TV result to the movie shape the cards render. */
+function normalizeTvResult(show: Record<string, unknown>) {
+  return {
+    ...show,
+    title: (show.name as string) ?? show.title,
+    release_date: (show.first_air_date as string) ?? show.release_date ?? '',
+    mediaType: 'tv' as const,
+  };
+}
+
+/**
+ * Trending movies+TV this week - the Discover home's headline row and the
+ * ?genre=trending see-all view. TMDB mixes people into /trending/all;
+ * filter those out and tag mediaType per item so mixed grids route
+ * clicks to the right detail page.
+ */
+export async function getTrendingWeek(page = 1): Promise<TmdbDiscoverResponse> {
+  const res = await tmdbFetch(`${BASE_URL}/trending/all/week?page=${page}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb trending failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    ...data,
+    results: (data.results as Record<string, unknown>[])
+      .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+      .map((r) => (r.media_type === 'tv' ? normalizeTvResult(r) : { ...r, mediaType: 'movie' as const })),
+  };
+}
+
+export async function getPopularMovies(page = 1): Promise<TmdbDiscoverResponse> {
+  const res = await tmdbFetch(`${BASE_URL}/movie/popular?page=${page}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb popular movies failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    ...data,
+    results: (data.results as Record<string, unknown>[]).map((r) => ({ ...r, mediaType: 'movie' as const })),
+  };
+}
+
+export async function getPopularTv(page = 1): Promise<TmdbDiscoverResponse> {
+  const res = await tmdbFetch(`${BASE_URL}/tv/popular?page=${page}`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb popular TV failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    ...data,
+    results: (data.results as Record<string, unknown>[]).map(normalizeTvResult),
+  };
+}
+
 export async function getWatchProviders(
   id: number,
   mediaType: MediaType = 'movie',

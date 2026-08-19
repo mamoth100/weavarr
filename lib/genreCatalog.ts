@@ -10,7 +10,16 @@ export interface GenreDef {
 /** Sentinel genre id meaning "no genre filter" — matched specially in discoverMovies/discoverTv. */
 export const ALL_GENRES_ID = 'all';
 
+/**
+ * Sentinel genre id for the sectioned Discover home (trending/popular/coming
+ * soon stacks). It lives in the genre catalog so the Menu settings list
+ * controls it like any genre - drag it to the top and it becomes the
+ * dashboard's default landing, same rule as everything else.
+ */
+export const DISCOVER_ID = 'discover';
+
 export const GENRE_CATALOG: GenreDef[] = [
+  { id: DISCOVER_ID, label: 'Discover' },
   { id: ALL_GENRES_ID, label: 'All Genres', movieGenreId: ALL_GENRES_ID, tvGenreId: ALL_GENRES_ID },
   { id: 'documentary', label: 'Documentaries', movieGenreId: 99, tvGenreId: 99 },
   { id: 'reality', label: 'Reality TV', tvGenreId: 10764 },

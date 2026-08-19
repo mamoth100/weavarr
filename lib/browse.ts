@@ -4,9 +4,9 @@
  * subsequent pages from - both MUST interpret filters identically or page 2
  * would show different results than page 1's view of the world.
  */
-import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, searchMovies, searchTv } from '@/lib/tmdb';
+import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
-import { ALL_GENRE, getGenre, type GenreDef } from '@/lib/genreCatalog';
+import { ALL_GENRE, DISCOVER_ID, getGenre, type GenreDef } from '@/lib/genreCatalog';
 import { getMenuConfig } from '@/lib/settings';
 import type { SortOption, TmdbMovie } from '@/types';
 
@@ -21,9 +21,16 @@ export interface BrowseParamsInput {
   year?: string;
 }
 
+/** Curated TMDB lists that have their own see-all views but aren't genres - no filters apply, just pages of the list. */
+export type SpecialView = 'trending' | 'popular-movies' | 'popular-tv';
+const SPECIAL_VIEWS: SpecialView[] = ['trending', 'popular-movies', 'popular-tv'];
+
 export interface BrowseArgs {
   isUpcoming: boolean;
   isGlobalSearch: boolean;
+  /** True = render the sectioned Discover home instead of a browse grid. */
+  isDiscover: boolean;
+  specialView: SpecialView | null;
   activeGenre: GenreDef;
   upcomingGenre: GenreDef;
   defaultGenre: GenreDef;
@@ -46,10 +53,18 @@ export interface BrowsePage {
 
 export async function parseBrowseParams(params: BrowseParamsInput): Promise<BrowseArgs> {
   const config = await getMenuConfig();
-  const defaultGenre = config.genres[0] ?? ALL_GENRE;
+  const landingGenre = config.genres[0] ?? ALL_GENRE;
+  // Discover is a landing/section page, not a fetchable genre - wherever the
+  // pipeline needs a real genre as a placeholder or fallback, skip past it.
+  const defaultGenre = landingGenre.id === DISCOVER_ID
+    ? config.genres.find((g) => g.id !== DISCOVER_ID) ?? ALL_GENRE
+    : landingGenre;
   const isUpcoming = params.genre === 'upcoming';
   const isGlobalSearch = params.genre === 'search';
-  const activeGenre = isUpcoming || isGlobalSearch ? defaultGenre : getGenre(params.genre, defaultGenre);
+  const specialView = SPECIAL_VIEWS.find((v) => v === params.genre) ?? null;
+  const isDiscover = params.genre === DISCOVER_ID || (!params.genre && landingGenre.id === DISCOVER_ID);
+  const activeGenre =
+    isUpcoming || isGlobalSearch || specialView || isDiscover ? defaultGenre : getGenre(params.genre, defaultGenre);
   const upcomingGenre = isUpcoming ? getGenre(params.upcomingGenre) : activeGenre;
 
   const query = params.q?.trim() ?? '';
@@ -71,6 +86,8 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
   return {
     isUpcoming,
     isGlobalSearch,
+    isDiscover,
+    specialView,
     activeGenre,
     upcomingGenre,
     defaultGenre,
@@ -112,6 +129,17 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
   } = args;
   const hasMovies = Boolean(activeGenre.movieGenreId);
   const hasTv = Boolean(activeGenre.tvGenreId);
+
+  // Curated lists come pre-ranked from TMDB - no filters, no genre math.
+  if (args.specialView) {
+    const data =
+      args.specialView === 'trending'
+        ? await getTrendingWeek(page)
+        : args.specialView === 'popular-movies'
+        ? await getPopularMovies(page)
+        : await getPopularTv(page);
+    return { results: data.results, totalPages: data.total_pages, totalResults: data.total_results };
+  }
 
   if (isGlobalSearch) {
     if (!query) return { results: [], totalPages: 1, totalResults: 0 };
