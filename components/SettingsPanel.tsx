@@ -138,9 +138,17 @@ const GROUP_TO_SECTION: Record<string, string> = {
 // it shouldn't read as one.
 const EXCLUDED_GROUPS = new Set(['Backup']);
 
+// What the Connections tab shows - everything except the sections that have
+// their own top-level tabs (App Config, Notifications). Misc stays here as
+// the fallback bucket for unmapped groups.
+export const CONNECTION_SECTIONS = ['Metadata', 'Media Management', 'Downloaders', 'Media Players', 'Misc'];
+
 type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; message?: string; profiles?: QualityProfileOption[] };
 
-export default function SettingsPanel() {
+/** One shared panel behind the Connections / App Config / Notifications tabs - `sections` picks which SECTION_ORDER entries this instance renders. A single-section instance drops the collapsible section header (the tab name already says it) and shows its groups directly. */
+export default function SettingsPanel({ sections }: { sections?: string[] } = {}) {
+  const renderSections = sections ?? SECTION_ORDER;
+  const singleSection = renderSections.length === 1;
   const [settings, setSettings] = useState<SettingStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -183,6 +191,9 @@ export default function SettingsPanel() {
     if (!settings || autoTestedRef.current) return;
     autoTestedRef.current = true;
     for (const group of AUTO_TEST_GROUPS) {
+      // Only auto-test services this instance actually renders - the App
+      // Config / Notifications tabs shouldn't fire Radarr/Sonarr probes.
+      if (!renderSections.includes(GROUP_TO_SECTION[group] ?? 'Misc')) continue;
       const urlField = settings.find((s) => s.key === `${group.toUpperCase()}_URL`);
       const keyField = settings.find((s) => s.key === `${group.toUpperCase()}_KEY`);
       if (urlField?.isSet && keyField?.isSet) handleTest(group);
@@ -204,7 +215,9 @@ export default function SettingsPanel() {
     );
   }
 
-  const groups = Array.from(new Set(settings.map((s) => s.group))).filter((g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g));
+  const groups = Array.from(new Set(settings.map((s) => s.group))).filter(
+    (g) => g !== 'Menu' && !EXCLUDED_GROUPS.has(g) && renderSections.includes(GROUP_TO_SECTION[g] ?? 'Misc')
+  );
 
   // A NON-secret field emptied in the UI is a real change when it currently
   // holds a saved value - without this, select-all-delete on e.g. PLEX_URL
@@ -360,13 +373,14 @@ export default function SettingsPanel() {
         )}
       </div>
 
-      {SECTION_ORDER.map((section) => {
+      {renderSections.map((section) => {
         const sectionGroups = groups.filter((g) => (GROUP_TO_SECTION[g] ?? 'Misc') === section);
         if (sectionGroups.length === 0) return null;
-        const sectionCollapsed = collapsedSections.has(section);
+        const sectionCollapsed = !singleSection && collapsedSections.has(section);
 
         return (
-          <div key={section} className="border border-zinc-800 rounded-lg overflow-hidden">
+          <div key={section} className={singleSection ? '' : 'border border-zinc-800 rounded-lg overflow-hidden'}>
+            {!singleSection && (
             <button
               onClick={() => toggleSection(section)}
               className="group w-full flex items-center gap-2 px-4 py-3 bg-zinc-900 hover:bg-zinc-800/70 text-left"
@@ -378,9 +392,10 @@ export default function SettingsPanel() {
                   switching apps. */}
               <h2 className="text-sm font-semibold text-zinc-400 group-hover:text-white uppercase tracking-wider">{section}</h2>
             </button>
+            )}
 
             {!sectionCollapsed && (
-              <div className="p-4 space-y-4">
+              <div className={singleSection ? 'space-y-4' : 'p-4 space-y-4'}>
                 {sectionGroups.map((group) => {
                   const testState = testStates[group] ?? { status: 'idle' as const };
                   return (
