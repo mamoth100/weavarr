@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import SettingsPanel from '@/components/SettingsPanel';
+import SettingsPanel, { CONNECTION_SECTIONS } from '@/components/SettingsPanel';
 import MenuSettingsPanel from '@/components/MenuSettingsPanel';
 import BackupPanel from '@/components/BackupPanel';
 import LogsPanel from '@/components/LogsPanel';
@@ -9,6 +9,8 @@ import SystemStatusPanel from '@/components/SystemStatusPanel';
 
 const SECTIONS = [
   { id: 'connections', label: 'Connections' },
+  { id: 'appconfig', label: 'App Config' },
+  { id: 'notifications', label: 'Notifications' },
   { id: 'menu', label: 'Menu' },
   { id: 'backup', label: 'Backup/Restore' },
   { id: 'logs', label: 'Logs' },
@@ -37,7 +39,21 @@ export default function SettingsLayout() {
       </nav>
 
       <div className="flex-1 min-w-0">
-        {section === 'connections' ? <SettingsPanel /> : section === 'menu' ? <MenuSettingsPanel /> : section === 'backup' ? <BackupPanel /> : section === 'logs' ? <LogsPanel /> : <SystemStatusPanel />}
+        {section === 'connections' ? (
+          <SettingsPanel sections={CONNECTION_SECTIONS} />
+        ) : section === 'appconfig' ? (
+          <SettingsPanel sections={['App Config']} />
+        ) : section === 'notifications' ? (
+          <SettingsPanel sections={['Notifications']} />
+        ) : section === 'menu' ? (
+          <MenuSettingsPanel />
+        ) : section === 'backup' ? (
+          <BackupPanel />
+        ) : section === 'logs' ? (
+          <LogsPanel />
+        ) : (
+          <SystemStatusPanel />
+        )}
       </div>
     </div>
   );
