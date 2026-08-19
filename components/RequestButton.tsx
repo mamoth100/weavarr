@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useWatchlist } from '@/hooks/useWatchlist';
-import type { WatchlistItem } from '@/lib/watchlist';
 import type { TmdbSeason } from '@/types';
 import ConfirmButton from '@/components/ConfirmButton';
 import RequestShowModal from '@/components/RequestShowModal';
@@ -147,7 +145,6 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       setHighestConfigured(mediaType === 'movie' ? flags.radarrHighestConfigured : flags.sonarrHighestConfigured);
     });
   }, [mediaType]);
-  const { addFavorite } = useWatchlist();
 
   // Advanced profile picker - collapsed by default so the one-click flow never changes;
   // profiles are fetched lazily, only once the user actually opens it.
@@ -190,8 +187,10 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
       setStatus(data.alreadyAdded ? 'already' : 'added');
-      const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
-      addFavorite(item);
+      // Deliberately NOT auto-favoriting: favorites are hidden from the grid
+      // by default, so auto-favoriting made a just-requested card vanish at
+      // the exact moment its requested badge/progress appeared. Requested
+      // state is tracked by the availability badge, not favorites.
       refreshDownloadProgressSoon();
     } catch (err) {
       setStatus('error');
@@ -255,7 +254,6 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           highestConfigured={highestConfigured}
           onSuccess={(alreadyAdded) => {
             setStatus(alreadyAdded ? 'already' : 'added');
-            addFavorite({ id, mediaType, title, poster_path, release_date, addedAt: Date.now() });
             refreshDownloadProgressSoon();
           }}
         />

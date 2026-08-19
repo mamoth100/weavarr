@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import RequestShowModal from '@/components/RequestShowModal';
-import { useWatchlist } from '@/hooks/useWatchlist';
 import { refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
 
 interface Props {
@@ -28,7 +27,6 @@ export default function CardRequestPill({ id, mediaType, title, poster_path, rel
   const [modalOpen, setModalOpen] = useState(false);
   const [state, setState] = useState<'idle' | 'armed' | 'busy' | 'error'>('idle');
   const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { addFavorite } = useWatchlist();
 
   useEffect(
     () => () => {
@@ -37,8 +35,9 @@ export default function CardRequestPill({ id, mediaType, title, poster_path, rel
     []
   );
 
+  // No auto-favorite here on purpose - favorites are hidden from the grid by
+  // default, so favoriting on request made the card vanish mid-lifecycle.
   function handleSuccess() {
-    addFavorite({ id, mediaType, title, poster_path, release_date, addedAt: Date.now() });
     refreshDownloadProgressSoon();
     onRequested();
   }
