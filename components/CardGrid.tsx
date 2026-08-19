@@ -14,9 +14,12 @@ interface Props {
   totalResults?: number;
   /** Suppress the results/hidden info line - for Discover's section slices, where four of them would be noise. */
   quiet?: boolean;
+  /** Cap the grid at N cards AFTER watched/sucks filtering - slicing before
+      filtering left visible holes whenever a hidden item was in the slice. */
+  maxItems?: number;
 }
 
-export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false }: Props) {
+export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false, maxItems }: Props) {
   const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
@@ -64,13 +67,14 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
   // No display cap - the grid grows as InfiniteBrowse appends pages. (The
   // old .slice(0, 20) cap is what forced the server to over-fetch two TMDB
   // pages per pagination step.)
-  const filtered = items.filter((doc) => {
+  const unfiltered = items.filter((doc) => {
     const key = `${doc.id}:${doc.mediaType ?? mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     if (!showFav && snapshotFavorites.has(key)) return false;
     return true;
   });
+  const filtered = maxItems ? unfiltered.slice(0, maxItems) : unfiltered;
 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
@@ -81,7 +85,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
   if (!snapped.current && !loaded) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: Math.min(maxItems ?? 20, 20) }).map((_, i) => (
           <div key={i} className="aspect-[2/3] bg-zinc-800 rounded-lg animate-pulse" />
         ))}
       </div>
