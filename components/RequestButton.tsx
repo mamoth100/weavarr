@@ -192,6 +192,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       setStatus(data.alreadyAdded ? 'already' : 'added');
       const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, addedAt: Date.now() };
       addFavorite(item);
+      refreshDownloadProgressSoon();
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
