@@ -11,7 +11,7 @@ interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null;
-  type?: 'boolean' | 'profile';
+  type?: 'boolean' | 'profile' | 'showlist';
   defaultValue?: 'true' | 'false';
   info?: string;
 }
@@ -102,6 +102,92 @@ function GroupInfoTooltip({ group }: { group: string }) {
   const info = GROUP_INFO[group];
   if (!info) return null;
   return <InfoTooltip ariaLabel={`About ${group}`} text={info.text} linkLabel={info.linkLabel} linkHref={info.linkHref} />;
+}
+
+/**
+ * Chip editor for a comma-separated show list (Seerr-filter style): each
+ * show is a chip with an ×, new ones come from a Sonarr-library-suggested
+ * input. Free text stays allowed on purpose. Cleanup matches titles from
+ * the media server's watch history, and a show can live there without being
+ * registered in Sonarr.
+ */
+function ShowListEditor({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [sonarrTitles, setSonarrTitles] = useState<string[]>([]);
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    fetch('/api/sonarr/series', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.series)) {
+          setSonarrTitles((d.series as { title: string }[]).map((s) => s.title).sort((a, b) => a.localeCompare(b)));
+        }
+      })
+      .catch(() => {}); // no Sonarr = no suggestions, typing still works
+  }, []);
+
+  const items = value.split(',').map((s) => s.trim()).filter(Boolean);
+
+  function add(title: string) {
+    const t = title.trim();
+    setDraft('');
+    if (!t || items.some((i) => i.toLowerCase() === t.toLowerCase())) return;
+    onChange([...items, t].join(','));
+  }
+
+  const suggestions = sonarrTitles.filter((t) => !items.some((i) => i.toLowerCase() === t.toLowerCase()));
+
+  return (
+    <div className="flex-1 space-y-2">
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((t) => (
+            <span key={t} className="inline-flex items-center gap-1 bg-zinc-800 ring-1 ring-zinc-700 text-zinc-200 text-xs rounded-full pl-2.5 pr-1 py-1">
+              {t}
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((i) => i !== t).join(','))}
+                disabled={disabled}
+                aria-label={`Remove ${t}`}
+                className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-600"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          list="showlist-suggestions"
+          value={draft}
+          disabled={disabled}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              add(draft);
+            }
+          }}
+          placeholder={sonarrTitles.length ? 'Add a show from Sonarr, or type any title…' : 'Type a show title…'}
+          className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-50"
+        />
+        <datalist id="showlist-suggestions">
+          {suggestions.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+        <button
+          type="button"
+          onClick={() => add(draft)}
+          disabled={disabled || !draft.trim()}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // Groups whose quality-profile dropdowns should auto-populate on load if
@@ -456,6 +542,23 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                                     ariaLabel={s.label}
                                   />
                                 </div>
+                              ) : s.type === 'showlist' ? (
+                                <ShowListEditor
+                                  value={edits[s.key] ?? s.value ?? ''}
+                                  onChange={(v) => {
+                                    // Chip add/remove makes "back to the saved value" common -
+                                    // drop the edit entirely then, so Save doesn't claim a change.
+                                    if (v === (s.value ?? '')) {
+                                      setEdits((prev) => {
+                                        const next = { ...prev };
+                                        delete next[s.key];
+                                        return next;
+                                      });
+                                    } else {
+                                      setEdits((prev) => ({ ...prev, [s.key]: v }));
+                                    }
+                                  }}
+                                />
                               ) : s.type === 'profile' ? (
                                 (() => {
                                   const profileOptions = testState.profiles ?? [];
