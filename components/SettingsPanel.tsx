@@ -13,6 +13,7 @@ interface SettingStatus {
   value: string | null;
   type?: 'boolean' | 'profile';
   defaultValue?: 'true' | 'false';
+  info?: string;
 }
 
 interface QualityProfileOption {
@@ -26,12 +27,6 @@ const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex'
 // points at where to get a key/token, for groups that need one from an
 // external site.
 const GROUP_INFO: Record<string, { text: string; linkLabel?: string; linkHref?: string }> = {
-  Application: {
-    text: 'How the app names and finds itself. Application Title renames the browser tab and labels notification links. Application URL is the address notifications deep-link back to - set it to how you reach the app (e.g. http://10.0.0.254:6767, or your domain if proxied). Leave blank and notifications simply carry no link.',
-  },
-  Network: {
-    text: 'For deployments behind a reverse proxy or reachable beyond your LAN. CSRF Protection blocks state-changing API calls made by other websites\' pages (a browser-only attack - your own scripts and curl are unaffected); leave it on. Trust Reverse Proxy Headers makes X-Forwarded-* headers count for client IPs and the CSRF allow-list - enable only when a proxy you control fronts the app, since anyone can send those headers directly. Both apply after a restart.',
-  },
   TMDB: {
     text: 'TMDB supplies the movie/show metadata this app is built on - posters, descriptions, ratings. Works out of the box with a bundled key. Setting your own isn\'t about rate limits (TMDB limits per-IP, not per-key) - it just means you\'re not affected if the shared bundled key ever gets abused and revoked.',
     linkLabel: 'Get a TMDB key',
@@ -49,8 +44,8 @@ const GROUP_INFO: Record<string, { text: string; linkLabel?: string; linkHref?: 
   },
 };
 
-function GroupInfoTooltip({ group }: { group: string }) {
-  const info = GROUP_INFO[group];
+/** The one "?" tooltip - group headers and individual field rows both use it. Click to open, outside-click/Escape to close. */
+function InfoTooltip({ ariaLabel, text, linkLabel, linkHref }: { ariaLabel: string; text: string; linkLabel?: string; linkHref?: string }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -72,36 +67,41 @@ function GroupInfoTooltip({ group }: { group: string }) {
     };
   }, [open]);
 
-  if (!info) return null;
   return (
-    <div className="relative ml-auto" ref={containerRef}>
+    <div className="relative ml-auto flex-shrink-0" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${
           open ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
         }`}
-        aria-label={`About ${group}`}
+        aria-label={ariaLabel}
       >
         ?
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg p-3 text-xs text-zinc-300">
-          <p className={info.linkHref ? 'mb-2' : ''}>{info.text}</p>
-          {info.linkHref && (
+          <p className={linkHref ? 'mb-2' : ''}>{text}</p>
+          {linkHref && (
             <a
-              href={info.linkHref}
+              href={linkHref}
               target="_blank"
               rel="noopener noreferrer"
               className="text-amber-400 hover:text-amber-300 font-medium"
             >
-              {info.linkLabel} →
+              {linkLabel} →
             </a>
           )}
         </div>
       )}
     </div>
   );
+}
+
+function GroupInfoTooltip({ group }: { group: string }) {
+  const info = GROUP_INFO[group];
+  if (!info) return null;
+  return <InfoTooltip ariaLabel={`About ${group}`} text={info.text} linkLabel={info.linkLabel} linkHref={info.linkHref} />;
 }
 
 // Groups whose quality-profile dropdowns should auto-populate on load if
@@ -507,6 +507,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                                   className="flex-1 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-50"
                                 />
                               )}
+                              {s.info && <InfoTooltip ariaLabel={`About ${s.label}`} text={s.info} />}
                               {s.secret && s.isSet && (
                                 <button
                                   type="button"

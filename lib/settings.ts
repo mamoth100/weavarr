@@ -15,13 +15,15 @@ export interface SettingField {
   type?: 'boolean' | 'profile'; // 'boolean' renders Enable/Disable; 'profile' renders a quality-profile dropdown populated by testing the service
   /** For boolean fields only - what an unset env var actually evaluates to at runtime (must match the corresponding lib/*.ts check exactly), so the Enable/Disable dropdown reflects real behavior instead of always defaulting to "Disable" when nothing's been explicitly saved yet. */
   defaultValue?: 'true' | 'false';
+  /** Per-field explainer, rendered as a "?" tooltip on the field's row. Keeps labels short - the what goes in the label, the why/how here. */
+  info?: string;
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
-  { key: 'APP_TITLE', label: 'Application Title (browser tab + notification links)', group: 'Application', secret: false },
-  { key: 'APP_URL', label: 'Application URL (public address - makes notifications link back to the app)', group: 'Application', secret: false },
-  { key: 'ENABLE_CSRF_PROTECTION', label: 'CSRF Protection (block cross-site API calls; restart to apply)', group: 'Network', secret: false, type: 'boolean', defaultValue: 'true' },
-  { key: 'TRUST_PROXY', label: 'Trust Reverse Proxy Headers (X-Forwarded-*; restart to apply)', group: 'Network', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'APP_TITLE', label: 'Application Title', group: 'Application', secret: false, info: 'Renames the browser tab and labels the "Open …" link on notifications. Leave blank for Weavarr.' },
+  { key: 'APP_URL', label: 'Application URL', group: 'Application', secret: false, info: 'The address notifications deep-link back to - set it to how you reach the app in a browser (e.g. http://10.0.0.254:6767, or your domain if behind a proxy). Leave blank and notifications simply carry no link.' },
+  { key: 'ENABLE_CSRF_PROTECTION', label: 'CSRF Protection', group: 'Network', secret: false, type: 'boolean', defaultValue: 'true', info: 'Blocks state-changing API calls fired by other websites\' pages - the drive-by attack against LAN apps. Browser-only: your own scripts and curl are unaffected. Leave on. Applies after a restart.' },
+  { key: 'TRUST_PROXY', label: 'Trust Reverse Proxy Headers', group: 'Network', secret: false, type: 'boolean', defaultValue: 'false', info: 'Makes X-Forwarded-* headers count: the forwarded host joins the CSRF allow-list and the forwarded address becomes the logged client IP. Enable only when a reverse proxy you control fronts the app - anyone can send these headers directly. Applies after a restart.' },
   { key: 'TMDB_TOKEN', label: 'TMDB Read Access Token', group: 'TMDB', secret: true },
   { key: 'ENABLE_OMDB', label: 'Enable OMDb', group: 'OMDb', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
@@ -67,10 +69,10 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'DISCORD_WEBHOOK_URL', label: 'Discord Webhook URL', group: 'Discord', secret: true },
   { key: 'DISCORD_NOTIFY_IMPORTS', label: 'Send "Ready to Watch" Pings', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'DISCORD_NOTIFY_ALERTS', label: 'Send Error Alerts', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true' },
-  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false' },
-  { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false' },
-  { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false },
-  { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows (comma-separated)', group: 'App Behavior', secret: false },
+  { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Watches the media server for requested titles actually landing in the library and sends a "ready to watch" ping through your notification channels (checked every 2 minutes).' },
+  { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Sends an alert when a connected service (Radarr, Sonarr, Plex…) stops responding to the 10-minute health check.' },
+  { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false, info: 'An in-progress episode or movie counts as watched for the cleanup lifecycle once you\'ve seen at least this much of it. Default 90.' },
+  { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows', group: 'App Behavior', secret: false, info: 'Comma-separated show titles the cleanup lifecycle must never suggest deleting - the comfort rewatches.' },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'MENU_LINKS', label: 'Other menu items, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'ENABLE_SCHEDULED_BACKUPS', label: 'Enable Scheduled Backups', group: 'Backup', secret: false, type: 'boolean' },
@@ -132,6 +134,7 @@ export interface SettingStatus {
   value: string | null; // only populated for non-secret fields
   type?: 'boolean' | 'profile';
   defaultValue?: 'true' | 'false';
+  info?: string;
 }
 
 /** Server-internal only - the real value, including secrets. Never return this from an API route directly. */
@@ -153,6 +156,7 @@ export async function getSettingsStatus(): Promise<SettingStatus[]> {
       value: field.secret ? null : raw,
       type: field.type,
       defaultValue: field.defaultValue,
+      info: field.info,
     };
   });
 }
