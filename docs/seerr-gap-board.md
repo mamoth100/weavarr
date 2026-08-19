@@ -61,7 +61,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 ## 5. Discovery
 
-- [ ] **GAP** (M) Discover home: slider rows (trending / popular movies / popular TV / upcoming / genre sliders / studios / networks) - roadmap Tier 2. Seerr ships 12 builtin sliders.
+- [x] **GAP** (M) Discover home - **SHIPPED 2026-08-19** as stacked vertical sections, NOT sliders (explicit product call: no horizontal scrolling anywhere). Trending this week / Popular movies / Popular shows / Coming soon, 10-card slices with "See all" into full infinite-scroll views (?genre=trending / popular-movies / popular-tv). Lives in the genre catalog: drag Discover to the top of Menu settings = default landing. Skipped from Seerr's 12: studios/networks/genre sliders (genre tabs already cover genres).
 - [ ] **GAP** (M) Custom discover sliders (user-defined TMDB keyword/genre/studio lists, reorderable, can be marked built from the sliders API) - the power version of our menu-genre customization.
 - [ ] **GAP** (S) `discoverRegion` + `originalLanguage` + `streamingRegion` filters - region-aware discovery; we filter English/all only.
 - [ ] **GAP** (M) Person pages (actor/director filmography) - roadmap Tier 2.
