@@ -55,7 +55,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 ## 4. Requests workflow
 
-- [ ] **GAP** (M) A requests/activity page: everything requested through Weavarr with status (pending download/downloading/available), retry/delete per row - we have Status (queue) and Recently Imported, but no unified "what did I ask for and where is it" ledger that survives restarts.
+- [x] Requests ledger (shipped 2026-08-18) - permanent record of every request (clicks and watchlist auto-adds, source-tagged) in weavarr.db, with status derived LIVE at view time (downloading % / searching-day-N / available / removed) instead of Seerr's stored-status-plus-sync-jobs model. The "removed" tombstone answers the Chappelle question forever. /requests page + menu entry.
 - [ ] **GAP** (M) Issues system (audio/video/subtitle/other + comments + notifications) - roadmap Tier 5 called it marginal solo; still a gap.
 - [ ] **GAP** (S) Blocklist media (`hideBlocklisted`, `blocklistedTags`, auto-blocklist by tag job) - our "Not interested" covers the manual case; tag-based auto-blocklist ("talk-show", "reality") is a genuinely nice discovery filter.
 
