@@ -100,12 +100,12 @@ export async function syncPlexWatchlist(): Promise<void> {
       const { tmdbId, imdbId } = await getWatchlistItemIds(item.ratingKey);
       if (item.type === 'movie') {
         if (!tmdbId) throw new Error('no TMDB id on watchlist item');
-        const result = await addMovieToRadarr(tmdbId);
+        const result = await addMovieToRadarr(tmdbId, false, undefined, 'watchlist');
         console.log(
           `[watchlistSync] "${item.title}"${item.year ? ` (${item.year})` : ''} ${result.alreadyAdded ? 'already in Radarr' : 'added to Radarr'}`
         );
       } else {
-        const result = await addSeriesToSonarr({ imdbId, title: item.title });
+        const result = await addSeriesToSonarr({ imdbId, title: item.title, source: 'watchlist' });
         console.log(
           `[watchlistSync] "${item.title}"${item.year ? ` (${item.year})` : ''} ${result.alreadyAdded ? 'already in Sonarr' : 'added to Sonarr'}`
         );

@@ -12,6 +12,7 @@ export const MENU_LINK_CATALOG: MenuLinkDef[] = [
   { id: 'library', label: 'Library', kind: 'link', href: '/library' },
   { id: 'status', label: 'Status', kind: 'link', href: '/status' },
   { id: 'readyToWatch', label: 'Watch', kind: 'link', href: '/ready-to-watch' },
+  { id: 'requests', label: 'Requests', kind: 'link', href: '/requests' },
   { id: 'calendar', label: 'Calendar', kind: 'link', href: '/calendar' },
 ];
 

@@ -2,6 +2,7 @@ import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
+import { recordRequest } from './requestLedger';
 
 // Enable defaults on (unset !== 'false') - Radarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -47,7 +48,7 @@ export async function getRadarrQualityProfiles(): Promise<{ id: number; name: st
 }
 
 /** profileOverride (an exact profile name) wins over the Settings default/highest pick for this one request. */
-export async function addMovieToRadarr(tmdbId: number, highestQuality = false, profileOverride?: string | null) {
+export async function addMovieToRadarr(tmdbId: number, highestQuality = false, profileOverride?: string | null, source: 'app' | 'watchlist' = 'app') {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
   const existingId = await getRadarrMovieIdByTmdbId(tmdbId);
@@ -91,6 +92,18 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
     }),
   });
   if (!addRes.ok) throw new Error(`Radarr add failed: ${await addRes.text()}`);
+
+  // The permanent request ledger - never let a bookkeeping failure break the add itself.
+  try {
+    const posterUrl =
+      (movie.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ??
+      (movie.remotePoster as string | undefined) ??
+      null;
+    recordRequest({ tmdbId, mediaType: 'movie', title: movie.title ?? `tmdb:${tmdbId}`, posterUrl, source });
+  } catch (err) {
+    console.error('[requestLedger] failed to record movie request:', err instanceof Error ? err.message : err);
+  }
+
   return { alreadyAdded: false };
 }
 
