@@ -13,7 +13,6 @@ import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
 import DetailActions from '@/components/DetailActions';
 import RequestButton from '@/components/RequestButton';
-import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
 import BackLink from '@/components/BackLink';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
@@ -178,13 +177,12 @@ export default async function TvPage({ params }: Props) {
               />
             </DetailActions>
 
-            {/* Episode management - same per-episode/season download & delete as Library's TV Shows tab */}
-            {sonarrSeriesId && (
-              <div className="mt-5">
-                <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Episodes</h2>
-                <SonarrEpisodeManager seriesId={sonarrSeriesId} />
-              </div>
-            )}
+            {/* The old inline Episodes manager (per-episode/season downloads)
+                is gone from this page on purpose: the request modal ("Get
+                more") covers all acquiring with owned-item locking, without
+                rendering a thousand rows for long shows. Per-episode
+                MANAGEMENT (delete, re-search) still lives on the Library
+                page's TV tab, which embeds the same manager component. */}
 
             {/* Composite score card */}
             <div className="mt-5 p-4 bg-zinc-900 rounded-xl w-fit ring-1 ring-white/5">
