@@ -12,7 +12,7 @@ export interface SettingField {
   label: string;
   group: string;
   secret: boolean; // if true, never echo the actual value back to the client
-  type?: 'boolean' | 'profile'; // 'boolean' renders Enable/Disable; 'profile' renders a quality-profile dropdown populated by testing the service
+  type?: 'boolean' | 'profile' | 'showlist'; // 'boolean' renders a toggle; 'profile' renders a quality-profile dropdown populated by testing the service; 'showlist' renders removable show chips with Sonarr-library suggestions
   /** For boolean fields only - what an unset env var actually evaluates to at runtime (must match the corresponding lib/*.ts check exactly), so the Enable/Disable dropdown reflects real behavior instead of always defaulting to "Disable" when nothing's been explicitly saved yet. */
   defaultValue?: 'true' | 'false';
   /** Per-field explainer, rendered as a "?" tooltip on the field's row. Keeps labels short - the what goes in the label, the why/how here. */
@@ -72,7 +72,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Watches the media server for requested titles actually landing in the library and sends a "ready to watch" ping through your notification channels (checked every 2 minutes).' },
   { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Sends an alert when a connected service (Radarr, Sonarr, Plex…) stops responding to the 10-minute health check.' },
   { key: 'CLEANUP_WATCHED_PERCENT', label: 'Cleanup Watched Threshold (%)', group: 'App Behavior', secret: false, info: 'An in-progress episode or movie counts as watched for the cleanup lifecycle once you\'ve seen at least this much of it. Default 90.' },
-  { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows', group: 'App Behavior', secret: false, info: 'Comma-separated show titles that cleanup must never suggest deleting. The comfort rewatches live here.' },
+  { key: 'CLEANUP_EXCLUDED_SHOWS', label: 'Cleanup Excluded Shows', group: 'App Behavior', secret: false, type: 'showlist', info: 'Shows that cleanup must never suggest deleting. The comfort rewatches live here. Pick from your Sonarr library or type any title, and remove one with its ×.' },
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'MENU_LINKS', label: 'Other menu items, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'ENABLE_SCHEDULED_BACKUPS', label: 'Enable Scheduled Backups', group: 'Backup', secret: false, type: 'boolean' },
@@ -132,7 +132,7 @@ export interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null; // only populated for non-secret fields
-  type?: 'boolean' | 'profile';
+  type?: 'boolean' | 'profile' | 'showlist';
   defaultValue?: 'true' | 'false';
   info?: string;
 }
