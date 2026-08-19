@@ -117,6 +117,8 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Webhook: 'Notifications',
   Discord: 'Notifications',
   'App Behavior': 'Misc',
+  Application: 'Misc',
+  Network: 'Misc',
 };
 
 // Backup gets its own top-level tab in SettingsLayout.tsx (BackupPanel.tsx),

@@ -32,12 +32,26 @@ function categoryEnabled(envPrefix: string, category: NotificationCategory): boo
   return process.env[key] !== 'false';
 }
 
-/** Sends to every channel enabled for this category. Succeeds if at least one delivers; throws only if every eligible channel fails (or none are eligible), so callers can still treat total failure as retry-worthy - same contract as markMovieWatched in lib/mediaServer.ts. */
-export async function notifyAllChannels(title: string, message: string, category: NotificationCategory): Promise<void> {
+export interface NotificationLink {
+  url: string;
+  label: string;
+}
+
+/** Deep link back into the app - only exists when APP_URL is configured (a LAN app has no address a phone notification could usefully open until the operator names one). */
+function appLink(path: string): NotificationLink | undefined {
+  const base = process.env.APP_URL?.trim().replace(/\/+$/, '');
+  if (!base) return undefined;
+  const title = process.env.APP_TITLE?.trim() || 'Weavarr';
+  return { url: `${base}${path}`, label: `Open ${title}` };
+}
+
+/** Sends to every channel enabled for this category. Succeeds if at least one delivers; throws only if every eligible channel fails (or none are eligible), so callers can still treat total failure as retry-worthy - same contract as markMovieWatched in lib/mediaServer.ts. `path` is where the notification's link lands when APP_URL is set. */
+export async function notifyAllChannels(title: string, message: string, category: NotificationCategory, path = '/'): Promise<void> {
+  const link = appLink(path);
   const attempts: Promise<void>[] = [];
-  if (pushoverEnabled() && categoryEnabled('PUSHOVER', category)) attempts.push(sendPushoverNotification(title, message));
-  if (webhookNotifyEnabled() && categoryEnabled('WEBHOOK', category)) attempts.push(sendWebhookNotification(title, message));
-  if (discordNotifyEnabled() && categoryEnabled('DISCORD', category)) attempts.push(sendDiscordNotification(title, message));
+  if (pushoverEnabled() && categoryEnabled('PUSHOVER', category)) attempts.push(sendPushoverNotification(title, message, link));
+  if (webhookNotifyEnabled() && categoryEnabled('WEBHOOK', category)) attempts.push(sendWebhookNotification(title, message, link));
+  if (discordNotifyEnabled() && categoryEnabled('DISCORD', category)) attempts.push(sendDiscordNotification(title, message, link));
   if (attempts.length === 0) throw new Error(`No notification channel is enabled for "${category}"`);
 
   const results = await Promise.allSettled(attempts);
