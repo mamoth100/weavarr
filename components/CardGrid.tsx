@@ -12,9 +12,11 @@ interface Props {
   variant?: 'default' | 'upcoming';
   /** Total result count from the server page - rendered here so count + hidden-breakdown make one line instead of two stacked micro-rows. */
   totalResults?: number;
+  /** Suppress the results/hidden info line - for Discover's section slices, where four of them would be noise. */
+  quiet?: boolean;
 }
 
-export default function CardGrid({ items, mediaType, variant = 'default', totalResults }: Props) {
+export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false }: Props) {
   const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
@@ -95,7 +97,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
 
   return (
     <>
-      {infoLine && <p className="text-xs text-zinc-500 mt-4 mb-2">{infoLine}</p>}
+      {infoLine && !quiet && <p className="text-xs text-zinc-500 mt-4 mb-2">{infoLine}</p>}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map((doc) => (
           <DocCard key={`${doc.id}:${doc.mediaType ?? mediaType}`} doc={doc} mediaType={doc.mediaType ?? mediaType} variant={variant} />
