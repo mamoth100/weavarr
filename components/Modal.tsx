@@ -9,6 +9,8 @@ interface ModalProps {
   children: ReactNode;
   /** Sticky footer row (action buttons). Scrolling happens in the body above it. */
   footer?: ReactNode;
+  /** Wider card (max-w-3xl) for content that needs room - video embeds, tables. */
+  wide?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ interface ModalProps {
  * (request flow, Plex logs explainer, whatever comes next) provide only
  * their content, so every dialog opens/closes/looks the same.
  */
-export default function Modal({ open, onClose, title, children, footer }: ModalProps) {
+export default function Modal({ open, onClose, title, children, footer, wide = false }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -38,7 +40,7 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
       aria-label={title}
     >
       <div
-        className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] flex flex-col"
+        className={`bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl ${wide ? 'max-w-3xl' : 'max-w-md'} w-full max-h-[85vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3">

@@ -94,7 +94,7 @@ export async function discoverMovies({
 
 export async function getDocumentaryDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await tmdbFetch(
-    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos`,
+    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos,recommendations`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error(`TMDb detail failed: ${res.status}`);
@@ -303,7 +303,7 @@ export async function getTvSeasons(id: number): Promise<{ season_number: number;
 
 export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await tmdbFetch(
-    `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos`,
+    `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos,recommendations`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error(`TMDb TV detail failed: ${res.status}`);
@@ -316,6 +316,16 @@ export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
     runtime: data.episode_run_time?.[0] ?? null,
     tagline: data.tagline ?? '',
     keywords: { keywords: data.keywords?.results ?? [] },
+    // TV recommendations come back TV-shaped - normalize like searchTv does
+    // so DocCard can render them (and link them to /tv/, not /documentary/).
+    recommendations: {
+      results: (data.recommendations?.results ?? []).map((show: Record<string, unknown>) => ({
+        ...show,
+        title: (show.name as string) ?? show.title,
+        release_date: (show.first_air_date as string) ?? show.release_date ?? '',
+        mediaType: 'tv' as const,
+      })),
+    },
   };
 }
 

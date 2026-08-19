@@ -1,6 +1,10 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AppShell from '@/components/AppShell';
+import CardGrid from '@/components/CardGrid';
+import TrailerButton from '@/components/TrailerButton';
+import { catalogGenreForTmdbId } from '@/lib/genreCatalog';
 import { getDocumentaryDetail, getWatchProviders, TMDB_IMAGE_BASE } from '@/lib/tmdb';
 import { getOmdbData } from '@/lib/omdb';
 import { getRadarrMovieIdByTmdbId } from '@/lib/radarr';
@@ -119,6 +123,28 @@ export default async function DocumentaryPage({ params }: Props) {
 
             </div>
 
+            {/* Genre chips - clickable into the browse grid when a catalog genre covers them */}
+            {(detail.genres?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {detail.genres!.map((g) => {
+                  const catalog = catalogGenreForTmdbId(g.id, 'movie');
+                  return catalog ? (
+                    <Link
+                      key={g.id}
+                      href={`/?genre=${catalog.id}`}
+                      className="text-xs px-2.5 py-1 bg-zinc-800 hover:bg-amber-500 hover:text-black transition-colors rounded-full text-zinc-300 font-medium"
+                    >
+                      {g.name}
+                    </Link>
+                  ) : (
+                    <span key={g.id} className="text-xs px-2.5 py-1 bg-zinc-800/60 rounded-full text-zinc-500">
+                      {g.name}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
             <DetailActions
               id={detail.id}
               mediaType="movie"
@@ -182,17 +208,7 @@ export default async function DocumentaryPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Trailer link */}
-            {trailerKey && (
-              <a
-                href={`https://www.youtube.com/watch?v=${trailerKey}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 transition rounded-lg text-sm font-medium"
-              >
-                Watch Trailer
-              </a>
-            )}
+            {trailerKey && <TrailerButton trailerKey={trailerKey} title={detail.title} />}
 
             {/* Where to Watch */}
             {(streamingProviders.length > 0 || rentProviders.length > 0) && (
@@ -293,6 +309,15 @@ export default async function DocumentaryPage({ params }: Props) {
             <BackLink />
           </div>
         </div>
+
+        {/* More like this - TMDB recommendations as full cards, so badges,
+            request pills, and progress all work right here. */}
+        {(detail.recommendations?.results.length ?? 0) > 0 && (
+          <div className="mt-10">
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">More Like This</h2>
+            <CardGrid items={detail.recommendations!.results.slice(0, 10)} mediaType="movie" />
+          </div>
+        )}
       </div>
     </AppShell>
   );
