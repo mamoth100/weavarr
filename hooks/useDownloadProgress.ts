@@ -11,9 +11,12 @@ import type { DownloadProgressMap } from '@/lib/downloadProgress';
  * touches Radarr/Sonarr).
  */
 
-const ACTIVE_MS = 12_000;
+// 5s active matches the Status page's felt responsiveness (its poll is 4s) -
+// progress bytes now come live from the download clients, so fast polling
+// actually shows movement instead of re-reading Radarr's stale minute-old copy.
+const ACTIVE_MS = 5_000;
 const IDLE_MS = 60_000;
-const BURST_MS = 8_000;
+const BURST_MS = 5_000;
 
 let cache: DownloadProgressMap | null = null;
 const subscribers = new Set<(d: DownloadProgressMap) => void>();

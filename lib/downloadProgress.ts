@@ -21,18 +21,77 @@ interface QueueRecordShape {
   sizeleft?: number;
   status?: string;
   trackedDownloadState?: string;
+  downloadId?: string;
   movie?: { tmdbId?: number };
   series?: { tmdbId?: number };
 }
 
-function aggregate(records: QueueRecordShape[], pick: (r: QueueRecordShape) => number | undefined): Record<number, TitleProgress> {
+/**
+ * Live completion fractions straight from the download clients, keyed by the
+ * downloadId Radarr/Sonarr store (SAB nzo_id / NZBGet id). Radarr and Sonarr
+ * only refresh their own queue numbers about once a minute, which made card
+ * percents lag the Status page badly - the arr queues stay the source of
+ * IDENTITY (which download is which title), the clients the source of BYTES.
+ */
+async function fetchClientFractions(): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+
+  const sabOn = process.env.ENABLE_SABNZBD !== 'false' && Boolean(process.env.SABNZBD_URL && process.env.SABNZBD_API_KEY);
+  const nzbgetOn = process.env.ENABLE_NZBGET === 'true' && Boolean(process.env.NZBGET_URL && process.env.NZBGET_USERNAME);
+
+  const [sab, nzbget] = await Promise.allSettled([
+    sabOn
+      ? fetch(`${process.env.SABNZBD_URL!.replace(/\/$/, '')}/api?mode=queue&output=json&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' }).then((r) => r.json())
+      : Promise.resolve(null),
+    nzbgetOn
+      ? fetch(`${process.env.NZBGET_URL!.replace(/\/$/, '')}/jsonrpc`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${process.env.NZBGET_USERNAME}:${process.env.NZBGET_PASSWORD}`).toString('base64')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ method: 'listgroups', params: [] }),
+          cache: 'no-store',
+        }).then((r) => r.json())
+      : Promise.resolve(null),
+  ]);
+
+  if (sab.status === 'fulfilled' && sab.value) {
+    for (const slot of sab.value.queue?.slots ?? []) {
+      const mb = parseFloat(slot.mb);
+      const mbleft = parseFloat(slot.mbleft);
+      if (slot.nzo_id && mb > 0 && !isNaN(mbleft)) {
+        map.set(String(slot.nzo_id).toLowerCase(), Math.max(0, Math.min(1, (mb - mbleft) / mb)));
+      }
+    }
+  }
+  if (nzbget.status === 'fulfilled' && nzbget.value) {
+    for (const g of nzbget.value.result ?? []) {
+      const size = g.FileSizeMB;
+      const left = g.RemainingSizeMB;
+      if (g.NZBID && size > 0 && typeof left === 'number') {
+        map.set(String(g.NZBID).toLowerCase(), Math.max(0, Math.min(1, (size - left) / size)));
+      }
+    }
+  }
+  return map;
+}
+
+function aggregate(
+  records: QueueRecordShape[],
+  pick: (r: QueueRecordShape) => number | undefined,
+  clientFractions: Map<string, number>
+): Record<number, TitleProgress> {
   const byId = new Map<number, { size: number; left: number; importing: boolean; active: boolean }>();
   for (const r of records) {
     const tmdbId = pick(r);
     if (!tmdbId) continue;
     const entry = byId.get(tmdbId) ?? { size: 0, left: 0, importing: false, active: false };
-    entry.size += r.size ?? 0;
-    entry.left += r.sizeleft ?? 0;
+    const size = r.size ?? 0;
+    // Prefer the download client's live fraction over the arr's stale sizeleft.
+    const clientFrac = r.downloadId ? clientFractions.get(r.downloadId.toLowerCase()) : undefined;
+    entry.size += size;
+    entry.left += clientFrac !== undefined ? size * (1 - clientFrac) : r.sizeleft ?? 0;
     if ((r.trackedDownloadState ?? '').startsWith('import')) entry.importing = true;
     if (r.status === 'downloading') entry.active = true;
     byId.set(tmdbId, entry);
@@ -58,17 +117,18 @@ export async function getDownloadProgress(): Promise<DownloadProgressMap> {
   const radarrOn = process.env.ENABLE_RADARR !== 'false' && Boolean(process.env.RADARR_URL && process.env.RADARR_KEY);
   const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
 
-  const [radarr, sonarr] = await Promise.allSettled([
+  const [radarr, sonarr, clientFractions] = await Promise.all([
     radarrOn
-      ? fetchQueue(`${process.env.RADARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeMovie=true&pageSize=100`, process.env.RADARR_KEY!)
+      ? fetchQueue(`${process.env.RADARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeMovie=true&pageSize=100`, process.env.RADARR_KEY!).catch(() => [])
       : Promise.resolve([]),
     sonarrOn
-      ? fetchQueue(`${process.env.SONARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeSeries=true&pageSize=100`, process.env.SONARR_KEY!)
+      ? fetchQueue(`${process.env.SONARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeSeries=true&pageSize=100`, process.env.SONARR_KEY!).catch(() => [])
       : Promise.resolve([]),
+    fetchClientFractions().catch(() => new Map<string, number>()),
   ]);
 
   return {
-    movies: aggregate(radarr.status === 'fulfilled' ? radarr.value : [], (r) => r.movie?.tmdbId),
-    shows: aggregate(sonarr.status === 'fulfilled' ? sonarr.value : [], (r) => r.series?.tmdbId),
+    movies: aggregate(radarr, (r) => r.movie?.tmdbId, clientFractions),
+    shows: aggregate(sonarr, (r) => r.series?.tmdbId, clientFractions),
   };
 }
