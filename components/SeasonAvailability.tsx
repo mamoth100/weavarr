@@ -50,7 +50,7 @@ export default function SeasonAvailability({ tmdbId, seasons }: { tmdbId: number
   if (rows.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 mt-3">
       <span className="text-xs text-zinc-500 mr-1">Seasons</span>
       {rows.map((r) => (
         <span
