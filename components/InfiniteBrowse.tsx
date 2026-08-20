@@ -113,14 +113,11 @@ export default function InfiniteBrowse({
   return (
     <>
       {mode === 'search' ? (
-        <>
-          <p className="text-xs text-zinc-500 mt-4 mb-2">{totalResults.toLocaleString()} results</p>
-          <div className="space-y-3">
-            {items.map((item) => (
-              <SearchResultCard key={itemKey(item, 'movie')} item={item} />
-            ))}
-          </div>
-        </>
+        <div className="space-y-3 mt-4">
+          {items.map((item) => (
+            <SearchResultCard key={itemKey(item, 'movie')} item={item} />
+          ))}
+        </div>
       ) : (
         <CardGrid items={items} mediaType={mediaType} variant={variant} totalResults={totalResults} />
       )}
