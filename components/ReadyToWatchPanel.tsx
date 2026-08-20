@@ -714,6 +714,89 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
 }
 
 
+interface StalledShow {
+  seriesId: number;
+  title: string;
+  tmdbId: number | null;
+  hasPoster: boolean;
+  watchedOnDisk: number;
+  totalOnDisk: number;
+  daysSince: number;
+  nextUp: { seasonNumber: number; episodeNumber: number } | null;
+}
+
+function formatDaysAgo(days: number): string {
+  if (days >= 365) {
+    const years = Math.floor(days / 365);
+    return years === 1 ? 'over a year ago' : `over ${years} years ago`;
+  }
+  if (days >= 60) return `${Math.floor(days / 30)} months ago`;
+  return `${days} days ago`;
+}
+
+/**
+ * Shows you watched most of, then quietly dropped - a nudge to finish the
+ * story. Rows link to the show's detail page when the TMDB id is known.
+ * The days threshold lives in Settings > App Config > App Behavior
+ * (STALLED_SHOW_DAYS); 0 there turns this whole section off server-side.
+ */
+function StalledShowsSection({ onCountChange }: { onCountChange: (count: number) => void }) {
+  const [shows, setShows] = useState<StalledShow[] | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stalled-shows', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.shows)) setShows(data.shows);
+        else setShows([]);
+      })
+      .catch(() => setShows([]));
+  }, []);
+
+  useEffect(() => {
+    onCountChange(shows?.length ?? 0);
+  }, [shows, onCountChange]);
+
+  if (!shows || shows.length === 0) return null;
+
+  return (
+    <div id="section-finish-the-story" className="space-y-2">
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+        Finish the Story? ({shows.length})
+      </h2>
+      <p className="text-xs text-zinc-500">
+        Shows you watched most of, then stopped. Still on disk, still waiting.
+      </p>
+      <div className="space-y-2">
+        {shows.map((s) => {
+          const body = (
+            <>
+              <Poster id={s.seriesId} hasPoster={s.hasPoster} title={s.title} service="sonarr" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{s.title}</p>
+                <p className="text-xs text-zinc-500">
+                  Watched {s.watchedOnDisk} of {s.totalOnDisk} · last watched {formatDaysAgo(s.daysSince)}
+                  {s.nextUp && <> · next up {formatEpisode(s.nextUp)}</>}
+                </p>
+              </div>
+            </>
+          );
+          const rowClass = 'flex items-center gap-3 bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3';
+          return s.tmdbId ? (
+            <a key={s.seriesId} href={`/tv/${s.tmdbId}`} className={`${rowClass} hover:ring-amber-500/50 transition-colors`}>
+              {body}
+            </a>
+          ) : (
+            <div key={s.seriesId} className={rowClass}>
+              {body}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ReadyToWatchRow({
   item,
   onWatched,
@@ -789,6 +872,7 @@ export default function ReadyToWatchPanel() {
   const [query, setQuery] = useState('');
   const [missingAiredCount, setMissingAiredCount] = useState(0);
   const [missingMoviesCount, setMissingMoviesCount] = useState(0);
+  const [stalledCount, setStalledCount] = useState(0);
   const [recentlyWatchedCount, setRecentlyWatchedCount] = useState(0);
 
   function refreshItems() {
@@ -874,6 +958,7 @@ export default function ReadyToWatchPanel() {
         movieItems.length > 0 ||
         missingAiredCount > 0 ||
         missingMoviesCount > 0 ||
+        stalledCount > 0 ||
         recentlyWatchedCount > 0) && (
         <div className="flex flex-wrap gap-2">
           {tvItems.length > 0 && <SectionTile label="TV Shows" singularLabel="TV Show" count={tvItems.length} targetId="section-tv-shows" />}
@@ -883,6 +968,9 @@ export default function ReadyToWatchPanel() {
           )}
           {missingMoviesCount > 0 && (
             <SectionTile label="Movies Not Found" singularLabel="Movie Not Found" count={missingMoviesCount} targetId="section-movies-not-found" />
+          )}
+          {stalledCount > 0 && (
+            <SectionTile label="Finish the Story?" count={stalledCount} targetId="section-finish-the-story" />
           )}
           {recentlyWatchedCount > 0 && (
             <SectionTile label="Recently Watched" count={recentlyWatchedCount} targetId="section-recently-watched" />
@@ -912,6 +1000,7 @@ export default function ReadyToWatchPanel() {
       )}
       <MissingAiredSection onEpisodeAvailable={refreshItems} onCountChange={setMissingAiredCount} />
       <MissingMoviesSection onCountChange={setMissingMoviesCount} />
+      <StalledShowsSection onCountChange={setStalledCount} />
       <RecentlyWatchedSection onCountChange={setRecentlyWatchedCount} />
     </div>
   );
