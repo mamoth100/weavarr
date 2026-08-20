@@ -23,24 +23,11 @@ export default function CardActions({
   release_date,
   original_language,
 }: Props) {
-  const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
-    useWatchlist();
+  const { isWatched, toggleWatched, isSucks, addSucks, removeSucks } = useWatchlist();
 
-  const favorited = isFavorite(id, mediaType);
   const watched = isWatched(id, mediaType);
   const sucks = isSucks(id, mediaType);
   const item: WatchlistItem = { id, mediaType, title, poster_path, release_date, original_language, addedAt: Date.now() };
-
-  function handleFavorite(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (favorited) {
-      removeFavorite(id, mediaType);
-    } else {
-      flyToTarget(e.currentTarget as HTMLElement, 'nav-favorites', poster_path ? `${TMDB_SMALL}${poster_path}` : null);
-      addFavorite(item);
-    }
-  }
 
   function handleWatched(e: React.MouseEvent) {
     e.preventDefault();
@@ -64,39 +51,13 @@ export default function CardActions({
 
   return (
     <>
-      {/* One uniform action column, top-left: three identical icon+text
-          pills (Favorite / Not interested / Mark watched). Hover/focus-
-          revealed on desktop; always visible with bigger tap targets on
-          touch, where hover doesn't exist. */}
-      <button
-        onClick={handleFavorite}
-        className={`absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
-          ${
-            favorited
-              ? 'bg-amber-400 text-zinc-950 opacity-100'
-              : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
-          }`}
-        aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
-      >
-        <svg
-          className="w-3 h-3"
-          fill={favorited ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-          />
-        </svg>
-        {favorited ? 'Favorited' : 'Favorite'}
-      </button>
-
+      {/* One uniform action column, top-left: two identical icon+text
+          pills (Not interested / Mark watched). Hover/focus-revealed on
+          desktop; always visible with bigger tap targets on touch, where
+          hover doesn't exist. */}
       <button
         onClick={handleSucks}
-        className={`absolute top-11 touch:top-14 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
+        className={`absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
@@ -113,7 +74,7 @@ export default function CardActions({
       {/* Watched badge - bottom of the top-left action column */}
       <button
           onClick={handleWatched}
-          className={`absolute top-20 touch:top-[6.5rem] left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
+          className={`absolute top-11 touch:top-14 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
             ${
               watched
                 ? 'bg-green-600/90 text-white opacity-100'

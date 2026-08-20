@@ -13,10 +13,6 @@ import { watchedKey, type WatchlistItem } from '@/lib/watchlist';
 
 interface WatchlistContextValue {
   loaded: boolean;
-  favorites: WatchlistItem[];
-  addFavorite: (item: WatchlistItem) => void;
-  removeFavorite: (id: number, mediaType: string) => void;
-  isFavorite: (id: number, mediaType: string) => boolean;
   watchedItems: WatchlistItem[];
   toggleWatched: (item: WatchlistItem) => void;
   isWatched: (id: number, mediaType: string) => boolean;
@@ -28,7 +24,7 @@ interface WatchlistContextValue {
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 
-type Table = 'favorites' | 'watched' | 'sucks';
+type Table = 'watched' | 'sucks';
 
 function apiList(table: Table): Promise<Record<string, unknown>[]> {
   // Failures resolve to an empty list rather than rejecting - the loader
@@ -75,28 +71,16 @@ function toRow(item: WatchlistItem) {
   };
 }
 
-function toFavoritesRow(item: WatchlistItem) {
-  return {
-    ...toRow(item),
-    original_language: item.original_language ?? null,
-  };
-}
-
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const loadCount = useRef(0);
-  const [favorites, setFavorites] = useState<WatchlistItem[]>([]);
   const [watchedItems, setWatchedItems] = useState<WatchlistItem[]>([]);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
   const [sucksItems, setSucksItems] = useState<WatchlistItem[]>([]);
   const [sucksSet, setSucksSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const done = () => { loadCount.current += 1; if (loadCount.current >= 3) setLoaded(true); };
-    apiList('favorites').then((rows) => {
-      setFavorites(rows.map(rowToItem));
-      done();
-    });
+    const done = () => { loadCount.current += 1; if (loadCount.current >= 2) setLoaded(true); };
     apiList('watched').then((rows) => {
       const items = rows.map(rowToItem);
       setWatchedItems(items);
@@ -110,25 +94,6 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
       done();
     });
   }, []);
-
-  const addFavorite = useCallback((item: WatchlistItem) => {
-    setFavorites((prev) => {
-      if (prev.some((f) => f.id === item.id && f.mediaType === item.mediaType)) return prev;
-      return [...prev, item];
-    });
-    apiUpsert('favorites', toFavoritesRow(item));
-  }, []);
-
-  const removeFavorite = useCallback((id: number, mediaType: string) => {
-    setFavorites((prev) => prev.filter((f) => !(f.id === id && f.mediaType === mediaType)));
-    apiDelete('favorites', id, mediaType);
-  }, []);
-
-  const isFavorite = useCallback(
-    (id: number, mediaType: string) =>
-      favorites.some((f) => f.id === id && f.mediaType === mediaType),
-    [favorites]
-  );
 
   const toggleWatched = useCallback(
     (item: WatchlistItem) => {
@@ -149,9 +114,6 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
         });
         setWatchedSet((prev) => new Set(Array.from(prev).concat([key])));
         apiUpsert('watched', toRow(item));
-        // Remove from favorites when marked watched
-        setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
-        apiDelete('favorites', item.id, item.mediaType);
       }
     },
     [watchedSet]
@@ -169,9 +131,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     });
     setSucksSet((prev) => new Set(Array.from(prev).concat([watchedKey(item.id, item.mediaType)])));
     apiUpsert('sucks', toRow(item));
-    // Remove from favorites and watched
-    setFavorites((prev) => prev.filter((f) => !(f.id === item.id && f.mediaType === item.mediaType)));
-    apiDelete('favorites', item.id, item.mediaType);
+    // Remove from watched - thumbs-down supersedes it
     setWatchedItems((prev) => prev.filter((w) => !(w.id === item.id && w.mediaType === item.mediaType)));
     setWatchedSet((prev) => { const next = new Set(Array.from(prev)); next.delete(watchedKey(item.id, item.mediaType)); return next; });
     apiDelete('watched', item.id, item.mediaType);
@@ -194,7 +154,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
   return (
     <WatchlistContext.Provider
-      value={{ loaded, favorites, addFavorite, removeFavorite, isFavorite, watchedItems, toggleWatched, isWatched, sucksItems, addSucks, removeSucks, isSucks }}
+      value={{ loaded, watchedItems, toggleWatched, isWatched, sucksItems, addSucks, removeSucks, isSucks }}
     >
       {children}
     </WatchlistContext.Provider>

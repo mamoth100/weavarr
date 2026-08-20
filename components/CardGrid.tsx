@@ -21,13 +21,12 @@ interface Props {
 }
 
 export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false, maxItems }: Props) {
-  const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
+  const { loaded, watchedItems, sucksItems } = useWatchlist();
   const libraryStatus = useLibraryStatus();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
   const hideWatched = !isSearching && searchParams.get('show') !== 'all';
   const showSucks = isSearching || searchParams.get('sucks') === 'show';
-  const showFav = isSearching || searchParams.get('fav') === 'show';
   // Opt-in, unlike the always-on watched hiding - owned titles are usually
   // wanted in browse results (that's what the availability badges are for).
   const hideOwned = !isSearching && searchParams.get('owned') === 'hide';
@@ -42,7 +41,6 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
   // marking items during this session doesn't immediately remove them from view.
   const [snapshotWatched, setSnapshotWatched] = useState<Set<string>>(new Set());
   const [snapshotSucks, setSnapshotSucks] = useState<Set<string>>(new Set());
-  const [snapshotFavorites, setSnapshotFavorites] = useState<Set<string>>(new Set());
   const snapped = useRef(false);
 
   useEffect(() => {
@@ -50,9 +48,8 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
       snapped.current = true;
       setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
       setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
-      setSnapshotFavorites(new Set(favorites.map((i) => `${i.id}:${i.mediaType}`)));
     }
-  }, [loaded, watchedItems, sucksItems, favorites]);
+  }, [loaded, watchedItems, sucksItems]);
 
   // Keep sucks snapshot live so items disappear immediately when thumbs-downed
   useEffect(() => {
@@ -68,13 +65,6 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     }
   }, [watchedItems]);
 
-  // Keep favorites snapshot live
-  useEffect(() => {
-    if (snapped.current) {
-      setSnapshotFavorites(new Set(favorites.map((i) => `${i.id}:${i.mediaType}`)));
-    }
-  }, [favorites]);
-
   // No display cap - the grid grows as InfiniteBrowse appends pages. (The
   // old .slice(0, 20) cap is what forced the server to over-fetch two TMDB
   // pages per pagination step.)
@@ -82,7 +72,6 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     const key = `${doc.id}:${doc.mediaType ?? mediaType}`;
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
-    if (!showFav && snapshotFavorites.has(key)) return false;
     if (hideOwned && isOwned(doc)) return false;
     return true;
   });
@@ -90,7 +79,6 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
-  const hiddenFavCount = !showFav ? items.filter((d) => snapshotFavorites.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenOwnedCount = hideOwned ? items.filter(isOwned).length : 0;
 
   // Wait until the watchlist has loaded before rendering so the filter is
@@ -109,7 +97,6 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     totalResults !== undefined && `${totalResults.toLocaleString()} results`,
     hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
     hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
-    hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
     hiddenOwnedCount > 0 && `${hiddenOwnedCount} owned hidden`,
   ].filter(Boolean).join(' · ');
 

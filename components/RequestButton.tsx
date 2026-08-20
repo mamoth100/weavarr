@@ -221,10 +221,6 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
       setStatus(data.alreadyAdded ? 'already' : 'added');
-      // Deliberately NOT auto-favoriting: favorites are hidden from the grid
-      // by default, so auto-favoriting made a just-requested card vanish at
-      // the exact moment its requested badge/progress appeared. Requested
-      // state is tracked by the availability badge, not favorites.
       refreshDownloadProgressSoon();
     } catch (err) {
       setStatus('error');

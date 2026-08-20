@@ -14,10 +14,8 @@ interface Props {
 
 export default function SearchResultCard({ item }: Props) {
   const mediaType = item.mediaType ?? 'movie';
-  const { isFavorite, addFavorite, removeFavorite, isWatched, toggleWatched, isSucks, addSucks, removeSucks } =
-    useWatchlist();
+  const { isWatched, toggleWatched, isSucks, addSucks, removeSucks } = useWatchlist();
 
-  const favorited = isFavorite(item.id, mediaType);
   const watched = isWatched(item.id, mediaType);
   const sucks = isSucks(item.id, mediaType);
   const watchItem: WatchlistItem = {
@@ -59,14 +57,6 @@ export default function SearchResultCard({ item }: Props) {
         </p>
 
         <div className="flex flex-wrap items-start gap-2 mt-2">
-          <button
-            onClick={() => (favorited ? removeFavorite(item.id, mediaType) : addFavorite(watchItem))}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              favorited ? 'bg-amber-400 text-zinc-950' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-            }`}
-          >
-            {favorited ? 'Favorited' : 'Favorite'}
-          </button>
           <button
             onClick={() => toggleWatched(watchItem)}
             className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
