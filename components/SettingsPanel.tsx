@@ -22,7 +22,10 @@ interface QualityProfileOption {
   name: string;
 }
 
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord', 'Webpush']);
+// Webpush is deliberately absent: its Test lives inside WebpushDeviceButton
+// and only renders once this device is actually subscribed - a Test button
+// next to a feature that can't work yet just produces confusing errors.
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
 
 // What a group is for, shown as a "?" tooltip in the group header. The link
 // points at where to get a key/token, for groups that need one from an
