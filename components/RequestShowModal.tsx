@@ -286,6 +286,28 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
               {owned && <span className="text-xs text-zinc-500">already-downloaded items are locked</span>}
             </div>
             <div className="rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800/60 max-h-72 overflow-y-auto">
+              {(() => {
+                const selectable = seasons.filter((s) => !isSeasonFullyOwned(s)).map((s) => s.season_number);
+                const allChecked = selectable.length > 0 && selectable.every((n) => fullSeasons.has(n));
+                return (
+                  <div className="flex items-center gap-2 px-3 py-2 touch:py-3 text-sm bg-zinc-800/40">
+                    <span className="w-5 touch:w-9" />
+                    <label className="flex items-center gap-3 flex-1 cursor-pointer font-medium">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={() => {
+                          setTouched(true);
+                          setFullSeasons(allChecked ? new Set() : new Set(selectable));
+                          setEpisodePicks(new Set());
+                        }}
+                        className="accent-amber-400 touch:w-5 touch:h-5"
+                      />
+                      <span className="flex-1">All seasons</span>
+                    </label>
+                  </div>
+                );
+              })()}
               {seasons.map((s) => {
                 const n = s.season_number;
                 const fullyOwned = isSeasonFullyOwned(s);
