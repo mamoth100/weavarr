@@ -10,6 +10,9 @@ interface DiskRow {
 
 interface About {
   version: string;
+  commit: string;
+  latestCommit: string | null;
+  updateAvailable: boolean | null;
   nodeVersion: string;
   platform: string;
   docker: boolean;
@@ -58,7 +61,7 @@ export default function SystemStatusPanel() {
   }
 
   const aboutRows: [string, string][] = [
-    ['Version', data.about.version],
+    ['Version', data.about.commit === 'unknown' ? data.about.version : `${data.about.version} (${data.about.commit})`],
     ['Node.js', data.about.nodeVersion],
     ['Platform', data.about.platform],
     ['Docker', data.about.docker ? 'Yes' : 'No'],
@@ -68,6 +71,18 @@ export default function SystemStatusPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Update banner: only render when the check produced a definite
+          answer. Private repo or offline = null = say nothing. */}
+      {data.about.updateAvailable === true && (
+        <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 text-sm text-amber-300">
+          Update available: this build is {data.about.commit}, the latest is {data.about.latestCommit}. Pull and rebuild to update.
+        </div>
+      )}
+      {data.about.updateAvailable === false && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-green-400">
+          Up to date with the latest release ({data.about.commit}).
+        </div>
+      )}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
         <p>Disk space for the app&apos;s data volume and the media disks Radarr/Sonarr report, plus version and runtime details.</p>
       </div>
