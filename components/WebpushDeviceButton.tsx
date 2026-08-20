@@ -76,13 +76,32 @@ export default function WebpushDeviceButton() {
 
   if (state === 'checking') return null;
   if (state === 'insecure') {
-    return <span className="text-xs text-zinc-500">Needs HTTPS - the browser refuses notifications on a plain-HTTP address.</span>;
+    return (
+      <span className="text-xs text-zinc-500">
+        Asleep for now. Browsers only allow these notifications on an HTTPS address, and this app is on plain HTTP. Once a reverse proxy with a certificate sits in front of Weavarr, a button appears here to turn notifications on for whatever device you are holding.
+      </span>
+    );
   }
   if (state === 'unsupported') {
     return <span className="text-xs text-zinc-500">This browser doesn&apos;t support web push.</span>;
   }
   if (state === 'denied') {
     return <span className="text-xs text-zinc-500">Notifications are blocked for this site in the browser&apos;s settings.</span>;
+  }
+
+  async function sendTest() {
+    setError(null);
+    try {
+      const res = await fetch('/api/settings/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group: 'Webpush', values: {} }),
+      });
+      const data = await res.json();
+      if (!data.ok) setError(data.message ?? 'Test failed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -92,9 +111,19 @@ export default function WebpushDeviceButton() {
         disabled={state === 'busy'}
         className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
       >
-        {state === 'busy' ? 'Working…' : state === 'on' ? 'Disable on this device' : 'Enable on this device'}
+        {state === 'busy' ? 'Working…' : state === 'on' ? 'Turn off notifications here' : 'Turn on notifications here'}
       </button>
-      {state === 'on' && <span className="text-xs text-green-400">This device is subscribed</span>}
+      {state === 'on' && (
+        <>
+          <button
+            onClick={sendTest}
+            className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          >
+            Test
+          </button>
+          <span className="text-xs text-green-400">Notifications on for this device</span>
+        </>
+      )}
       {error && <span className="text-xs text-red-400">{error}</span>}
     </span>
   );
