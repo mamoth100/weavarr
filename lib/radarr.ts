@@ -109,6 +109,27 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
   return { alreadyAdded: false };
 }
 
+/** Ledger row for a search on an already-added movie (Movies Not Found "Search Again") - a search for something you don't have is a request. Never throws. */
+export async function recordMovieSearchRequest(movieId: number): Promise<void> {
+  try {
+    if (!RADARR_URL || !RADARR_KEY) return;
+    const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie/${movieId}`, { headers: headers(), cache: 'no-store' });
+    if (!res.ok) return;
+    const movie = await res.json();
+    const posterUrl =
+      (movie.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
+    recordRequest({
+      tmdbId: typeof movie.tmdbId === 'number' && movie.tmdbId > 0 ? movie.tmdbId : null,
+      mediaType: 'movie',
+      title: (movie.title as string) ?? `movie:${movieId}`,
+      posterUrl,
+      source: 'app',
+    });
+  } catch (err) {
+    console.error('[requestLedger] failed to record movie search request:', err instanceof Error ? err.message : err);
+  }
+}
+
 export interface RadarrQueueItem {
   title: string;
   status: string;
