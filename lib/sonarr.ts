@@ -781,9 +781,9 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
   return {
     seriesId: match.id,
     monitorFuture: detail.monitorNewItems === 'all',
-    episodes: episodes
-      .filter((e) => e.seasonNumber > 0)
-      .map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile })),
+    // Season 0 (specials) stays in on purpose - the request modal offers
+    // specials now, so their owned/locked state has to be visible too.
+    episodes: episodes.map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile })),
   };
 }
 

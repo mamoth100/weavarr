@@ -82,11 +82,11 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 ## 3. Media status & sync
 
 - [x] Download progress on cards AND detail pages (shipped 2026-08-18) - live percent chip + bar, adaptive 12s/60s polling, plus a Request pill on cards (armed two-click for movies, modal for shows) so the card walks Request -> Requested -> downloading % -> In your library. Goes beyond Seerr's static "Processing" badge.
-- [ ] **GAP** (S) Per-season availability display on the show detail page (Seerr colors each season) - we show counts, not per-season state colors.
+- [x] **GAP** (S) Per-season availability display - **SHIPPED 2026-08-19**: green/amber/grey season chips on the show detail page (complete/partial/none on disk, tooltip with exact counts, SP chip for specials), rendered once Sonarr knows the show.
 - **DIFF** Library scanning (`plex-recently-added-scan` 5min, `plex-full-scan` 3am, per-library enable) - Seerr maintains its own media DB (75 items on this instance); we ask Plex/Jellyfin/arr live. Deliberate, keeps zero drift.
 - [x] Watchlist sync (both have it; theirs every 3min, ours 10 - fine).
-- [ ] **GAP** (S) `hideAvailable` toggle - hide already-available titles from discovery (we hide *watched*; "hide owned" is a different, useful filter).
-- [ ] **GAP** (S) `enableSpecialEpisodes` - allow requesting season 0/specials. Our modal filters specials out unconditionally.
+- [x] **GAP** (S) `hideAvailable` - **SHIPPED 2026-08-19** as the "In library" pill under a new Exclude group in the filter bar (?owned=hide): hides owned/partial/requested titles from browse grids, with an "N owned hidden" info line.
+- [x] **GAP** (S) `enableSpecialEpisodes` - **SHIPPED 2026-08-19**: the request modal offers Specials (S0) as its own row with the same owned-locking, and season chips show an SP chip.
 - [x] Partial/season requests (`partialRequestsEnabled`) - shipped with the request modal, ours does arbitrary combinations.
 
 ## 4. Requests workflow
@@ -99,6 +99,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 - [x] **GAP** (M) Discover home - **SHIPPED 2026-08-19** as stacked vertical sections, NOT sliders (explicit product call: no horizontal scrolling anywhere). Trending this week / Popular movies / Popular shows / Coming soon, 10-card slices with "See all" into full infinite-scroll views (?genre=trending / popular-movies / popular-tv). Lives in the genre catalog: drag Discover to the top of Menu settings = default landing. Skipped from Seerr's 12: studios/networks/genre sliders (genre tabs already cover genres).
 - [ ] **GAP** (M) Custom discover sliders (user-defined TMDB keyword/genre/studio lists, reorderable, can be marked built from the sliders API) - the power version of our menu-genre customization.
+- [ ] **(M) Discover section customization** (added 2026-08-19, user request) - the Discover home's sections become user-configurable like the Menu: pick WHICH sections appear (trending / popular movies / popular shows / coming soon), reorder them, and SCOPE them - trending documentaries instead of trending everything, movies-only trending, a genre-scoped popular row. Natural home: a "Discover" list in Menu settings using the same DraggableCheckList, with a type/genre picker per row. Overlaps the custom-sliders item above; whichever ships first probably absorbs the other.
 - [ ] **GAP** (S) `discoverRegion` + `originalLanguage` + `streamingRegion` filters - region-aware discovery; we filter English/all only.
 - [ ] **GAP** (M) Person pages (actor/director filmography) - roadmap Tier 2.
 - [ ] **GAP** (M) Collections page + request-whole-collection - roadmap Tier 2.
@@ -127,8 +128,8 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 - [x] Image cache cleanup - our poster sweep (2026-08-17) covers the equivalent.
 - [x] Logs page - ours aggregates six services; theirs shows only its own. Weavarr advantage.
 - [x] Backup/restore - Weavarr only. Advantage.
-- [ ] **GAP** (S) About page basics we lack: total media items / total requests counters, timezone display. (Our Settings > Status has version/uptime/disks - add the counts.)
-- [ ] **(S) Update-available alert toggle** (added 2026-08-19) - App Behavior toggle that pushes a notification through the channels when the version check spots a newer build. Today the check only surfaces on Settings > Status, which you have to visit to see. Needs a periodic job (the connection-health interval could carry it) and a notified-once guard per new commit.
+- [x] **GAP** (S) About counters - **SHIPPED 2026-08-19**: Settings > Status shows Movies / Shows / Requests-made counts.
+- [x] **(S) Update-available alert toggle** - **SHIPPED 2026-08-19**: ENABLE_UPDATE_ALERTS in App Behavior, 6-hour job with a notified-once-per-commit guard (data/update-alert-state.json). Dormant while the repo is private; wakes with no changes when it goes public.
 
 ## 8. API & integrations
 

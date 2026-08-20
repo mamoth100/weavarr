@@ -56,7 +56,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
     if (!open || seasonsProp.length > 0 || fetchedSeasons !== null) return;
     fetch(`/api/tmdb/seasons?id=${tmdbId}`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setFetchedSeasons(((data.seasons ?? []) as TmdbSeason[]).filter((s) => s.season_number > 0 && s.episode_count > 0)))
+      .then((data) => setFetchedSeasons(((data.seasons ?? []) as TmdbSeason[]).filter((s) => s.season_number >= 0 && s.episode_count > 0)))
       .catch(() => setFetchedSeasons([]));
   }, [open, seasonsProp.length, tmdbId, fetchedSeasons]);
   const seasons = seasonsProp.length > 0 ? seasonsProp : fetchedSeasons ?? [];
@@ -297,7 +297,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                     <div className="flex items-center gap-2 px-3 py-2 touch:py-3 text-sm hover:bg-zinc-800/50">
                       <button
                         onClick={() => toggleExpand(n)}
-                        aria-label={`${expanded.has(n) ? 'Collapse' : 'Expand'} season ${n} episodes`}
+                        aria-label={`${expanded.has(n) ? 'Collapse' : 'Expand'} ${n === 0 ? 'specials' : `season ${n}`} episodes`}
                         className="w-5 touch:w-9 touch:h-9 touch:-my-1 flex items-center justify-center text-zinc-500 hover:text-zinc-200 touch:text-base"
                       >
                         <span className={`inline-block transition-transform ${expanded.has(n) ? 'rotate-90' : ''}`}>▸</span>
@@ -310,7 +310,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                           onChange={() => toggleSeason(n)}
                           className="accent-amber-400 touch:w-5 touch:h-5"
                         />
-                        <span className="flex-1">Season {n}</span>
+                        <span className="flex-1">{n === 0 ? 'Specials' : `Season ${n}`}</span>
                         {fullyOwned ? (
                           <span className="text-xs text-green-400 font-medium">In library</span>
                         ) : picked > 0 ? (

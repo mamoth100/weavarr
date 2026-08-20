@@ -13,6 +13,9 @@ interface About {
   commit: string;
   latestCommit: string | null;
   updateAvailable: boolean | null;
+  movieCount: number | null;
+  seriesCount: number | null;
+  requestCount: number | null;
   nodeVersion: string;
   platform: string;
   docker: boolean;
@@ -62,6 +65,9 @@ export default function SystemStatusPanel() {
 
   const aboutRows: [string, string][] = [
     ['Version', data.about.commit === 'unknown' ? data.about.version : `${data.about.version} (${data.about.commit})`],
+    ...(data.about.movieCount !== null ? [['Movies', data.about.movieCount.toLocaleString()] as [string, string]] : []),
+    ...(data.about.seriesCount !== null ? [['Shows', data.about.seriesCount.toLocaleString()] as [string, string]] : []),
+    ...(data.about.requestCount !== null ? [['Requests made', data.about.requestCount.toLocaleString()] as [string, string]] : []),
     ['Node.js', data.about.nodeVersion],
     ['Platform', data.about.platform],
     ['Docker', data.about.docker ? 'Yes' : 'No'],

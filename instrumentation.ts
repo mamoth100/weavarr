@@ -49,6 +49,20 @@ export async function register() {
     }, HEALTH_POLL_INTERVAL_MS);
   }
 
+  // Opt-in: one notification when GitHub main moves past the running build.
+  // Dormant while the repo is private (the version check returns "can't
+  // tell") - flipping the repo public wakes it with no changes.
+  if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_UPDATE_ALERTS === 'true') {
+    const { checkForUpdateAndAlert } = await import('./lib/updateAlert');
+
+    checkForUpdateAndAlert().catch(() => {});
+
+    const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+    setInterval(() => {
+      checkForUpdateAndAlert().catch(() => {});
+    }, UPDATE_CHECK_INTERVAL_MS);
+  }
+
   // Opt-in auto-acquisition: watch the plex.tv account watchlist and add new
   // items to Radarr/Sonarr. Off by default on purpose.
   if (process.env.NEXT_RUNTIME === 'nodejs' && process.env.ENABLE_PLEX_WATCHLIST_SYNC === 'true') {

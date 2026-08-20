@@ -123,6 +123,7 @@ export default function FilterBar({
       show: undefined,
       sucks: undefined,
       fav: undefined,
+      owned: undefined,
       lang: undefined,
       sort: undefined,
       decade: undefined,
@@ -299,6 +300,7 @@ export default function FilterBar({
   const showAll = searchParams.get('show') === 'all';
   const sucksOn = searchParams.get('sucks') === 'show';
   const favOn = searchParams.get('fav') === 'show';
+  const ownedHidden = searchParams.get('owned') === 'hide';
   const langAll = currentLang === 'all';
   const sortOpt = SORT_OPTIONS.find((o) => o.value === currentSort);
   const sortIsDefault = currentSort === 'vote_average.desc';
@@ -308,6 +310,7 @@ export default function FilterBar({
   if (showAll) chips.push({ key: 'show', label: 'Watched', onClear: () => navigate({ show: undefined }, 'show-all') });
   if (sucksOn) chips.push({ key: 'sucks', label: 'Not interested', onClear: () => navigate({ sucks: undefined }, 'icon-sucks-row1') });
   if (favOn) chips.push({ key: 'fav', label: 'Favorites', onClear: () => navigate({ fav: undefined }, 'icon-fav-row1') });
+  if (ownedHidden) chips.push({ key: 'owned', label: 'Owned hidden', onClear: () => navigate({ owned: undefined }, 'hide-owned') });
   if (langAll) chips.push({ key: 'lang', label: 'All languages', onClear: () => navigate({ lang: undefined }, 'lang-en') });
   if (!sortIsDefault && sortOpt) chips.push({ key: 'sort', label: sortOpt.label, onClear: () => navigate({ sort: undefined }) });
   if (eraLabel) chips.push({ key: 'era', label: eraLabel, onClear: () => { setYearInput(''); navigate({ decade: undefined, year: undefined }); } });
@@ -438,6 +441,19 @@ export default function FilterBar({
                 }`}
               >
                 Favorites
+              </button>
+
+              {/* Opposite polarity from the Include pills (those re-show
+                  hidden things; this hides shown things) - own group so
+                  the label says what turning it on does. */}
+              <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1 w-full sm:w-auto mt-2 sm:mt-0">Exclude</span>
+              <button
+                onClick={() => navigate({ owned: ownedHidden ? undefined : 'hide' }, 'hide-owned')}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${pendingClass('hide-owned')} ${
+                  ownedHidden ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                In library
               </button>
 
               <span className="text-xs text-zinc-500 uppercase tracking-wider mx-1 w-full sm:w-auto mt-2 sm:mt-0">Language</span>
