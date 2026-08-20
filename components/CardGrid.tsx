@@ -11,7 +11,7 @@ interface Props {
   items: TmdbMovie[];
   mediaType: 'movie' | 'tv';
   variant?: 'default' | 'upcoming';
-  /** Total result count from the server page - rendered here so count + hidden-breakdown make one line instead of two stacked micro-rows. */
+  /** Accepted for compatibility but no longer rendered - the user axed result counts, keeping only the hidden-item breakdown. */
   totalResults?: number;
   /** Suppress the results/hidden info line - for Discover's section slices, where four of them would be noise. */
   quiet?: boolean;
@@ -20,7 +20,7 @@ interface Props {
   maxItems?: number;
 }
 
-export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false, maxItems }: Props) {
+export default function CardGrid({ items, mediaType, variant = 'default', quiet = false, maxItems }: Props) {
   const { loaded, watchedItems, sucksItems } = useWatchlist();
   const libraryStatus = useLibraryStatus();
   const searchParams = useSearchParams();
@@ -93,8 +93,9 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     );
   }
 
+  // No result-count here by design (the user's call: the hidden-item
+  // verbiage is useful, a five-digit total is noise).
   const infoLine = [
-    totalResults !== undefined && `${totalResults.toLocaleString()} results`,
     hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
     hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
     hiddenOwnedCount > 0 && `${hiddenOwnedCount} owned hidden`,

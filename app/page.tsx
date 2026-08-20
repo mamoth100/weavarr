@@ -65,9 +65,9 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <AppShell title={pageTitle}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Trending/Popular are curated pre-ranked lists - TMDB's endpoints
-            take no filters, so showing the filter bar would be a lie. */}
-        {!specialView && (
+        {/* Special views show the filter bar too - untouched they serve
+            TMDB's curated lists, and any set filter transparently switches
+            them to a popularity-sorted discover query underneath. */}
         <Suspense fallback={<div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />}>
           <FilterBar
             activeSubgenres={searchParams.subgenres ? searchParams.subgenres.split(',').filter(Boolean) : []}
@@ -80,7 +80,6 @@ export default async function Home({ searchParams }: PageProps) {
             currentUpcomingGenre={searchParams.upcomingGenre ?? ''}
           />
         </Suspense>
-        )}
 
         {isGlobalSearch && !query ? (
           <div className="text-center text-zinc-500 py-24">

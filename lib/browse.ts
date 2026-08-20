@@ -31,6 +31,8 @@ export interface BrowseArgs {
   /** True = render the sectioned Discover home instead of a browse grid. */
   isDiscover: boolean;
   specialView: SpecialView | null;
+  /** On a special view: a filter is set, so the curated endpoint gives way to a filterable discover query. */
+  specialFiltersActive: boolean;
   activeGenre: GenreDef;
   upcomingGenre: GenreDef;
   defaultGenre: GenreDef;
@@ -71,9 +73,15 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
   const activeSubgenreIds = params.subgenres ? params.subgenres.split(',').filter(Boolean) : [];
   const keywordIds = SUBGENRES.filter((s) => activeSubgenreIds.includes(s.id)).flatMap((s) => s.keywordIds);
 
-  const sort = (
-    SORT_OPTIONS.some((o) => o.value === params.sort) ? params.sort : 'vote_average.desc'
-  ) as SortOption;
+  const sortValid = SORT_OPTIONS.some((o) => o.value === params.sort);
+  // Special views default to popularity - they ARE popularity lists, and the
+  // filtered fallback should keep that feel unless a sort is chosen.
+  const sort = (sortValid ? params.sort : specialView ? 'popularity.desc' : 'vote_average.desc') as SortOption;
+
+  // Any touched filter on a curated view flips it from TMDB's endpoint (which
+  // takes no filters at all) to a discover query sorted by popularity - the
+  // same honest mapping the genre-scoped Discover sections use.
+  const specialFiltersActive = Boolean(query || params.subgenres || sortValid || params.decade || params.year || params.lang);
 
   const decade = DECADES.find((d) => d.value === params.decade);
   const language = params.lang === 'all' ? '' : 'en';
@@ -88,6 +96,7 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
     isGlobalSearch,
     isDiscover,
     specialView,
+    specialFiltersActive,
     activeGenre,
     upcomingGenre,
     defaultGenre,
@@ -129,6 +138,47 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
   } = args;
   const hasMovies = Boolean(activeGenre.movieGenreId);
   const hasTv = Boolean(activeGenre.tvGenreId);
+
+  // Curated lists come pre-ranked from TMDB while untouched; the moment a
+  // filter is set they become discover queries (popularity-sorted unless a
+  // sort was chosen), since TMDB's trending/popular endpoints take no
+  // filters at all.
+  if (args.specialView && args.specialFiltersActive) {
+    const wantMovies = args.specialView !== 'popular-tv';
+    const wantTv = args.specialView !== 'popular-movies';
+
+    if (query) {
+      const [movieData, tvData] = await Promise.all([
+        wantMovies ? searchMovies(query, page) : Promise.resolve(EMPTY_PAGE),
+        wantTv ? searchTv(query, page) : Promise.resolve(EMPTY_PAGE),
+      ]);
+      return {
+        results: rankSearchResults([...movieData.results, ...tvData.results], query),
+        totalPages: Math.max(movieData.total_pages, tvData.total_pages),
+        totalResults: movieData.total_results + tvData.total_results,
+      };
+    }
+
+    const [movieData, tvData] = await Promise.all([
+      wantMovies
+        ? discoverMovies({ page, sortBy: sort, keywordIds, minVotes, dateGte, dateLte, language, genre: 'all' })
+        : Promise.resolve(EMPTY_PAGE),
+      wantTv
+        ? discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: 'all', keywordIds })
+        : Promise.resolve(EMPTY_PAGE),
+    ]);
+    // Merge by the sort's own metric when it's popularity (keeps the
+    // trending feel); otherwise movies-then-TV like the genre grids.
+    const merged =
+      sort === 'popularity.desc'
+        ? [...movieData.results, ...tvData.results].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+        : [...movieData.results, ...tvData.results];
+    return {
+      results: merged,
+      totalPages: Math.max(movieData.total_pages, tvData.total_pages),
+      totalResults: movieData.total_results + tvData.total_results,
+    };
+  }
 
   // Curated lists come pre-ranked from TMDB - no filters, no genre math.
   if (args.specialView) {
