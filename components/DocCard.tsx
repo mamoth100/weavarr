@@ -76,10 +76,10 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
     const el = posterRef.current;
     if (!el) return;
     const compute = () => {
-      // 140px = bottom of the Request pill (top-[7.25rem] + pill height),
-      // 36px = overlay bottom padding + breathing room, 16.5px per
+      // 104px = bottom of the Request pill (top-20 + pill height), 36px =
+      // overlay bottom padding + breathing room, 16.5px per
       // text-xs/leading-snug line.
-      const room = el.clientHeight - 140 - 36;
+      const room = el.clientHeight - 104 - 36;
       setSynopsisLines(Math.max(0, Math.min(7, Math.floor(room / 16.5))));
     };
     compute();

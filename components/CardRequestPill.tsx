@@ -35,8 +35,6 @@ export default function CardRequestPill({ id, mediaType, title, poster_path, rel
     []
   );
 
-  // No auto-favorite here on purpose - favorites are hidden from the grid by
-  // default, so favoriting on request made the card vanish mid-lifecycle.
   function handleSuccess() {
     refreshDownloadProgressSoon();
     onRequested();
@@ -88,7 +86,7 @@ export default function CardRequestPill({ id, mediaType, title, poster_path, rel
       <button
         onClick={handleClick}
         disabled={state === 'busy'}
-        className={`absolute top-[7.25rem] touch:top-[9rem] left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200 disabled:opacity-100 ${armedStyle}`}
+        className={`absolute top-20 touch:top-[6.5rem] left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200 disabled:opacity-100 ${armedStyle}`}
         aria-label={`Request "${title}"`}
       >
         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

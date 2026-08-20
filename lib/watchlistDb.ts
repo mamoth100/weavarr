@@ -1,5 +1,5 @@
 /**
- * Local replacement for the Supabase-backed favorites/watched/sucks tables.
+ * Local replacement for the Supabase-backed watched/sucks tables.
  * Supabase required a hosted project, hand-run SQL to create these tables,
  * and NEXT_PUBLIC_* keys baked in at build time (which broke Docker builds
  * outright, since those secrets aren't available at build time there) -
@@ -13,10 +13,9 @@ import path from 'path';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'weavarr.db');
 
-export type WatchlistTable = 'favorites' | 'watched' | 'sucks';
+export type WatchlistTable = 'watched' | 'sucks';
 
 const TIMESTAMP_COLUMN: Record<WatchlistTable, 'added_at' | 'watched_at'> = {
-  favorites: 'added_at',
   watched: 'watched_at',
   sucks: 'added_at',
 };
@@ -28,16 +27,10 @@ function getDb(): DatabaseSync {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   db = new DatabaseSync(DB_PATH);
   db.exec(`
-    CREATE TABLE IF NOT EXISTS favorites (
-      tmdb_id INTEGER NOT NULL,
-      media_type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      poster_path TEXT,
-      release_date TEXT,
-      original_language TEXT,
-      added_at TEXT NOT NULL,
-      PRIMARY KEY (tmdb_id, media_type)
-    );
+    -- Favorites was removed as a feature (2026-08-19, user call: it never
+    -- found a job). Dropping the table keeps every deployment's DB free of
+    -- residual artifacts.
+    DROP TABLE IF EXISTS favorites;
     CREATE TABLE IF NOT EXISTS watched (
       tmdb_id INTEGER NOT NULL,
       media_type TEXT NOT NULL,
@@ -66,7 +59,6 @@ export interface WatchlistRowInput {
   title: string;
   poster_path: string | null;
   release_date: string | null;
-  original_language?: string | null;
 }
 
 export function listRows(table: WatchlistTable): Record<string, unknown>[] {
@@ -77,9 +69,7 @@ export function listRows(table: WatchlistTable): Record<string, unknown>[] {
 export function upsertRow(table: WatchlistTable, row: WatchlistRowInput): void {
   const tsCol = TIMESTAMP_COLUMN[table];
   const now = new Date().toISOString();
-  const columns = table === 'favorites'
-    ? ['tmdb_id', 'media_type', 'title', 'poster_path', 'release_date', 'original_language', tsCol]
-    : ['tmdb_id', 'media_type', 'title', 'poster_path', 'release_date', tsCol];
+  const columns = ['tmdb_id', 'media_type', 'title', 'poster_path', 'release_date', tsCol];
   const placeholders = columns.map(() => '?').join(', ');
   const updates = columns
     .filter((c) => c !== 'tmdb_id' && c !== 'media_type')
@@ -93,7 +83,6 @@ export function upsertRow(table: WatchlistTable, row: WatchlistRowInput): void {
     row.poster_path,
     row.release_date,
   ];
-  if (table === 'favorites') values.push(row.original_language ?? null);
   values.push(now);
 
   getDb()
