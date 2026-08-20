@@ -158,24 +158,24 @@ function normalizeTvResult(show: Record<string, unknown>) {
 }
 
 /**
- * Trending movies+TV this week - the Discover home's headline row and the
- * ?genre=trending see-all view. TMDB mixes people into /trending/all;
- * filter those out and tag mediaType per item so mixed grids route
- * clicks to the right detail page.
+ * Trending this week - the Discover home's headline row and the
+ * ?genre=trending see-all view. media picks the endpoint: /trending/all
+ * mixes people in (filtered out here), movie/tv are homogeneous but still
+ * get tagged so mixed grids route clicks to the right detail page.
  */
-export async function getTrendingWeek(page = 1): Promise<TmdbDiscoverResponse> {
-  const res = await tmdbFetch(`${BASE_URL}/trending/all/week?page=${page}`, {
+export async function getTrendingWeek(page = 1, media: 'all' | 'movie' | 'tv' = 'all'): Promise<TmdbDiscoverResponse> {
+  const res = await tmdbFetch(`${BASE_URL}/trending/${media}/week?page=${page}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
   if (!res.ok) throw new Error(`TMDb trending failed: ${res.status}`);
   const data = await res.json();
-  return {
-    ...data,
-    results: (data.results as Record<string, unknown>[])
-      .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
-      .map((r) => (r.media_type === 'tv' ? normalizeTvResult(r) : { ...r, mediaType: 'movie' as const })),
-  };
+  const results = (data.results as Record<string, unknown>[])
+    .filter((r) => media !== 'all' || r.media_type === 'movie' || r.media_type === 'tv')
+    .map((r) =>
+      media === 'tv' || r.media_type === 'tv' ? normalizeTvResult(r) : { ...r, mediaType: 'movie' as const }
+    );
+  return { ...data, results };
 }
 
 export async function getPopularMovies(page = 1): Promise<TmdbDiscoverResponse> {
