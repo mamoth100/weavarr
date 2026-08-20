@@ -115,7 +115,8 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 Ours: Discord, Pushover, generic webhook - flat "send everything" per channel.
 Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigned`/`senderName`), Telegram (thread id, silent send), Slack, Gotify (priority), ntfy (topic/priority), Pushbullet, Webpush (PWA push, VAPID), Discord (role mentions, locale), webhook with **templated JSON payload** (`{{notification_type}}`, `{{media}}` variables).
 
-- [ ] **GAP** (M) Webpush - roadmap Tier 4 pick (no external account needed, best fit).
+- [x] **GAP** (M) Webpush - **CODE SHIPPED 2026-08-20, dormant until HTTPS**: VAPID keys auto-generate into data/, per-device subscriptions in weavarr.db, service worker, Webpush channel in the fan-out with import/alert toggles, "Enable on this device" button in Settings > Notifications (shows a plain "needs HTTPS" note on plain HTTP), Test button, dead subscriptions pruned. Browsers refuse push on plain HTTP, so nothing works until the follow-up below.
+- [ ] **FOLLOW-UP (user-parked 2026-08-19): reverse proxy + HTTPS on the Pi** - the one prerequisite for webpush (and PWA install). A proxy with a free cert in front of Weavarr; free hostname (DuckDNS or similar) needed since certs attach to names. When done: browse via the HTTPS name, tap "Enable on this device", webpush lights up with zero code changes.
 - [ ] **GAP** (S) Per-event-type granularity (`types` bitmask per agent) - ours is all-or-nothing per channel; "only tell me about failures" is a real want.
 - [ ] **GAP** (S) Webhook JSON payload templating with variables - ours sends a fixed shape.
 - [ ] **GAP** (S) `embedPoster` toggle (rich notifications with artwork).
