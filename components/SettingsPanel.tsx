@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Toggle from '@/components/Toggle';
 import PlexSignIn from '@/components/PlexSignIn';
+import WebpushDeviceButton from '@/components/WebpushDeviceButton';
 
 interface SettingStatus {
   key: string;
@@ -21,7 +22,7 @@ interface QualityProfileOption {
   name: string;
 }
 
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord', 'Webpush']);
 
 // What a group is for, shown as a "?" tooltip in the group header. The link
 // points at where to get a key/token, for groups that need one from an
@@ -211,6 +212,7 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Pushover: 'Notifications',
   Webhook: 'Notifications',
   Discord: 'Notifications',
+  Webpush: 'Notifications',
   // All app-level knobs in one section: identity/links, network posture,
   // and behavior toggles. 'Misc' stays in SECTION_ORDER only as the
   // fallback bucket for any group without a mapping.
@@ -506,6 +508,8 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                           </>
                         )}
                         {/* PIN sign-in fills PLEX_TOKEN automatically - finding the token by hand is obscure enough that Seerr-style login is the sane default path. */}
+                        {/* Subscriptions are per-device browser state, not a saved setting - the button lives in the group header. */}
+                        {group === 'Webpush' && <WebpushDeviceButton />}
                         {group === 'Plex' && (
                           <PlexSignIn
                             onSaved={() =>

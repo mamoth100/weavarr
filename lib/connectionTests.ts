@@ -246,6 +246,17 @@ export async function testGroup(group: string, values: Record<string, string>): 
       return testPushover(values.PUSHOVER_USER_KEY, values.PUSHOVER_API_TOKEN);
     case 'Webhook':
       return testWebhook(values.WEBHOOK_NOTIFY_URL);
+    case 'Webpush': {
+      try {
+        const { sendWebpushNotification, subscriptionCount } = await import('./webpush');
+        const count = subscriptionCount();
+        if (count === 0) return { ok: false, message: 'No devices subscribed - use "Enable on this device" first (needs HTTPS)' };
+        await sendWebpushNotification('Weavarr test', 'This is a test notification from Weavarr.');
+        return { ok: true, message: `Test sent to ${count} device${count === 1 ? '' : 's'}` };
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : String(err) };
+      }
+    }
     case 'Discord':
       return testDiscord(values.DISCORD_WEBHOOK_URL);
     default:

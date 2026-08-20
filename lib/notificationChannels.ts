@@ -10,6 +10,7 @@
 import { sendPushoverNotification } from './pushover';
 import { sendWebhookNotification } from './webhookNotify';
 import { sendDiscordNotification } from './discordNotify';
+import { sendWebpushNotification, subscriptionCount } from './webpush';
 
 export type NotificationCategory = 'import' | 'alert';
 
@@ -24,6 +25,14 @@ export function webhookNotifyEnabled(): boolean {
 
 export function discordNotifyEnabled(): boolean {
   return process.env.ENABLE_DISCORD_NOTIFY === 'true' && Boolean(process.env.DISCORD_WEBHOOK_URL);
+}
+
+export function webpushEnabled(): boolean {
+  try {
+    return process.env.ENABLE_WEBPUSH === 'true' && subscriptionCount() > 0;
+  } catch {
+    return false;
+  }
 }
 
 /** Both category toggles default to on (unset !== 'false') so existing channel setups keep receiving everything until someone deliberately narrows it. */
@@ -52,6 +61,7 @@ export async function notifyAllChannels(title: string, message: string, category
   if (pushoverEnabled() && categoryEnabled('PUSHOVER', category)) attempts.push(sendPushoverNotification(title, message, link));
   if (webhookNotifyEnabled() && categoryEnabled('WEBHOOK', category)) attempts.push(sendWebhookNotification(title, message, link));
   if (discordNotifyEnabled() && categoryEnabled('DISCORD', category)) attempts.push(sendDiscordNotification(title, message, link));
+  if (webpushEnabled() && categoryEnabled('WEBPUSH', category)) attempts.push(sendWebpushNotification(title, message, link));
   if (attempts.length === 0) throw new Error(`No notification channel is enabled for "${category}"`);
 
   const results = await Promise.allSettled(attempts);
