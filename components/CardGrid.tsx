@@ -104,7 +104,10 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
   return (
     <>
       {infoLine && !quiet && <p className="text-xs text-zinc-500 mt-4 mb-2">{infoLine}</p>}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {/* The results count used to provide this gap below the filter bar -
+          with counts gone, the grid carries its own when no info line does.
+          Quiet (Discover section) grids sit under their own headers. */}
+      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 ${!quiet && !infoLine ? 'mt-4' : ''}`}>
         {filtered.map((doc) => (
           <DocCard key={`${doc.id}:${doc.mediaType ?? mediaType}`} doc={doc} mediaType={doc.mediaType ?? mediaType} variant={variant} />
         ))}
