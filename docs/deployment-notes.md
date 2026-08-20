@@ -176,3 +176,18 @@ docker compose up -d
 # containers (sonarr/radarr/sabnzbd/nzbget) confirmed untouched throughout
 # (same uptimes before and after).
 ```
+
+## Standard deploy procedure (updated 2026-08-19)
+
+```bash
+ssh -i ~/.ssh/media01 mamoth@10.0.0.254
+cd /home/mamoth/DocuView
+git pull --ff-only
+GIT_SHA=$(git rev-parse --short HEAD) docker compose build
+docker compose up -d
+```
+
+The GIT_SHA prefix matters: it stamps the image with the commit it was
+built from, which drives the Version display and the update check on
+Settings > Status. Building without it still works, but Status shows
+"unknown" and the update check stays silent.
