@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import type { NotificationLink } from './notificationChannels';
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
@@ -5,7 +6,7 @@ const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 /** Posts a rich embed to a Discord channel via an incoming webhook - no bot, no OAuth, just the URL from Server Settings > Integrations > Webhooks. A link makes the embed title clickable. */
 export async function sendDiscordNotification(title: string, message: string, link?: NotificationLink): Promise<void> {
   if (!DISCORD_WEBHOOK_URL) throw new Error('Discord notifications are not configured');
-  const res = await fetch(DISCORD_WEBHOOK_URL, {
+  const res = await fetchWithTimeout(DISCORD_WEBHOOK_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

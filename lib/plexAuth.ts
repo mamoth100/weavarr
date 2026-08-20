@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 /**
  * Plex PIN-based sign-in (the same flow Seerr/Overseerr and Plex's own apps
  * use): create a PIN, send the user to app.plex.tv/auth to log in on Plex's
@@ -48,7 +49,7 @@ export interface PlexPin {
 
 export async function createPlexPin(): Promise<PlexPin> {
   const clientId = await getPlexClientId();
-  const res = await fetch('https://plex.tv/api/v2/pins?strong=true', {
+  const res = await fetchWithTimeout('https://plex.tv/api/v2/pins?strong=true', {
     method: 'POST',
     headers: plexHeaders(clientId),
     cache: 'no-store',
@@ -65,7 +66,7 @@ export async function createPlexPin(): Promise<PlexPin> {
 /** The auth token once the user has approved the PIN on plex.tv, else null (PINs expire after ~15 minutes). */
 export async function checkPlexPin(pinId: number): Promise<string | null> {
   const clientId = await getPlexClientId();
-  const res = await fetch(`https://plex.tv/api/v2/pins/${pinId}`, {
+  const res = await fetchWithTimeout(`https://plex.tv/api/v2/pins/${pinId}`, {
     headers: plexHeaders(clientId),
     cache: 'no-store',
   });

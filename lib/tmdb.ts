@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders } from '@/types';
 import type { MediaType } from '@/types';
 
@@ -18,10 +19,10 @@ function authHeaders() {
 /** TMDb occasionally times out or drops the connection transiently - retry once before giving up, so a passing network blip doesn't crash the page. */
 async function tmdbFetch(url: string, init: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, init);
+    return await fetchWithTimeout(url, init);
   } catch {
     await new Promise((r) => setTimeout(r, 400));
-    return fetch(url, init);
+    return fetchWithTimeout(url, init);
   }
 }
 

@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
@@ -26,7 +27,7 @@ function headers() {
 /** The Sonarr quality profiles available to pick from - used by the advanced per-request override in RequestButton. */
 export async function getSonarrQualityProfiles(): Promise<{ id: number; name: string }[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr quality profile list failed: ${res.status}`);
   return res.json();
 }
@@ -62,7 +63,7 @@ export async function addSeriesToSonarr({
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
   async function lookup(term: string) {
-    const res = await fetch(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
       headers: headers(),
       cache: 'no-store',
     });
@@ -82,8 +83,8 @@ export async function addSeriesToSonarr({
   if (series.id) return { alreadyAdded: true };
 
   const [profilesRes, foldersRes] = await Promise.all([
-    fetch(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
-    fetch(`${SONARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
+    fetchWithTimeout(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
+    fetchWithTimeout(`${SONARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
   ]);
   const profiles = await profilesRes.json();
   const folders = await foldersRes.json();
@@ -112,7 +113,7 @@ export async function addSeriesToSonarr({
     ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: pickedSet.has(s.seasonNumber) }))
     : series.seasons;
 
-  const addRes = await fetch(`${SONARR_URL}/api/v3/series`, {
+  const addRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/series`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
@@ -188,7 +189,7 @@ export interface SonarrQueueItem {
 export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  const res = await fetch(`${SONARR_URL}/api/v3/queue?includeSeries=true&includeEpisode=true&pageSize=50`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/queue?includeSeries=true&includeEpisode=true&pageSize=50`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -213,7 +214,7 @@ export async function getSonarrQueue(): Promise<SonarrQueueItem[]> {
 export async function forceImportSonarr(downloadId: string) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  const res = await fetch(`${SONARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -234,7 +235,7 @@ export async function forceImportSonarr(downloadId: string) {
     downloadId: f.downloadId,
   }));
 
-  const cmdRes = await fetch(`${SONARR_URL}/api/v3/command`, {
+  const cmdRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
@@ -258,7 +259,7 @@ export interface ImportHistoryItem {
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${SONARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeSeries=true&includeEpisode=true`,
     { headers: headers(), cache: 'no-store' }
   );
@@ -286,7 +287,7 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
 /** Season:episode keys that currently have a file, for a series that's confirmed to still exist. */
 export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<string>> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -307,7 +308,7 @@ export interface SonarrSeriesLite {
 
 export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
   const data = await res.json();
   return (data as Record<string, unknown>[]).map((s) => {
@@ -344,7 +345,7 @@ interface SonarrImage {
 
 export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
   const data: Record<string, unknown>[] = await res.json();
   const series = data.map((s) => {
@@ -398,7 +399,7 @@ export async function getSonarrSeriesIdByImdbId(imdbId: string): Promise<number 
 export async function deleteSonarrSeries(seriesId: number): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   try {
-    const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}?deleteFiles=true&addImportListExclusion=false`, {
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}?deleteFiles=true&addImportListExclusion=false`, {
       method: 'DELETE',
       headers: headers(),
     });
@@ -432,7 +433,7 @@ export function isSonarrEpisodeDownloadable(e: Pick<SonarrEpisode, 'hasFile' | '
 /** Every episode of a series, with file status - used for the per-episode management view (as opposed to getSonarrEpisodeFileSet's bare id set, used only for cleanup matching). */
 export async function getSonarrSeriesEpisodes(seriesId: number): Promise<SonarrEpisode[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -464,7 +465,7 @@ export interface SonarrEpisodeFileInfo {
 /** One fetch per series: every episode that has a file, keyed "season:episode" -> ids. Callers resolving many episodes of the same show should use this instead of findSonarrEpisodeFile, which refetches the full episode list on every call. */
 export async function getSonarrEpisodeFileInfoMap(seriesId: number): Promise<Map<string, SonarrEpisodeFileInfo>> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -486,7 +487,7 @@ export async function findSonarrEpisodeFile(
   episodeNumber: number
 ): Promise<SonarrEpisodeFileInfo | null> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -506,14 +507,14 @@ async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<number 
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   if (episodeIds.length === 0) return null;
 
-  const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+  const monitorRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode/monitor`, {
     method: 'PUT',
     headers: headers(),
     body: JSON.stringify({ episodeIds, monitored: true }),
   });
   if (!monitorRes.ok) throw new Error(await readableApiError(monitorRes, 'Sonarr monitor failed'));
 
-  const searchRes = await fetch(`${SONARR_URL}/api/v3/command`, {
+  const searchRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ name: 'EpisodeSearch', episodeIds }),
@@ -528,7 +529,7 @@ async function waitForSonarrCommand(commandId: number, timeoutMs = 60000): Promi
   if (!SONARR_URL || !SONARR_KEY) return;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const res = await fetch(`${SONARR_URL}/api/v3/command/${commandId}`, { headers: headers(), cache: 'no-store' });
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/command/${commandId}`, { headers: headers(), cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (data.status === 'completed' || data.status === 'failed') return;
@@ -552,14 +553,14 @@ async function withTemporaryQualityProfile<T>(
   fn: () => Promise<T>
 ): Promise<T> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const seriesRes = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+  const seriesRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
   if (!seriesRes.ok) throw new Error(`Sonarr series lookup failed: ${seriesRes.status}`);
   const series = await seriesRes.json();
   const originalProfileId = series.qualityProfileId as number;
   if (originalProfileId === overrideProfileId) return fn();
 
   async function setProfile(profileId: number) {
-    const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, {
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify({ ...series, qualityProfileId: profileId }),
@@ -609,14 +610,14 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
   try {
-    const deleteRes = await fetch(`${SONARR_URL}/api/v3/episodefile/${episodeFileId}`, {
+    const deleteRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/episodefile/${episodeFileId}`, {
       method: 'DELETE',
       headers: headers(),
     });
     // 404 = the file is already gone - proceed to the unmonitor step anyway.
     if (!deleteRes.ok && deleteRes.status !== 404) throw new Error(await readableApiError(deleteRes, 'Sonarr episode file delete failed'));
 
-    const monitorRes = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+    const monitorRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode/monitor`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
@@ -633,7 +634,7 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
 export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   try {
-    const res = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode/monitor`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify({ episodeIds: [episodeId], monitored: false }),
@@ -675,7 +676,7 @@ export interface MissingAiredEpisode {
  */
 export async function getMissingAiredEpisodes(): Promise<MissingAiredEpisode[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${SONARR_URL}/api/v3/wanted/missing?pageSize=1000&sortKey=airDateUtc&sortDirection=descending&includeSeries=true`,
     { headers: headers(), cache: 'no-store' }
   );
@@ -718,7 +719,7 @@ export interface SonarrCalendarItem {
 /** Every episode airing in this date range across the whole library - same data Sonarr's own Calendar page shows. */
 export async function getSonarrCalendar(start: string, end: string): Promise<SonarrCalendarItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${SONARR_URL}/api/v3/calendar?start=${start}&end=${end}&includeSeries=true`,
     { headers: headers(), cache: 'no-store' }
   );
@@ -746,7 +747,7 @@ export async function getSonarrCalendar(start: string, end: string): Promise<Son
 /** Set monitored on a batch of episodes in one call. */
 export async function monitorSonarrEpisodes(episodeIds: number[], monitored: boolean): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetch(`${SONARR_URL}/api/v3/episode/monitor`, {
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode/monitor`, {
     method: 'PUT',
     headers: headers(),
     body: JSON.stringify({ episodeIds, monitored }),
@@ -771,7 +772,7 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
   if (!match) return null;
 
   const [detailRes, episodes] = await Promise.all([
-    fetch(`${SONARR_URL}/api/v3/series/${match.id}`, { headers: headers(), cache: 'no-store' }),
+    fetchWithTimeout(`${SONARR_URL}/api/v3/series/${match.id}`, { headers: headers(), cache: 'no-store' }),
     getSonarrSeriesEpisodes(match.id),
   ]);
   if (!detailRes.ok) throw new Error(`Sonarr series fetch failed: ${detailRes.status}`);
@@ -809,7 +810,7 @@ export async function expandSonarrSeries({
 
   // 1. Series-level update: season monitored flags + monitorNewItems.
   if (seasonNumbers.length > 0 || monitorFuture !== undefined) {
-    const res = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
     if (!res.ok) throw new Error(`Sonarr series fetch failed: ${res.status}`);
     const series = await res.json();
     if (seasonNumbers.length > 0) {
@@ -820,7 +821,7 @@ export async function expandSonarrSeries({
     }
     if (monitorFuture !== undefined) series.monitorNewItems = monitorFuture ? 'all' : 'none';
     series.monitored = true;
-    const putRes = await fetch(`${SONARR_URL}/api/v3/series/${seriesId}`, {
+    const putRes = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify(series),

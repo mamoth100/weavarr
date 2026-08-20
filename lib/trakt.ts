@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 const BASE_URL = 'https://api.trakt.tv';
 
 const TRAKT_ENABLED = process.env.ENABLE_TRAKT !== 'false';
@@ -32,7 +33,7 @@ async function resolveTraktItem(
   imdbId: string
 ): Promise<{ type: string; slug: string } | null> {
   // Fast path: try direct movie lookup
-  const direct = await fetch(`${BASE_URL}/movies/${imdbId}`, {
+  const direct = await fetchWithTimeout(`${BASE_URL}/movies/${imdbId}`, {
     headers: traktHeaders(),
     cache: 'no-store',
   });
@@ -43,7 +44,7 @@ async function resolveTraktItem(
   }
 
   // Fallback: search by IMDb ID (finds movies AND shows)
-  const search = await fetch(`${BASE_URL}/search/imdb/${imdbId}`, {
+  const search = await fetchWithTimeout(`${BASE_URL}/search/imdb/${imdbId}`, {
     headers: traktHeaders(),
     cache: 'no-store',
   });
@@ -69,11 +70,11 @@ export async function getTraktData(imdbId: string): Promise<TraktData> {
   if (!item) return { ratings: null, stats: null };
 
   const [ratingsRes, statsRes] = await Promise.all([
-    fetch(`${BASE_URL}/${item.type}/${item.slug}/ratings`, {
+    fetchWithTimeout(`${BASE_URL}/${item.type}/${item.slug}/ratings`, {
       headers: traktHeaders(),
       cache: 'no-store',
     }),
-    fetch(`${BASE_URL}/${item.type}/${item.slug}/stats`, {
+    fetchWithTimeout(`${BASE_URL}/${item.type}/${item.slug}/stats`, {
       headers: traktHeaders(),
       cache: 'no-store',
     }),

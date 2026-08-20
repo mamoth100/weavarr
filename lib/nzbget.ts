@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const NZBGET_URL = process.env.NZBGET_URL?.replace(/\/$/, '');
 const NZBGET_USERNAME = process.env.NZBGET_USERNAME;
@@ -13,7 +14,7 @@ function authHeader(): string {
 }
 
 async function rpc<T>(method: string, params: unknown[] = []): Promise<T> {
-  const res = await fetch(`${NZBGET_URL}/jsonrpc`, {
+  const res = await fetchWithTimeout(`${NZBGET_URL}/jsonrpc`, {
     method: 'POST',
     headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ method, params }),

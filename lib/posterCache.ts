@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import { mkdir, readFile, writeFile, unlink, readdir } from 'fs/promises';
 import path from 'path';
 
@@ -28,7 +29,7 @@ export async function getCachedPoster(
     // not cached yet - fall through and fetch it
   }
 
-  const res = await fetch(`${baseUrl}/MediaCover/${id}/poster.jpg`, { headers: { 'X-Api-Key': apiKey } });
+  const res = await fetchWithTimeout(`${baseUrl}/MediaCover/${id}/poster.jpg`, { headers: { 'X-Api-Key': apiKey } });
   if (!res.ok) return null;
   const buffer = Buffer.from(await res.arrayBuffer());
 

@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import { titlesMatch } from './titleMatch';
 // Stripped of any trailing slash - a URL saved with one (e.g. "http://host:8096/")
 // would otherwise produce double-slash paths like ".../Users" -> "..//Users",
@@ -22,7 +23,7 @@ let cachedUserId: string | null = null;
 /** Resolves the configured Jellyfin username to its internal user id (a GUID), via the admin Users listing. Cached for the life of the process - matches every other setting here needing a restart to pick up changes. */
 async function resolveUserId(): Promise<string> {
   if (cachedUserId) return cachedUserId;
-  const res = await fetch(`${JELLYFIN_URL}/Users`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin user lookup failed: ${res.status}`);
   const users: { Id?: string; Name?: string }[] = await res.json();
   const normalized = (JELLYFIN_USERNAME as string).toLowerCase().trim();
@@ -70,7 +71,7 @@ async function searchJellyfin(query: string, itemType: 'Movie' | 'Series' | 'Epi
     userId: await resolveUserId(),
     Fields: 'UserData',
   });
-  const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin search failed: ${res.status}`);
   const data = await res.json();
   return (data.Items as JellyfinItem[] | undefined) ?? [];
@@ -109,7 +110,7 @@ async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
     userId: await resolveUserId(),
     Fields: 'UserData',
   });
-  const res = await fetch(`${JELLYFIN_URL}/Shows/${seriesId}/Episodes?${params}`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Shows/${seriesId}/Episodes?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin episode lookup failed: ${res.status}`);
   const data = await res.json();
   return (data.Items as JellyfinItem[] | undefined) ?? [];
@@ -117,7 +118,7 @@ async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
 
 async function markPlayed(itemId: string): Promise<void> {
   const userId = await resolveUserId();
-  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/PlayedItems/${itemId}`, {
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users/${userId}/PlayedItems/${itemId}`, {
     method: 'POST',
     headers: headers(),
   });
@@ -173,7 +174,7 @@ export async function markJellyfinSeriesEpisodesWatchedById(
 /** Tells Jellyfin to rescan its libraries (e.g. after deleting a movie elsewhere). Jellyfin has no clean per-library-type refresh like Plex's per-section refresh, so this triggers a full library scan for both movie and TV refresh calls. */
 export async function refreshJellyfinLibrary(): Promise<void> {
   requireConfig();
-  const res = await fetch(`${JELLYFIN_URL}/Library/Refresh`, { method: 'POST', headers: headers() });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Library/Refresh`, { method: 'POST', headers: headers() });
   if (!res.ok) throw new Error(`Jellyfin library refresh failed: ${res.status}`);
 }
 
@@ -194,7 +195,7 @@ async function getAllJellyfinItemsWithIds(itemType: 'Movie' | 'Series'): Promise
     Recursive: 'true',
     Fields: 'ProviderIds,UserData',
   });
-  const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin library listing failed: ${res.status}`);
   const data = await res.json();
   const items: (JellyfinItem & { ProviderIds?: Record<string, string> })[] = data.Items ?? [];
@@ -235,7 +236,7 @@ export async function getJellyfinWatchedMovies(): Promise<JellyfinWatchedMovie[]
     Recursive: 'true',
     Fields: 'UserData',
   });
-  const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin watched movies failed: ${res.status}`);
   const data = await res.json();
   const items: JellyfinItem[] = data.Items ?? [];
@@ -255,7 +256,7 @@ export async function getJellyfinInProgressMovies(): Promise<JellyfinInProgressM
   requireConfig();
   const params = new URLSearchParams({ IncludeItemTypes: 'Movie', Recursive: 'true', Fields: 'UserData' });
   const userId = await resolveUserId();
-  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -291,7 +292,7 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
     Limit: String(limit),
     Fields: 'UserData',
   });
-  const res = await fetch(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin watched episodes failed: ${res.status}`);
   const data = await res.json();
   const items: JellyfinItem[] = data.Items ?? [];
@@ -327,7 +328,7 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
  */
 async function getJellyfinFinishedPlaybackEntries(limit: number): Promise<{ showTitle: string; seasonNumber: number; episodeNumber: number }[]> {
   requireConfig();
-  const res = await fetch(`${JELLYFIN_URL}/System/ActivityLog/Entries?limit=${limit}`, {
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/System/ActivityLog/Entries?limit=${limit}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -368,7 +369,7 @@ export async function getJellyfinInProgressEpisodes(): Promise<JellyfinInProgres
   requireConfig();
   const params = new URLSearchParams({ IncludeItemTypes: 'Episode', Recursive: 'true', Fields: 'UserData' });
   const userId = await resolveUserId();
-  const res = await fetch(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users/${userId}/Items/Resume?${params}`, {
     headers: headers(),
     cache: 'no-store',
   });

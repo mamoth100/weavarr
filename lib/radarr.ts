@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
@@ -31,7 +32,7 @@ function headers() {
  */
 export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number | null> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/movie?tmdbId=${tmdbId}`, {
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie?tmdbId=${tmdbId}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -43,7 +44,7 @@ export async function getRadarrMovieIdByTmdbId(tmdbId: number): Promise<number |
 /** The Radarr quality profiles available to pick from - used by the advanced per-request override in RequestButton. */
 export async function getRadarrQualityProfiles(): Promise<{ id: number; name: string }[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Radarr quality profile list failed: ${res.status}`);
   return res.json();
 }
@@ -55,7 +56,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
   const existingId = await getRadarrMovieIdByTmdbId(tmdbId);
   if (existingId) return { alreadyAdded: true };
 
-  const lookupRes = await fetch(`${RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, {
+  const lookupRes = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -63,8 +64,8 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
   const movie = await lookupRes.json();
 
   const [profilesRes, foldersRes] = await Promise.all([
-    fetch(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
-    fetch(`${RADARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
+    fetchWithTimeout(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
+    fetchWithTimeout(`${RADARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
   ]);
   const profiles = await profilesRes.json();
   const folders = await foldersRes.json();
@@ -81,7 +82,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
     ).catch(() => {});
   }
 
-  const addRes = await fetch(`${RADARR_URL}/api/v3/movie`, {
+  const addRes = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
@@ -121,7 +122,7 @@ export interface RadarrQueueItem {
 export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
-  const res = await fetch(`${RADARR_URL}/api/v3/queue?includeMovie=true&pageSize=50`, {
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/queue?includeMovie=true&pageSize=50`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -142,7 +143,7 @@ export async function getRadarrQueue(): Promise<RadarrQueueItem[]> {
 export async function forceImportRadarr(downloadId: string) {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
 
-  const res = await fetch(`${RADARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/manualimport?downloadId=${encodeURIComponent(downloadId)}`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -162,7 +163,7 @@ export async function forceImportRadarr(downloadId: string) {
     downloadId: f.downloadId,
   }));
 
-  const cmdRes = await fetch(`${RADARR_URL}/api/v3/command`, {
+  const cmdRes = await fetchWithTimeout(`${RADARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ name: 'ManualImport', files: mappedFiles, importMode: 'auto' }),
@@ -182,7 +183,7 @@ export interface MissingMovie {
 /** Monitored movies Radarr has no file for and no active download for - either not searched yet or genuinely unavailable on every configured indexer. Pulls straight from Radarr's own wanted/missing list. */
 export async function getMissingMovies(): Promise<MissingMovie[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${RADARR_URL}/api/v3/wanted/missing?pageSize=1000&sortKey=releaseDate&sortDirection=descending`,
     { headers: headers(), cache: 'no-store' }
   );
@@ -203,7 +204,7 @@ export async function getMissingMovies(): Promise<MissingMovie[]> {
 /** Same search Radarr's own UI triggers from the movie's own search icon. */
 export async function searchRadarrMovie(movieId: number): Promise<void> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/command`, {
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/command`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ name: 'MoviesSearch', movieIds: [movieId] }),
@@ -229,7 +230,7 @@ interface RadarrImage {
 
 export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/movie`, { headers: headers(), cache: 'no-store' });
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Radarr movie list failed: ${res.status}`);
   const data: Record<string, unknown>[] = await res.json();
   return data.map((m) => {
@@ -250,7 +251,7 @@ export async function getAllRadarrMovies(): Promise<RadarrMovie[]> {
 export async function deleteRadarrMovie(movieId: number): Promise<void> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
   try {
-    const res = await fetch(`${RADARR_URL}/api/v3/movie/${movieId}?deleteFiles=true&addImportExclusion=false`, {
+    const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/movie/${movieId}?deleteFiles=true&addImportExclusion=false`, {
       method: 'DELETE',
       headers: headers(),
     });
@@ -284,7 +285,7 @@ export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryI
   // pages mix grabs/deletes/renames with imports, so applying `limit` as the
   // page size BEFORE filtering let non-import events consume the whole page
   // and silently drop genuinely recent imports.
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${RADARR_URL}/api/v3/history?page=1&pageSize=50&sortKey=date&sortDirection=descending&includeMovie=true`,
     { headers: headers(), cache: 'no-store' }
   );
@@ -315,7 +316,7 @@ export interface RadarrCalendarItem {
 /** Every movie releasing in this date range - same data Radarr's own Calendar page shows. Uses whichever release date Radarr actually has (digital, then physical, then cinema), same fallback order Radarr's own UI uses. */
 export async function getRadarrCalendar(start: string, end: string): Promise<RadarrCalendarItem[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');
-  const res = await fetch(`${RADARR_URL}/api/v3/calendar?start=${start}&end=${end}`, {
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/calendar?start=${start}&end=${end}`, {
     headers: headers(),
     cache: 'no-store',
   });
