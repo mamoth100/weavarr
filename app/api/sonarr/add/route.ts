@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const { imdbId, title, monitor, seasonNumber, seasonNumbers, episodePicks, monitorFuture, highestQuality, profileOverride } = await request.json();
   if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 });
+  // Season 0 = specials, requestable like any other season.
   const seasonList = Array.isArray(seasonNumbers)
-    ? seasonNumbers.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
+    ? seasonNumbers.map(Number).filter((n: number) => Number.isInteger(n) && n >= 0)
     : undefined;
   const episodeList = Array.isArray(episodePicks)
     ? episodePicks
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
           seasonNumber: Number(p.seasonNumber),
           episodeNumber: Number(p.episodeNumber),
         }))
-        .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber > 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
+        .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber >= 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
     : undefined;
 
   try {

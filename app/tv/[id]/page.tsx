@@ -13,6 +13,7 @@ import ScoreBadge from '@/components/ScoreBadge';
 import TraktScore from '@/components/TraktScore';
 import DetailActions from '@/components/DetailActions';
 import RequestButton from '@/components/RequestButton';
+import SeasonAvailability from '@/components/SeasonAvailability';
 import BackLink from '@/components/BackLink';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
@@ -176,6 +177,10 @@ export default async function TvPage({ params }: Props) {
                 sonarrSeriesId={sonarrSeriesId}
               />
             </DetailActions>
+
+            {/* Per-season on-disk state at a glance - green/amber/grey chips,
+                only rendered once Sonarr knows the show. */}
+            <SeasonAvailability tmdbId={detail.id} seasons={detail.seasons ?? []} />
 
             {/* The old inline Episodes manager (per-episode/season downloads)
                 is gone from this page on purpose: the request modal ("Get

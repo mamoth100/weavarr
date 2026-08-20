@@ -9,8 +9,9 @@ export async function POST(request: Request) {
   const seriesId = Number(body.seriesId);
   if (!seriesId) return NextResponse.json({ error: 'seriesId required' }, { status: 400 });
 
+  // Season 0 = specials, requestable like any other season.
   const seasonNumbers = Array.isArray(body.seasonNumbers)
-    ? body.seasonNumbers.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
+    ? body.seasonNumbers.map(Number).filter((n: number) => Number.isInteger(n) && n >= 0)
     : [];
   const episodePicks = Array.isArray(body.episodePicks)
     ? body.episodePicks
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
           seasonNumber: Number(p.seasonNumber),
           episodeNumber: Number(p.episodeNumber),
         }))
-        .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber > 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
+        .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber >= 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
     : [];
   const monitorFuture = typeof body.monitorFuture === 'boolean' ? body.monitorFuture : undefined;
 

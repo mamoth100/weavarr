@@ -161,8 +161,9 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
       .catch(() => {});
   }, [mediaType, seasons, id]);
 
-  // Real seasons from TMDB, numbered and with episodes - excludes Specials (season 0)
-  const realSeasons = (seasons ?? fetchedSeasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0);
+  // Seasons from TMDB with actual episodes - Specials (season 0) included,
+  // the modal renders them as their own requestable row.
+  const realSeasons = (seasons ?? fetchedSeasons ?? []).filter((s) => s.season_number >= 0 && s.episode_count > 0);
 
   // TV requests go through the modal (season checkboxes, quality) - the old
   // inline <select> could only pick a single season or preset.

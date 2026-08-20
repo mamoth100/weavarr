@@ -4,6 +4,9 @@ import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fetchWithTimeout } from '@/lib/fetchTimeout';
 import { checkForUpdate, localCommit } from '@/lib/versionCheck';
+import { getAllRadarrMovies } from '@/lib/radarr';
+import { getAllSonarrSeries } from '@/lib/sonarr';
+import { getRequestRows } from '@/lib/requestLedger';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,12 +46,19 @@ export async function GET() {
   const sonarrEnabled = process.env.ENABLE_SONARR !== 'false';
 
   const dataDir = path.join(process.cwd(), 'data');
-  const [appDisk, radarrDisks, sonarrDisks, update] = await Promise.all([
+  const [appDisk, radarrDisks, sonarrDisks, update, movieCount, seriesCount] = await Promise.all([
     localDisk(dataDir),
     arrDiskspace(radarrEnabled ? process.env.RADARR_URL : undefined, radarrEnabled ? process.env.RADARR_KEY : undefined).catch(() => []),
     arrDiskspace(sonarrEnabled ? process.env.SONARR_URL : undefined, sonarrEnabled ? process.env.SONARR_KEY : undefined).catch(() => []),
     checkForUpdate(),
+    radarrEnabled ? getAllRadarrMovies().then((m) => m.length).catch(() => null) : Promise.resolve(null),
+    sonarrEnabled ? getAllSonarrSeries().then((s) => s.length).catch(() => null) : Promise.resolve(null),
   ]);
+
+  let requestCount: number | null = null;
+  try {
+    requestCount = getRequestRows().length;
+  } catch {}
 
   // Radarr and Sonarr usually watch the same volumes - collapse duplicates.
   const disks: DiskRow[] = [];
@@ -73,6 +83,9 @@ export async function GET() {
       commit: localCommit(),
       latestCommit: update.latest,
       updateAvailable: update.updateAvailable,
+      movieCount,
+      seriesCount,
+      requestCount,
       nodeVersion: process.version,
       platform: `${process.platform} (${process.arch})`,
       docker: existsSync('/.dockerenv'),

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { useLibraryStatus } from '@/hooks/useLibraryStatus';
 import DocCard from './DocCard';
 import type { TmdbMovie } from '@/types';
 
@@ -21,11 +22,21 @@ interface Props {
 
 export default function CardGrid({ items, mediaType, variant = 'default', totalResults, quiet = false, maxItems }: Props) {
   const { loaded, watchedItems, sucksItems, favorites } = useWatchlist();
+  const libraryStatus = useLibraryStatus();
   const searchParams = useSearchParams();
   const isSearching = !!searchParams.get('q');
   const hideWatched = !isSearching && searchParams.get('show') !== 'all';
   const showSucks = isSearching || searchParams.get('sucks') === 'show';
   const showFav = isSearching || searchParams.get('fav') === 'show';
+  // Opt-in, unlike the always-on watched hiding - owned titles are usually
+  // wanted in browse results (that's what the availability badges are for).
+  const hideOwned = !isSearching && searchParams.get('owned') === 'hide';
+
+  function isOwned(doc: TmdbMovie): boolean {
+    if (!libraryStatus) return false;
+    const type = doc.mediaType ?? mediaType;
+    return Boolean(type === 'tv' ? libraryStatus.shows[doc.id] : libraryStatus.movies[doc.id]);
+  }
 
   // Snapshot the watched/sucks sets ONCE after the initial watchlist load so that
   // marking items during this session doesn't immediately remove them from view.
@@ -72,6 +83,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     if (!showFav && snapshotFavorites.has(key)) return false;
+    if (hideOwned && isOwned(doc)) return false;
     return true;
   });
   const filtered = maxItems ? unfiltered.slice(0, maxItems) : unfiltered;
@@ -79,6 +91,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenFavCount = !showFav ? items.filter((d) => snapshotFavorites.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
+  const hiddenOwnedCount = hideOwned ? items.filter(isOwned).length : 0;
 
   // Wait until the watchlist has loaded before rendering so the filter is
   // applied on the very first paint - no flash of unfiltered items.
@@ -97,6 +110,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', totalR
     hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
     hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
     hiddenFavCount > 0 && `${hiddenFavCount} favorites hidden`,
+    hiddenOwnedCount > 0 && `${hiddenOwnedCount} owned hidden`,
   ].filter(Boolean).join(' · ');
 
   return (
