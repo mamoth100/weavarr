@@ -5,7 +5,12 @@ name: weavarr
 
 services:
   weavarr:
-    build: .
+    build:
+      context: .
+      args:
+        # Pass the checkout's commit so the image knows what it was built
+        # from: GIT_SHA=$(git rev-parse --short HEAD) docker compose build
+        GIT_SHA: ${GIT_SHA:-unknown}
     image: weavarr:local
     container_name: weavarr
     restart: unless-stopped

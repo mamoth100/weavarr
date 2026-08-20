@@ -37,4 +37,10 @@ EXPOSE 6767
 ENV PORT=6767
 ENV HOSTNAME="0.0.0.0"
 
+# The commit this image was built from - .git is dockerignored, so the host
+# passes it in (docker-compose.yml wires GIT_SHA from the environment).
+# Drives the version display and the update check in Settings > Status.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
+
 CMD ["node", "server.js"]

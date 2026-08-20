@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { statfs } from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
+import { fetchWithTimeout } from '@/lib/fetchTimeout';
+import { checkForUpdate, localCommit } from '@/lib/versionCheck';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +18,7 @@ interface DiskRow {
 // diskspace API, so the media rows come from them instead of local statfs.
 async function arrDiskspace(url: string | undefined, key: string | undefined): Promise<DiskRow[]> {
   if (!url || !key) return [];
-  const res = await fetch(`${url.replace(/\/$/, '')}/api/v3/diskspace`, {
+  const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/api/v3/diskspace`, {
     headers: { 'X-Api-Key': key },
     cache: 'no-store',
   });
@@ -41,10 +43,11 @@ export async function GET() {
   const sonarrEnabled = process.env.ENABLE_SONARR !== 'false';
 
   const dataDir = path.join(process.cwd(), 'data');
-  const [appDisk, radarrDisks, sonarrDisks] = await Promise.all([
+  const [appDisk, radarrDisks, sonarrDisks, update] = await Promise.all([
     localDisk(dataDir),
     arrDiskspace(radarrEnabled ? process.env.RADARR_URL : undefined, radarrEnabled ? process.env.RADARR_KEY : undefined).catch(() => []),
     arrDiskspace(sonarrEnabled ? process.env.SONARR_URL : undefined, sonarrEnabled ? process.env.SONARR_KEY : undefined).catch(() => []),
+    checkForUpdate(),
   ]);
 
   // Radarr and Sonarr usually watch the same volumes - collapse duplicates.
@@ -67,6 +70,9 @@ export async function GET() {
     disks,
     about: {
       version,
+      commit: localCommit(),
+      latestCommit: update.latest,
+      updateAvailable: update.updateAvailable,
       nodeVersion: process.version,
       platform: `${process.platform} (${process.arch})`,
       docker: existsSync('/.dockerenv'),
