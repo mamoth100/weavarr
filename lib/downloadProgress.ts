@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 /**
  * Per-title download progress, keyed by TMDB id so browse cards and detail
  * pages can match it to what they're showing. Aggregates the Radarr/Sonarr
@@ -41,10 +42,10 @@ async function fetchClientFractions(): Promise<Map<string, number>> {
 
   const [sab, nzbget] = await Promise.allSettled([
     sabOn
-      ? fetch(`${process.env.SABNZBD_URL!.replace(/\/$/, '')}/api?mode=queue&output=json&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' }).then((r) => r.json())
+      ? fetchWithTimeout(`${process.env.SABNZBD_URL!.replace(/\/$/, '')}/api?mode=queue&output=json&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' }).then((r) => r.json())
       : Promise.resolve(null),
     nzbgetOn
-      ? fetch(`${process.env.NZBGET_URL!.replace(/\/$/, '')}/jsonrpc`, {
+      ? fetchWithTimeout(`${process.env.NZBGET_URL!.replace(/\/$/, '')}/jsonrpc`, {
           method: 'POST',
           headers: {
             Authorization: `Basic ${Buffer.from(`${process.env.NZBGET_USERNAME}:${process.env.NZBGET_PASSWORD}`).toString('base64')}`,
@@ -112,7 +113,7 @@ function aggregate(
 }
 
 async function fetchQueue(url: string, key: string): Promise<QueueRecordShape[]> {
-  const res = await fetch(url, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
+  const res = await fetchWithTimeout(url, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
   if (!res.ok) throw new Error(`queue failed: ${res.status}`);
   const data = await res.json();
   return data.records ?? [];

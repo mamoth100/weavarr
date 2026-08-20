@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 import { titlesMatch } from './titleMatch';
 
 // Stripped of any trailing slash - otherwise a URL saved as "http://host:32400/"
@@ -26,7 +27,7 @@ async function searchPlex(query: string): Promise<PlexHub[]> {
   // /search only returns the list of search categories, not actual matches -
   // /hubs/search (what Plex's own apps use) returns real results, grouped
   // into per-type Hub entries (movie, show, episode, ...).
-  const res = await fetch(`${PLEX_URL}/hubs/search?query=${encodeURIComponent(query)}&X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/hubs/search?query=${encodeURIComponent(query)}&X-Plex-Token=${PLEX_TOKEN}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
@@ -57,7 +58,7 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
   const matchedShow = shows.find((item) => titlesMatch(item.title ?? '', searchQuery));
   if (!matchedShow?.ratingKey) return false;
 
-  const episodesRes = await fetch(
+  const episodesRes = await fetchWithTimeout(
     `${PLEX_URL}/library/metadata/${matchedShow.ratingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -71,7 +72,7 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
 /** Marks a single Plex item (movie or episode) as watched via its ratingKey. */
 async function scrobble(ratingKey: string): Promise<void> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${PLEX_URL}/:/scrobble?key=${ratingKey}&identifier=com.plexapp.plugins.library&X-Plex-Token=${PLEX_TOKEN}`,
     { cache: 'no-store' }
   );
@@ -122,7 +123,7 @@ export async function markPlexShowEpisodesWatchedByKey(
 ): Promise<void> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
-  const episodesRes = await fetch(
+  const episodesRes = await fetchWithTimeout(
     `${PLEX_URL}/library/metadata/${showRatingKey}/allLeaves?X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -151,7 +152,7 @@ const sectionKeyCache = new Map<string, string | null>();
 
 async function getSectionKey(type: 'show' | 'movie'): Promise<string | null> {
   if (sectionKeyCache.has(type)) return sectionKeyCache.get(type)!;
-  const res = await fetch(`${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
@@ -172,7 +173,7 @@ export async function refreshPlexMovieLibrary(): Promise<void> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
   const sectionKey = await getSectionKey('movie');
   if (!sectionKey) return;
-  const res = await fetch(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
     method: 'GET',
     cache: 'no-store',
   });
@@ -184,7 +185,7 @@ export async function refreshPlexTvLibrary(): Promise<void> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
   const sectionKey = await getTvSectionKey();
   if (!sectionKey) return;
-  const res = await fetch(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/library/sections/${sectionKey}/refresh?X-Plex-Token=${PLEX_TOKEN}`, {
     method: 'GET',
     cache: 'no-store',
   });
@@ -220,7 +221,7 @@ async function getAllPlexItemsWithIds(sectionType: 'movie' | 'show', itemType: 1
   const sectionKey = await getSectionKey(sectionType);
   if (!sectionKey) return [];
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${PLEX_URL}/library/sections/${sectionKey}/all?type=${itemType}&includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=2000&X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -258,7 +259,7 @@ export async function getPlexWatchedMovies(): Promise<WatchedMovie[]> {
   const sectionKey = await getSectionKey('movie');
   if (!sectionKey) return [];
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${PLEX_URL}/library/sections/${sectionKey}/all?type=1&viewCount%3E=1&X-Plex-Container-Start=0&X-Plex-Container-Size=1000&X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -283,7 +284,7 @@ export interface InProgressMovie {
 export async function getPlexInProgressMovies(): Promise<InProgressMovie[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
-  const res = await fetch(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
@@ -313,7 +314,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
   const sectionKey = await getTvSectionKey();
   if (!sectionKey) return [];
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${PLEX_URL}/library/sections/${sectionKey}/all?type=4&viewCount%3E=1&sort=lastViewedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=${limit}&X-Plex-Token=${PLEX_TOKEN}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -334,7 +335,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
 /** Used by getPlexPlayedSessionKeys - /status/sessions/history/all is a genuine event log, unlike getPlexEpisodeWatchHistory's live-library-listing query. */
 async function getPlexPlaySessions(limit: number): Promise<Record<string, unknown>[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${PLEX_URL}/status/sessions/history/all?X-Plex-Token=${PLEX_TOKEN}&sort=viewedAt:desc&limit=${limit}`,
     { headers: { Accept: 'application/json' }, cache: 'no-store' }
   );
@@ -371,7 +372,7 @@ export interface InProgressEpisode {
 export async function getPlexInProgressEpisodes(): Promise<InProgressEpisode[]> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
-  const res = await fetch(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
+  const res = await fetchWithTimeout(`${PLEX_URL}/library/onDeck?X-Plex-Token=${PLEX_TOKEN}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });

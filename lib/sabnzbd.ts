@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 // Stripped of any trailing slash - see the same fix in lib/plex.ts for why.
 const SAB_URL = process.env.SABNZBD_URL?.replace(/\/$/, '');
 const SAB_KEY = process.env.SABNZBD_API_KEY;
@@ -40,8 +41,8 @@ export async function getSabQueue(): Promise<SabQueue> {
   if (!SAB_URL || !SAB_KEY) throw new Error('SABnzbd is not configured');
 
   const [queueRes, historyRes] = await Promise.all([
-    fetch(`${SAB_URL}/api?mode=queue&output=json&apikey=${SAB_KEY}`, { cache: 'no-store' }),
-    fetch(`${SAB_URL}/api?mode=history&output=json&limit=15&apikey=${SAB_KEY}`, { cache: 'no-store' }),
+    fetchWithTimeout(`${SAB_URL}/api?mode=queue&output=json&apikey=${SAB_KEY}`, { cache: 'no-store' }),
+    fetchWithTimeout(`${SAB_URL}/api?mode=history&output=json&limit=15&apikey=${SAB_KEY}`, { cache: 'no-store' }),
   ]);
   if (!queueRes.ok) throw new Error(`SABnzbd queue failed: ${queueRes.status}`);
   if (!historyRes.ok) throw new Error(`SABnzbd history failed: ${historyRes.status}`);

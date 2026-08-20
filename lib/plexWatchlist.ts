@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 /**
  * Plex Watchlist sync (Seerr parity, roadmap Tier 1): anything added to the
  * Plex account's watchlist - from ANY Plex app, couch included - gets added
@@ -36,7 +37,7 @@ export interface WatchlistItem {
 }
 
 export async function getPlexWatchlist(): Promise<WatchlistItem[]> {
-  const res = await fetch(`${PROVIDER}/library/sections/watchlist/all`, {
+  const res = await fetchWithTimeout(`${PROVIDER}/library/sections/watchlist/all`, {
     headers: headers(),
     cache: 'no-store',
   });
@@ -55,7 +56,7 @@ export async function getPlexWatchlist(): Promise<WatchlistItem[]> {
 
 /** The tmdb/imdb ids for one watchlist item - requires a second per-item metadata fetch; the listing itself doesn't carry Guids. */
 export async function getWatchlistItemIds(ratingKey: string): Promise<{ tmdbId: number | null; imdbId: string | null }> {
-  const res = await fetch(`${PROVIDER}/library/metadata/${encodeURIComponent(ratingKey)}`, {
+  const res = await fetchWithTimeout(`${PROVIDER}/library/metadata/${encodeURIComponent(ratingKey)}`, {
     headers: headers(),
     cache: 'no-store',
   });

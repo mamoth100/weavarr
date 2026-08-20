@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 export interface QualityProfileOption {
   id: number;
   name: string;
@@ -18,13 +19,13 @@ async function testRadarr(url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
     const base = url.replace(/\/$/, '');
-    const res = await fetch(`${base}/api/v3/system/status`, {
+    const res = await fetchWithTimeout(`${base}/api/v3/system/status`, {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    const profilesRes = await fetch(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
+    const profilesRes = await fetchWithTimeout(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
     const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
     return { ok: true, message: `Connected - Radarr v${data.version ?? '?'}`, profiles };
   } catch (err) {
@@ -36,13 +37,13 @@ async function testSonarr(url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
     const base = url.replace(/\/$/, '');
-    const res = await fetch(`${base}/api/v3/system/status`, {
+    const res = await fetchWithTimeout(`${base}/api/v3/system/status`, {
       headers: { 'X-Api-Key': key },
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
     const data = await res.json();
-    const profilesRes = await fetch(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
+    const profilesRes = await fetchWithTimeout(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
     const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
     return { ok: true, message: `Connected - Sonarr v${data.version ?? '?'}`, profiles };
   } catch (err) {
@@ -53,7 +54,7 @@ async function testSonarr(url?: string, key?: string): Promise<TestResult> {
 async function testSABnzbd(url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/api?mode=version&apikey=${encodeURIComponent(key)}&output=json`, {
+    const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/api?mode=version&apikey=${encodeURIComponent(key)}&output=json`, {
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
@@ -69,7 +70,7 @@ async function testNzbget(url?: string, username?: string, password?: string): P
   if (!url || !username || !password) return { ok: false, message: 'URL, username, and password required' };
   try {
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
-    const res = await fetch(`${url.replace(/\/$/, '')}/jsonrpc`, {
+    const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/jsonrpc`, {
       method: 'POST',
       headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ method: 'version' }),
@@ -88,7 +89,7 @@ async function testNzbget(url?: string, username?: string, password?: string): P
 async function testPlex(url?: string, token?: string): Promise<TestResult> {
   if (!url || !token) return { ok: false, message: 'URL and token required' };
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/identity?X-Plex-Token=${encodeURIComponent(token)}`, {
+    const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/identity?X-Plex-Token=${encodeURIComponent(token)}`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
     });
@@ -105,7 +106,7 @@ async function testPlex(url?: string, token?: string): Promise<TestResult> {
 async function testJellyfin(url?: string, apiKey?: string, username?: string): Promise<TestResult> {
   if (!url || !apiKey) return { ok: false, message: 'URL and API key required' };
   try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/System/Info`, {
+    const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/System/Info`, {
       headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
       cache: 'no-store',
     });
@@ -113,7 +114,7 @@ async function testJellyfin(url?: string, apiKey?: string, username?: string): P
     const data = await res.json();
     if (!data.Version) return { ok: false, message: 'Unexpected response - check API key' };
     if (username) {
-      const usersRes = await fetch(`${url.replace(/\/$/, '')}/Users`, {
+      const usersRes = await fetchWithTimeout(`${url.replace(/\/$/, '')}/Users`, {
         headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
         cache: 'no-store',
       });
@@ -132,7 +133,7 @@ async function testJellyfin(url?: string, apiKey?: string, username?: string): P
 async function testTMDB(token?: string): Promise<TestResult> {
   if (!token) return { ok: false, message: 'Token required' };
   try {
-    const res = await fetch('https://api.themoviedb.org/3/authentication', {
+    const res = await fetchWithTimeout('https://api.themoviedb.org/3/authentication', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -147,7 +148,7 @@ async function testTMDB(token?: string): Promise<TestResult> {
 async function testOMDb(key?: string): Promise<TestResult> {
   if (!key) return { ok: false, message: 'API key required' };
   try {
-    const res = await fetch(`http://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&i=tt0111161`, { cache: 'no-store' });
+    const res = await fetchWithTimeout(`http://www.omdbapi.com/?apikey=${encodeURIComponent(key)}&i=tt0111161`, { cache: 'no-store' });
     const data = await res.json();
     if (data.Response !== 'True') return { ok: false, message: data.Error ?? 'Invalid key' };
     return { ok: true, message: 'Key valid' };
@@ -159,7 +160,7 @@ async function testOMDb(key?: string): Promise<TestResult> {
 async function testTrakt(clientId?: string): Promise<TestResult> {
   if (!clientId) return { ok: false, message: 'Client ID required' };
   try {
-    const res = await fetch('https://api.trakt.tv/movies/popular?limit=1', {
+    const res = await fetchWithTimeout('https://api.trakt.tv/movies/popular?limit=1', {
       headers: { 'Content-Type': 'application/json', 'trakt-api-version': '2', 'trakt-api-key': clientId },
       cache: 'no-store',
     });
@@ -174,7 +175,7 @@ async function testPushover(userKey?: string, apiToken?: string): Promise<TestRe
   if (!userKey || !apiToken) return { ok: false, message: 'User key and API token required' };
   try {
     const body = new URLSearchParams({ token: apiToken, user: userKey });
-    const res = await fetch('https://api.pushover.net/1/users/validate.json', { method: 'POST', body, cache: 'no-store' });
+    const res = await fetchWithTimeout('https://api.pushover.net/1/users/validate.json', { method: 'POST', body, cache: 'no-store' });
     const data = await res.json();
     if (data.status !== 1) return { ok: false, message: (data.errors ?? []).join(', ') || 'Invalid credentials' };
     return { ok: true, message: `Valid - ${(data.devices ?? []).length} device(s)` };
@@ -186,7 +187,7 @@ async function testPushover(userKey?: string, apiToken?: string): Promise<TestRe
 async function testWebhook(url?: string): Promise<TestResult> {
   if (!url) return { ok: false, message: 'Webhook URL required' };
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -206,7 +207,7 @@ async function testWebhook(url?: string): Promise<TestResult> {
 async function testDiscord(url?: string): Promise<TestResult> {
   if (!url) return { ok: false, message: 'Discord webhook URL required' };
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

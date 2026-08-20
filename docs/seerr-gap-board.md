@@ -29,16 +29,19 @@ not an auth system.
    on all state-changing /api calls, on by default, Origin-vs-host match
    (+ APP_URL + trusted forwarded host); non-browser clients pass through.
    Verified: forged-Origin 403, same-origin browser 200, no-Origin curl 200.
-3. [ ] **RELEASE** (S) Deployment-stance docs - README section: no users by
-   design, gate at reverse proxy/VPN, what to expose and what never to.
+3. **REMOVED 2026-08-19** ~~Deployment-stance docs~~ - user call: not
+   interested; revisit only if accounts ever become a question.
 4. [ ] **RELEASE** (S) `versionCheck` - "update available" notice; strangers
    won't be pulling git like we do.
 5. [x] **RELEASE** (S) Application title + URL - **SHIPPED 2026-08-19**:
    APP_TITLE drives the browser tab + link labels, APP_URL deep-links every
    notification (Pushover url, Discord clickable embed, webhook url field;
    imports land on /ready-to-watch, alerts on /status).
-6. [ ] **RELEASE** (S) `apiRequestTimeout` defaults - other people's arr
-   stacks are slower and weirder; hung fetches need a bound.
+6. [x] **RELEASE** (S) `apiRequestTimeout` - **SHIPPED 2026-08-19**: every
+   outbound service fetch (111 call sites, 18 libs) rides one wrapper with
+   a deadline. Default 10s, API_REQUEST_TIMEOUT setting in App Config.
+   Verified against a blackholed Sonarr: 3.1s fail at 3s config, 10.1s at
+   default, readable "No response from host within Ns" errors.
 
 Second wave (post-launch, demand-driven): proxy support, forceIpv4First/DNS
 knobs, cacheImages, then the public API when integrators appear (§8).
@@ -50,7 +53,7 @@ knobs, cacheImages, then the public API when integrators appear (§8).
 - [x] **RELEASE #1** `trustProxy` - shipped 2026-08-19 (see §0).
 - [x] **RELEASE #2** `csrfProtection` - shipped 2026-08-19 (see §0).
 - [ ] **GAP** (S) `forceIpv4First` + DNS cache controls (`dnsCache.forceMinTtl/forceMaxTtl`) - escape hatches for broken IPv6/DNS setups. Release second wave.
-- [ ] **GAP** (S) **RELEASE #6** `apiRequestTimeout` (theirs: 10s default, configurable) - our fetches ride default timeouts.
+- [x] **RELEASE #6** `apiRequestTimeout` - shipped 2026-08-19 (see §0).
 - [ ] **GAP** (M) `cacheImages` - proxy + cache TMDB images locally (bandwidth/privacy). We cache Radarr/Sonarr posters but hotlink TMDB. Release second wave.
 - [ ] **GAP** (S) **RELEASE #4** `versionCheck` - "an update is available" notice. We have no update awareness at all.
 - **DIFF** Per-connection `useSsl`/hostname/port/urlBase (radarr/sonarr/plex/jellyfin) - Seerr splits these into fields; we take full URLs, which already carry scheme/port/path. Covered, arguably better. Nothing to do.

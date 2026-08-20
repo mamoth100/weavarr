@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchTimeout';
 /**
  * Aggregated logging (Settings > Logs): pulls recent log entries from every
  * connected service that exposes them and normalizes to one shape so the UI
@@ -39,7 +40,7 @@ function stripSlash(url: string | undefined): string | undefined {
 }
 
 async function fetchArrLog(url: string, key: string, source: 'radarr' | 'sonarr'): Promise<ServiceLogEntry[]> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${url}/api/v3/log?page=1&pageSize=${MAX_PER_SOURCE}&sortKey=time&sortDirection=descending`,
     { headers: { 'X-Api-Key': key }, cache: 'no-store' }
   );
@@ -60,7 +61,7 @@ async function fetchArrLog(url: string, key: string, source: 'radarr' | 'sonarr'
 async function fetchNzbgetLog(): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.NZBGET_URL);
   const auth = `Basic ${Buffer.from(`${process.env.NZBGET_USERNAME}:${process.env.NZBGET_PASSWORD}`).toString('base64')}`;
-  const res = await fetch(`${url}/jsonrpc`, {
+  const res = await fetchWithTimeout(`${url}/jsonrpc`, {
     method: 'POST',
     headers: { Authorization: auth, 'Content-Type': 'application/json' },
     body: JSON.stringify({ method: 'log', params: [0, MAX_PER_SOURCE] }),
@@ -82,7 +83,7 @@ async function fetchNzbgetLog(): Promise<ServiceLogEntry[]> {
 
 async function fetchSabnzbdLog(): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.SABNZBD_URL);
-  const res = await fetch(`${url}/api?mode=warnings&output=json&apikey=${process.env.SABNZBD_API_KEY}`, {
+  const res = await fetchWithTimeout(`${url}/api?mode=warnings&output=json&apikey=${process.env.SABNZBD_API_KEY}`, {
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`warnings fetch failed: ${res.status}`);
@@ -110,7 +111,7 @@ const SAB_LINE = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+::(\w+)::(?:\[.+?\]\
  */
 async function fetchSabnzbdFullLog(): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.SABNZBD_URL);
-  const res = await fetch(`${url}/api?mode=showlog&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' });
+  const res = await fetchWithTimeout(`${url}/api?mode=showlog&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`showlog fetch failed: ${res.status}`);
   const text = await res.text();
 
@@ -140,7 +141,7 @@ const JELLYFIN_LINE = /^\[([0-9-]+ [0-9:.]+ [+-][0-9:]+)\] \[(\w+)\](?: \[\d+\])
 async function fetchJellyfinLog(): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.JELLYFIN_URL);
   const headers = { 'X-Emby-Token': process.env.JELLYFIN_API_KEY as string, Accept: 'application/json' };
-  const listRes = await fetch(`${url}/System/Logs`, { headers, cache: 'no-store' });
+  const listRes = await fetchWithTimeout(`${url}/System/Logs`, { headers, cache: 'no-store' });
   if (!listRes.ok) throw new Error(`log list failed: ${listRes.status}`);
   const files: { Name?: string; DateModified?: string }[] = await listRes.json();
   const newest = files
@@ -148,7 +149,7 @@ async function fetchJellyfinLog(): Promise<ServiceLogEntry[]> {
     .sort((a, b) => (b.DateModified ?? '').localeCompare(a.DateModified ?? ''))[0];
   if (!newest?.Name) return [];
 
-  const logRes = await fetch(`${url}/System/Logs/Log?name=${encodeURIComponent(newest.Name)}`, {
+  const logRes = await fetchWithTimeout(`${url}/System/Logs/Log?name=${encodeURIComponent(newest.Name)}`, {
     headers,
     cache: 'no-store',
   });
