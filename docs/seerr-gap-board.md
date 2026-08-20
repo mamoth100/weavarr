@@ -31,8 +31,11 @@ not an auth system.
    Verified: forged-Origin 403, same-origin browser 200, no-Origin curl 200.
 3. **REMOVED 2026-08-19** ~~Deployment-stance docs~~ - user call: not
    interested; revisit only if accounts ever become a question.
-4. [ ] **RELEASE** (S) `versionCheck` - "update available" notice; strangers
-   won't be pulling git like we do.
+4. [x] **RELEASE** (S) `versionCheck` - **SHIPPED 2026-08-19**: the image
+   knows its commit (GIT_SHA build arg; build with
+   GIT_SHA=$(git rev-parse --short HEAD) docker compose build), Status
+   shows "0.1.0 (sha)" and checks GitHub main every 6h. Amber banner on
+   update, green when current, silent while the repo is private.
 5. [x] **RELEASE** (S) Application title + URL - **SHIPPED 2026-08-19**:
    APP_TITLE drives the browser tab + link labels, APP_URL deep-links every
    notification (Pushover url, Discord clickable embed, webhook url field;
