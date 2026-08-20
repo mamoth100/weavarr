@@ -1,8 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { GENRE_CATALOG, DEFAULT_GENRE_IDS, ALL_GENRES_ID } from '@/lib/genreCatalog';
+import { GENRE_CATALOG, DEFAULT_GENRE_IDS, ALL_GENRES_ID, DISCOVER_ID } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS } from '@/lib/menuLinks';
+import {
+  SECTION_KINDS,
+  SECTION_TYPES,
+  parseDiscoverSections,
+  sectionLabel,
+  specId,
+  type DiscoverSectionSpec,
+  type SectionKind,
+  type SectionType,
+} from '@/lib/discoverSections';
 import DraggableCheckList, { type DraggableItem } from '@/components/DraggableCheckList';
 
 interface SettingStatus {
@@ -54,8 +64,14 @@ export default function MenuSettingsPanel() {
   const [genreItems, setGenreItems] = useState<DraggableItem[]>([]);
   const [tabItems, setTabItems] = useState<DraggableItem[]>([]);
   const [pageItems, setPageItems] = useState<DraggableItem[]>([]);
+  const [discoverSpecs, setDiscoverSpecs] = useState<DiscoverSectionSpec[]>([]);
   const [originalGenres, setOriginalGenres] = useState<string[]>([]);
   const [originalLinks, setOriginalLinks] = useState<string[]>([]);
+  const [originalDiscover, setOriginalDiscover] = useState<string[]>([]);
+  // The add-a-section builder.
+  const [builderKind, setBuilderKind] = useState<SectionKind>('trending');
+  const [builderType, setBuilderType] = useState<SectionType>('all');
+  const [builderGenre, setBuilderGenre] = useState('all');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -70,6 +86,9 @@ export default function MenuSettingsPanel() {
         const menuFields = (data.settings as SettingStatus[]).filter((s) => s.group === 'Menu');
         const genreIds = enforceAtLeastOneGenre(parseSavedIds(menuFields.find((f) => f.key === 'MENU_GENRES')?.value, DEFAULT_GENRE_IDS));
         const linkIds = parseSavedIds(menuFields.find((f) => f.key === 'MENU_LINKS')?.value, DEFAULT_LINK_IDS);
+        const specs = parseDiscoverSections(menuFields.find((f) => f.key === 'DISCOVER_SECTIONS')?.value);
+        setDiscoverSpecs(specs);
+        setOriginalDiscover(specs.map(specId));
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
         setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
@@ -122,9 +141,27 @@ export default function MenuSettingsPanel() {
 
   const currentGenreIds = genreItems.filter((it) => it.checked).map((it) => it.id);
   const currentLinkIds = [...tabItems, ...pageItems].filter((it) => it.checked).map((it) => it.id);
+  const currentDiscoverIds = discoverSpecs.map(specId);
   const genresChanged = currentGenreIds.join(',') !== originalGenres.join(',');
   const linksChanged = currentLinkIds.join(',') !== originalLinks.join(',');
-  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0);
+  const discoverChanged = currentDiscoverIds.join(',') !== originalDiscover.join(',');
+  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0) + (discoverChanged ? 1 : 0);
+
+  // Genres offered in the builder, narrowed by the chosen type - a
+  // movies-only Reality row would always be empty (Reality has no TMDB
+  // movie genre), so it isn't offered.
+  const builderGenres = GENRE_CATALOG.filter((g) => {
+    if (g.id === DISCOVER_ID || g.id === ALL_GENRES_ID) return false;
+    if (builderType === 'movie') return Boolean(g.movieGenreId);
+    if (builderType === 'tv') return Boolean(g.tvGenreId);
+    return Boolean(g.movieGenreId || g.tvGenreId);
+  });
+  const builderGenreValid = builderGenre === 'all' || builderGenres.some((g) => g.id === builderGenre);
+
+  function addDiscoverSection() {
+    const spec: DiscoverSectionSpec = { kind: builderKind, type: builderType, genreId: builderGenreValid ? builderGenre : 'all' };
+    setDiscoverSpecs((prev) => (prev.some((p) => specId(p) === specId(spec)) ? prev : [...prev, spec]));
+  }
 
   async function handleSave() {
     setSaveStatus('saving');
@@ -132,6 +169,7 @@ export default function MenuSettingsPanel() {
     const updates: Record<string, string> = {};
     if (genresChanged) updates.MENU_GENRES = currentGenreIds.join(',');
     if (linksChanged) updates.MENU_LINKS = currentLinkIds.join(',');
+    if (discoverChanged) updates.DISCOVER_SECTIONS = currentDiscoverIds.join(',');
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -186,6 +224,69 @@ export default function MenuSettingsPanel() {
           onReorder={(ids) => reorder(pageItems, setPageItems, ids)}
           onToggle={(id) => toggle(pageItems, setPageItems, id)}
         />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Discover sections</h2>
+        <p className="text-xs text-zinc-500">
+          What the Discover page shows, top to bottom. Build a section from a kind, a media type, and optionally a genre, like trending documentaries or shows coming soon.
+        </p>
+        {discoverSpecs.length === 0 ? (
+          <p className="text-xs text-zinc-500 bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3">
+            No sections. Discover will say so until you add one.
+          </p>
+        ) : (
+          <DraggableCheckList
+            items={discoverSpecs.map((s) => ({ id: specId(s), label: sectionLabel(s), checked: true }))}
+            onReorder={(ids) =>
+              setDiscoverSpecs((prev) => {
+                const byId = new Map(prev.map((p) => [specId(p), p]));
+                return ids.map((id) => byId.get(id)!).filter(Boolean);
+              })
+            }
+            onToggle={() => {}}
+            onRemove={(id) => setDiscoverSpecs((prev) => prev.filter((p) => specId(p) !== id))}
+          />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={builderKind}
+            onChange={(e) => setBuilderKind(e.target.value as SectionKind)}
+            aria-label="Section kind"
+            className="bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 touch:py-2 border border-zinc-700"
+          >
+            {SECTION_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>{k.label}</option>
+            ))}
+          </select>
+          <select
+            value={builderType}
+            onChange={(e) => setBuilderType(e.target.value as SectionType)}
+            aria-label="Media type"
+            className="bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 touch:py-2 border border-zinc-700"
+          >
+            {SECTION_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <select
+            value={builderGenreValid ? builderGenre : 'all'}
+            onChange={(e) => setBuilderGenre(e.target.value)}
+            aria-label="Genre"
+            className="bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 touch:py-2 border border-zinc-700"
+          >
+            <option value="all">Any genre</option>
+            {builderGenres.map((g) => (
+              <option key={g.id} value={g.id}>{g.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={addDiscoverSection}
+            className="px-3 py-1.5 touch:px-4 touch:py-2 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          >
+            Add section
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap sticky bottom-4">

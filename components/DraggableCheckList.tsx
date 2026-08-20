@@ -27,10 +27,13 @@ export default function DraggableCheckList({
   items,
   onReorder,
   onToggle,
+  onRemove,
 }: {
   items: DraggableItem[];
   onReorder: (orderedIds: string[]) => void;
   onToggle: (id: string) => void;
+  /** Removable mode: rows get an × instead of a checkbox - for lists whose items are built dynamically (Discover sections) rather than picked from a fixed catalog. */
+  onRemove?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -89,16 +92,30 @@ export default function DraggableCheckList({
           >
             <GripIcon />
           </span>
-          <label className={`flex items-center gap-3 flex-1 ${item.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-            <input
-              type="checkbox"
-              checked={item.checked}
-              disabled={item.disabled}
-              onChange={() => onToggle(item.id)}
-              className="w-4 h-4 rounded accent-amber-500 disabled:cursor-not-allowed"
-            />
-            <span className="text-sm font-medium">{item.label}</span>
-          </label>
+          {onRemove ? (
+            <>
+              <span className="text-sm font-medium flex-1">{item.label}</span>
+              <button
+                type="button"
+                onClick={() => onRemove(item.id)}
+                aria-label={`Remove ${item.label}`}
+                className="w-6 h-6 touch:w-8 touch:h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 flex-shrink-0"
+              >
+                ×
+              </button>
+            </>
+          ) : (
+            <label className={`flex items-center gap-3 flex-1 ${item.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={item.checked}
+                disabled={item.disabled}
+                onChange={() => onToggle(item.id)}
+                className="w-4 h-4 rounded accent-amber-500 disabled:cursor-not-allowed"
+              />
+              <span className="text-sm font-medium">{item.label}</span>
+            </label>
+          )}
         </div>
       ))}
     </div>

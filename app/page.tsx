@@ -8,6 +8,7 @@ import AppShell from '@/components/AppShell';
 
 const SPECIAL_VIEW_TITLES: Record<SpecialView, string> = {
   trending: 'Trending This Week',
+  popular: 'Popular Now',
   'popular-movies': 'Popular Movies',
   'popular-tv': 'Popular Shows',
 };

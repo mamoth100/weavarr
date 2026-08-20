@@ -22,8 +22,8 @@ export interface BrowseParamsInput {
 }
 
 /** Curated TMDB lists that have their own see-all views but aren't genres - no filters apply, just pages of the list. */
-export type SpecialView = 'trending' | 'popular-movies' | 'popular-tv';
-const SPECIAL_VIEWS: SpecialView[] = ['trending', 'popular-movies', 'popular-tv'];
+export type SpecialView = 'trending' | 'popular' | 'popular-movies' | 'popular-tv';
+const SPECIAL_VIEWS: SpecialView[] = ['trending', 'popular', 'popular-movies', 'popular-tv'];
 
 export interface BrowseArgs {
   isUpcoming: boolean;
@@ -132,6 +132,22 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
 
   // Curated lists come pre-ranked from TMDB - no filters, no genre math.
   if (args.specialView) {
+    if (args.specialView === 'popular') {
+      // Mixed popular: both endpoints per page, interleaved so neither
+      // medium buries the other.
+      const [movies, tv] = await Promise.all([getPopularMovies(page), getPopularTv(page)]);
+      const merged: typeof movies.results = [];
+      const max = Math.max(movies.results.length, tv.results.length);
+      for (let i = 0; i < max; i++) {
+        if (movies.results[i]) merged.push(movies.results[i]);
+        if (tv.results[i]) merged.push(tv.results[i]);
+      }
+      return {
+        results: merged,
+        totalPages: Math.max(movies.total_pages, tv.total_pages),
+        totalResults: movies.total_results + tv.total_results,
+      };
+    }
     const data =
       args.specialView === 'trending'
         ? await getTrendingWeek(page)
