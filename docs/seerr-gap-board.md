@@ -128,6 +128,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 - [x] Logs page - ours aggregates six services; theirs shows only its own. Weavarr advantage.
 - [x] Backup/restore - Weavarr only. Advantage.
 - [ ] **GAP** (S) About page basics we lack: total media items / total requests counters, timezone display. (Our Settings > Status has version/uptime/disks - add the counts.)
+- [ ] **(S) Update-available alert toggle** (added 2026-08-19) - App Behavior toggle that pushes a notification through the channels when the version check spots a newer build. Today the check only surfaces on Settings > Status, which you have to visit to see. Needs a periodic job (the connection-health interval could carry it) and a notified-once guard per new commit.
 
 ## 8. API & integrations
 
@@ -145,7 +146,7 @@ Graded gut-check: value to a self-hosted household, not novelty.
 - [ ] **(M) Storage forecast** - we already read disk space (Status tab) and grab history; project "at this month's pace, /media is full ~Oct 3" with a Logs/Status warning at 30 days out. Seerr shows nothing; Radarr shows raw free space only.
 - [ ] **(M) Cleanup advisor** - rank the watched-and-still-on-disk list by "safe to delete" (watched long ago, not favorited, big on disk, ratings you gave it) instead of chronological. We have all the inputs and the delete plumbing already; this is the brain on top of our existing cleanup lifecycle.
 - [ ] **(M) Year in review ("Weavarr Wrapped")** - once a year, a page: hours watched, top genres, fastest-binged show, storage churned. All derivable from Plex/Jellyfin history we already read. Pure delight feature.
-- [ ] **(S) Stalled-show resurfacing** - shows watched >60% then untouched for 90+ days get a "finish the story?" row on the Watch page. Inputs all exist.
+- [x] **(S) Stalled-show resurfacing** - **SHIPPED 2026-08-19** as the Watch page's "Finish the story?" section: 60%+ of on-disk episodes watched, nothing viewed past the threshold, watched/not-interested shows excluded, rows link to the detail page. STALLED_SHOW_DAYS in App Behavior (default 90, 0 disables) with a "?" explainer.
 - [ ] **(M) Ratings-drop guard** - when a monitored show's new season lands with sharply worse ratings than prior seasons, surface "S9 is rating 40% below the show's average - keep auto-grabbing?" with a one-tap unmonitor. TMDB per-season votes make this feasible.
 - [ ] **(M) Inline download progress via live updates** - not just Seerr-parity "Processing" badges, but SSE-pushed percent/ETA on the exact card you just requested. Request -> watch it fill up without leaving the page.
 - [ ] **(L, exploratory) "Leaving soon" awareness** - flag watchlisted/library-relevant titles about to leave streaming services so you grab before they vanish. Data source (JustWatch via TMDB provider deltas) is the hard part; park until feasible.
