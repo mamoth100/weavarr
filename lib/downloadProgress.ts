@@ -23,6 +23,7 @@ interface QueueRecordShape {
   status?: string;
   trackedDownloadState?: string;
   downloadId?: string;
+  episodeId?: number;
   movie?: { tmdbId?: number };
   series?: { tmdbId?: number };
 }
@@ -117,6 +118,34 @@ async function fetchQueue(url: string, key: string): Promise<QueueRecordShape[]>
   if (!res.ok) throw new Error(`queue failed: ${res.status}`);
   const data = await res.json();
   return data.records ?? [];
+}
+
+/**
+ * Per-EPISODE progress, keyed by Sonarr episodeId - the missing-episodes
+ * section needs to know which specific episodes moved past "searching" into
+ * an actual grab. Same identity-from-arr, bytes-from-client split as the
+ * per-title map. A season pack shows the pack's overall progress on each of
+ * its episodes, which is what the pack genuinely is.
+ */
+export async function getEpisodeDownloadProgress(): Promise<Record<number, TitleProgress>> {
+  const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
+  if (!sonarrOn) return {};
+  const [records, clientFractions] = await Promise.all([
+    fetchQueue(`${process.env.SONARR_URL!.replace(/\/$/, '')}/api/v3/queue?pageSize=200`, process.env.SONARR_KEY!).catch(() => []),
+    fetchClientFractions(),
+  ]);
+  const out: Record<number, TitleProgress> = {};
+  for (const r of records) {
+    if (!r.episodeId) continue;
+    const size = r.size ?? 0;
+    const clientFrac = r.downloadId ? clientFractions.get(r.downloadId.toLowerCase()) : undefined;
+    const left = clientFrac !== undefined ? size * (1 - clientFrac) : r.sizeleft ?? 0;
+    out[r.episodeId] = {
+      percent: size > 0 ? Math.min(100, Math.round(((size - left) / size) * 100)) : 0,
+      state: (r.trackedDownloadState ?? '').startsWith('import') ? 'importing' : r.status === 'downloading' ? 'downloading' : 'queued',
+    };
+  }
+  return out;
 }
 
 export async function getDownloadProgress(): Promise<DownloadProgressMap> {

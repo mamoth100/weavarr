@@ -347,6 +347,40 @@ function SearchMissingButton({
   );
 }
 
+/** One EpisodeSearch command for every still-unqueued missing episode of a show. */
+function SearchAllButton({ episodeIds, onStarted }: { episodeIds: number[]; onStarted: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  async function handleClick() {
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/sonarr/search-episodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Search failed');
+      setStatus('idle');
+      onStarted();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading' || episodeIds.length === 0}
+      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
+        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
+      }`}
+    >
+      {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search all'}
+    </button>
+  );
+}
+
 /** "Give up" on a missing episode - unmonitors it so Sonarr stops trying, since there's no file to delete in the first place. */
 function GiveUpEpisodeButton({ episodeId, onGivenUp }: { episodeId: number; onGivenUp: () => void }) {
   return (
@@ -397,9 +431,13 @@ function MissingAiredSection({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [searchingIds, setSearchingIds] = useState<Set<number>>(new Set());
+  // Sonarr's queue keyed by episodeId - a searched episode that actually got
+  // grabbed shows its real state (queued / percent / importing) instead of
+  // sitting on "Searching…" until it vanishes from the list.
+  const [queueMap, setQueueMap] = useState<Record<number, { percent: number; state: string }>>({});
 
   function fetchMissing() {
-    return fetch('/api/sonarr/missing', { cache: 'no-store' })
+    const missingReq = fetch('/api/sonarr/missing', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -417,6 +455,13 @@ function MissingAiredSection({
         setEpisodes(next);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+    const queueReq = fetch('/api/sonarr/episode-queue', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.episodes) setQueueMap(data.episodes);
+      })
+      .catch(() => {});
+    return Promise.all([missingReq, queueReq]);
   }
 
   useEffect(() => {
@@ -424,17 +469,26 @@ function MissingAiredSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Only keep polling while something here is actually being searched for -
-  // no point re-checking Sonarr on a timer when nothing's in flight.
+  // Keep polling while anything here is in flight - a search someone just
+  // clicked, or an episode already moving through the download queue.
+  const inFlightCount = searchingIds.size + (episodes ?? []).filter((e) => queueMap[e.episodeId]).length;
   useEffect(() => {
-    if (searchingIds.size === 0) return;
+    if (inFlightCount === 0) return;
     const interval = setInterval(fetchMissing, MISSING_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchingIds.size]);
+  }, [inFlightCount === 0]);
 
   function markSearching(episodeId: number) {
     setSearchingIds((prev) => new Set(prev).add(episodeId));
+  }
+
+  function markSearchingMany(episodeIds: number[]) {
+    setSearchingIds((prev) => new Set([...Array.from(prev), ...episodeIds]));
+  }
+
+  function handleGaveUpSeries(seriesId: number) {
+    setEpisodes((prev) => (prev ? prev.filter((e) => e.seriesId !== seriesId) : prev));
   }
 
   function handleGivenUp(episodeId: number) {
@@ -475,24 +529,49 @@ function MissingAiredSection({
       <div className="space-y-2">
         {!episodes
           ? [1, 2].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
-          : groups.map((g) => (
+          : groups.map((g) => {
+              const unqueuedIds = g.episodes.filter((e) => !queueMap[e.episodeId]).map((e) => e.episodeId);
+              return (
               <div key={g.seriesId} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 overflow-hidden">
-                <button
-                  onClick={() => setExpanded((prev) => (prev === g.seriesId ? null : g.seriesId))}
-                  className="w-full flex items-center gap-3 p-3 text-left"
-                >
-                  <span className={`text-zinc-500 text-xs transition-transform ${expanded === g.seriesId ? 'rotate-90' : ''}`}>▶</span>
-                  <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{g.seriesTitle}</p>
-                    <p className="text-xs text-zinc-500">
-                      {g.episodes.length} episode{g.episodes.length === 1 ? '' : 's'} missing
-                    </p>
+                <div className="flex items-center gap-3 p-3">
+                  <button
+                    onClick={() => setExpanded((prev) => (prev === g.seriesId ? null : g.seriesId))}
+                    className="flex items-center gap-3 text-left min-w-0 flex-1"
+                  >
+                    <span className={`text-zinc-500 text-xs transition-transform ${expanded === g.seriesId ? 'rotate-90' : ''}`}>▶</span>
+                    <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{g.seriesTitle}</p>
+                      <p className="text-xs text-zinc-500">
+                        {g.episodes.length} episode{g.episodes.length === 1 ? '' : 's'} missing
+                      </p>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <SearchAllButton episodeIds={unqueuedIds} onStarted={() => markSearchingMany(unqueuedIds)} />
+                    <ConfirmButton
+                      compact
+                      label="Give up all"
+                      confirmLabel="Really give up all?"
+                      busyLabel="Giving up…"
+                      onSuccess={() => handleGaveUpSeries(g.seriesId)}
+                      action={async () => {
+                        const res = await fetch('/api/sonarr/give-up-episodes', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ episodeIds: g.episodes.map((e) => e.episodeId) }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error ?? 'Failed');
+                      }}
+                    />
                   </div>
-                </button>
+                </div>
                 {expanded === g.seriesId && (
                   <div className="px-3 pb-3 space-y-1">
-                    {g.episodes.map((e) => (
+                    {g.episodes.map((e) => {
+                      const q = queueMap[e.episodeId];
+                      return (
                       <div key={e.episodeId} className="flex items-center justify-between bg-zinc-800/40 rounded px-2.5 py-1.5">
                         <p className="text-xs text-zinc-300 truncate pr-2">
                           <span className="text-zinc-500">
@@ -502,19 +581,29 @@ function MissingAiredSection({
                           <span className="text-zinc-500"> · aired {formatAirDate(e.airDateUtc)}</span>
                         </p>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <SearchMissingButton
-                            episode={e}
-                            searching={searchingIds.has(e.episodeId)}
-                            onSearchStarted={() => markSearching(e.episodeId)}
-                          />
+                          {q ? (
+                            // 0% still counts as queued visually - SAB/NZBGet pull one
+                            // download at a time, so most of a batch sits at zero bytes.
+                            <span className="text-xs font-medium text-sky-400">
+                              {q.state === 'importing' ? 'Importing…' : q.state === 'queued' || q.percent === 0 ? 'Queued' : `↓ ${q.percent}%`}
+                            </span>
+                          ) : (
+                            <SearchMissingButton
+                              episode={e}
+                              searching={searchingIds.has(e.episodeId)}
+                              onSearchStarted={() => markSearching(e.episodeId)}
+                            />
+                          )}
                           <GiveUpEpisodeButton episodeId={e.episodeId} onGivenUp={() => handleGivenUp(e.episodeId)} />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
       </div>
     </div>
   );
