@@ -503,7 +503,7 @@ export async function findSonarrEpisodeFile(
 }
 
 /** Monitors and triggers one indexer search covering every given episode - same command Sonarr's own UI uses for a single episode or a whole season. Returns the command id so a caller can wait for it to finish. */
-async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<number | null> {
+export async function triggerSonarrEpisodeSearch(episodeIds: number[]): Promise<number | null> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   if (episodeIds.length === 0) return null;
 
