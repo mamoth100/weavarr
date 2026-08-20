@@ -848,4 +848,60 @@ export async function expandSonarrSeries({
       // a season with nothing aired/missing simply has nothing to search
     });
   }
+
+  // A "Get more" that asked for actual content is a request - the ledger
+  // records it like the add path does. A bare future-toggle change isn't.
+  if (seasonNumbers.length > 0 || episodePicks.length > 0) {
+    const summary = JSON.stringify([
+      ...seasonNumbers,
+      ...episodePicks.map((p) => `S${p.seasonNumber}E${p.episodeNumber}`),
+    ]);
+    await recordExistingSeriesRequest(seriesId, summary);
+  }
+}
+
+/**
+ * Ledger row for a human action on an ALREADY-ADDED series ("Get more",
+ * missing-episode searches) - the add path records its own. The user's
+ * words when this was missing: "Requests don't seem to be working. i am
+ * asking it to download missing friends. nothing is showing up there." A
+ * search for something you don't have IS a request. Never throws -
+ * bookkeeping must not break the action itself.
+ */
+async function recordExistingSeriesRequest(seriesId: number, seasons: string | null): Promise<void> {
+  try {
+    if (!SONARR_URL || !SONARR_KEY) return;
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+    if (!res.ok) return;
+    const series = await res.json();
+    const posterUrl =
+      (series.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
+    let tmdbId: number | null = typeof series.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null;
+    if (!tmdbId && typeof series.tvdbId === 'number' && series.tvdbId > 0) {
+      tmdbId = (await findTvIdByTvdbId(series.tvdbId).catch(() => null)) ?? null;
+    }
+    recordRequest({
+      tmdbId,
+      tvdbId: typeof series.tvdbId === 'number' && series.tvdbId > 0 ? series.tvdbId : null,
+      mediaType: 'tv',
+      title: (series.title as string) ?? `series:${seriesId}`,
+      posterUrl,
+      source: 'app',
+      seasons,
+    });
+  } catch (err) {
+    console.error('[requestLedger] failed to record series request:', err instanceof Error ? err.message : err);
+  }
+}
+
+/** Missing-episode searches: resolve the episode ids to SnEn labels and record one ledger row for the batch. */
+export async function recordEpisodeSearchRequest(seriesId: number, episodeIds: number[]): Promise<void> {
+  try {
+    const episodes = await getSonarrSeriesEpisodes(seriesId);
+    const idSet = new Set(episodeIds);
+    const labels = episodes.filter((e) => idSet.has(e.id)).map((e) => `S${e.seasonNumber}E${e.episodeNumber}`);
+    await recordExistingSeriesRequest(seriesId, labels.length > 0 ? JSON.stringify(labels) : null);
+  } catch (err) {
+    console.error('[requestLedger] failed to record search request:', err instanceof Error ? err.message : err);
+  }
 }

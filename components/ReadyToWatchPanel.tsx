@@ -348,7 +348,7 @@ function SearchMissingButton({
 }
 
 /** One EpisodeSearch command for every still-unqueued missing episode of a show. */
-function SearchAllButton({ episodeIds, onStarted }: { episodeIds: number[]; onStarted: () => void }) {
+function SearchAllButton({ seriesId, episodeIds, onStarted }: { seriesId: number; episodeIds: number[]; onStarted: () => void }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   async function handleClick() {
@@ -357,7 +357,7 @@ function SearchAllButton({ episodeIds, onStarted }: { episodeIds: number[]; onSt
       const res = await fetch('/api/sonarr/search-episodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ episodeIds }),
+        body: JSON.stringify({ seriesId, episodeIds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Search failed');
@@ -548,7 +548,7 @@ function MissingAiredSection({
                     </div>
                   </button>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <SearchAllButton episodeIds={unqueuedIds} onStarted={() => markSearchingMany(unqueuedIds)} />
+                    <SearchAllButton seriesId={g.seriesId} episodeIds={unqueuedIds} onStarted={() => markSearchingMany(unqueuedIds)} />
                     <ConfirmButton
                       compact
                       label="Give up all"
