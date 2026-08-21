@@ -929,7 +929,12 @@ function ReadyToWatchRow({
         {item.type === 'movie' ? (
           <>
             <MovieWatchedButton item={item} onWatched={onWatched} disabled={movieDeleted} />
-            <MovieDeleteButton item={item} onDeleted={() => setMovieDeleted(true)} />
+            {/* Once deleted there is nothing left to delete - a second click only errors. */}
+            {movieDeleted ? (
+              <span className="text-xs font-medium text-zinc-500">Deleted</span>
+            ) : (
+              <MovieDeleteButton item={item} onDeleted={() => setMovieDeleted(true)} />
+            )}
           </>
         ) : (
           <>
