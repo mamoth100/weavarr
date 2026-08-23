@@ -300,6 +300,22 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
   return set;
 }
 
+/** Like getSonarrEpisodeFileSet but keeps the episode titles - the Watch page's dropdowns read a lot better as "S01E02 · The Merge" than bare codes. Same single Sonarr call. */
+export async function getSonarrEpisodeFileMap(seriesId: number): Promise<Map<string, string>> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  const map = new Map<string, string>();
+  for (const e of episodes) {
+    if (e.hasFile) map.set(`${e.seasonNumber}:${e.episodeNumber}`, (e.title as string) ?? '');
+  }
+  return map;
+}
+
 export interface SonarrSeriesLite {
   id: number;
   title: string;

@@ -1,5 +1,5 @@
 import { getAllRadarrMovies } from './radarr';
-import { getAllSonarrSeries, getSonarrEpisodeFileSet } from './sonarr';
+import { getAllSonarrSeries, getSonarrEpisodeFileMap } from './sonarr';
 import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServer';
 
 export interface ReadyToWatchMovie {
@@ -16,7 +16,7 @@ export interface ReadyToWatchShow {
   id: number;
   title: string;
   year: number;
-  unwatchedEpisodes: { seasonNumber: number; episodeNumber: number }[];
+  unwatchedEpisodes: { seasonNumber: number; episodeNumber: number; title: string }[];
   sizeOnDisk: number;
   posterPath: string | null;
 }
@@ -47,7 +47,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   // end-to-end latency to whichever side is slower rather than their sum.
   const [inLibraryFlags, fileSets] = await Promise.all([
     Promise.all(downloadedMovies.map((m) => hasTitle(m.title).catch(() => false))),
-    Promise.all(showsWithFiles.map((s) => getSonarrEpisodeFileSet(s.id).catch(() => new Set<string>()))),
+    Promise.all(showsWithFiles.map((s) => getSonarrEpisodeFileMap(s.id).catch(() => new Map<string, string>()))),
   ]);
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
@@ -56,17 +56,17 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
 
   const showItems: ReadyToWatchShow[] = [];
   showsWithFiles.forEach((s, i) => {
-    const fileSet = Array.from(fileSets[i]);
+    const fileMap = fileSets[i];
     const watchedKeysForShow = new Set(
       watchedEpisodes
         .filter((w) => titlesMatch(w.showTitle, s.title))
         .map((w) => `${w.seasonNumber}:${w.episodeNumber}`)
     );
-    const unwatchedEpisodes = fileSet
-      .filter((key) => !watchedKeysForShow.has(key))
-      .map((key) => {
+    const unwatchedEpisodes = Array.from(fileMap.entries())
+      .filter(([key]) => !watchedKeysForShow.has(key))
+      .map(([key, title]) => {
         const [seasonNumber, episodeNumber] = key.split(':').map(Number);
-        return { seasonNumber, episodeNumber };
+        return { seasonNumber, episodeNumber, title };
       })
       .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
     if (unwatchedEpisodes.length > 0) {

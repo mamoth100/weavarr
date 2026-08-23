@@ -12,7 +12,7 @@ interface ReadyToWatchItem {
   id: number;
   title: string;
   year: number;
-  unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number }[];
+  unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number; title?: string }[];
   sizeOnDisk: number;
   posterPath: string | null;
 }
@@ -147,9 +147,10 @@ function ShowDeleteDropdown({
               <button
                 key={`${e.seasonNumber}-${e.episodeNumber}`}
                 onClick={() => setConfirming({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber })}
-                className="block w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                className="block w-full max-w-[16rem] truncate text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
               >
                 {formatEpisode(e)}
+                {e.title ? <span className="text-zinc-500"> · {e.title}</span> : null}
               </button>
             );
           })}
@@ -274,9 +275,10 @@ function ShowWatchedDropdown({
             <button
               key={`${e.seasonNumber}-${e.episodeNumber}`}
               onClick={() => markEpisode(e.seasonNumber, e.episodeNumber)}
-              className="block w-full text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
+              className="block w-full max-w-[16rem] truncate text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
             >
               {formatEpisode(e)}
+              {e.title ? <span className="text-zinc-500"> · {e.title}</span> : null}
             </button>
           ))}
         </div>
