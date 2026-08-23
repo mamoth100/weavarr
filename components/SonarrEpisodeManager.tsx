@@ -245,6 +245,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   const [episodes, setEpisodes] = useState<SonarrEpisode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
 
   // One compact override for the whole show - applies to whichever season or
   // episode Download button gets clicked next, rather than a picker on every
@@ -335,12 +336,30 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
       {seasons.map((seasonNumber) => {
         const seasonEpisodes = episodes.filter((e) => e.seasonNumber === seasonNumber);
         const searching = searchingSeasons.has(seasonNumber);
+        const isExpanded = expandedSeasons.has(seasonNumber);
+        const onDisk = seasonEpisodes.filter((e) => e.hasFile).length;
         return (
           <div key={seasonNumber}>
             <div className="flex items-center justify-between mb-1 gap-2">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              {/* Collapsed by default - a thirty-season show was a five-minute scroll. */}
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedSeasons((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(seasonNumber)) next.delete(seasonNumber);
+                    else next.add(seasonNumber);
+                    return next;
+                  })
+                }
+                className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 py-1 touch:py-2"
+              >
+                <span className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▸</span>
                 {seasonNumber === 0 ? 'Specials' : `Season ${seasonNumber}`}
-              </p>
+                <span className="normal-case font-normal tracking-normal text-zinc-600">
+                  {onDisk} of {seasonEpisodes.length} on disk
+                </span>
+              </button>
               <SeasonActions
                 seriesId={seriesId}
                 seasonNumber={seasonNumber}
@@ -351,6 +370,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                 onSeasonDeleted={() => markSeasonDeleted(seasonNumber)}
               />
             </div>
+            {isExpanded && (
             <div className="space-y-1">
               {seasonEpisodes.map((e) => (
                 <div key={e.id} className="flex items-center justify-between bg-zinc-800/40 rounded px-2.5 py-1.5">
@@ -383,6 +403,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                 </div>
               ))}
             </div>
+            )}
           </div>
         );
       })}
