@@ -130,6 +130,18 @@ export async function recordMovieSearchRequest(movieId: number): Promise<void> {
   }
 }
 
+/** Did this movie EVER successfully import? Same deleted-vs-never-found distinction the Sonarr side makes for the requests ledger. */
+export async function radarrMovieWasImported(movieId: number): Promise<boolean> {
+  if (!RADARR_URL || !RADARR_KEY) return false;
+  const res = await fetchWithTimeout(`${RADARR_URL}/api/v3/history/movie?movieId=${movieId}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  return ((Array.isArray(data) ? data : []) as { eventType?: string }[]).some((r) => r.eventType === 'downloadFolderImported');
+}
+
 export interface RadarrQueueItem {
   title: string;
   status: string;
