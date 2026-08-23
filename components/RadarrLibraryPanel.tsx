@@ -61,11 +61,14 @@ export default function RadarrLibraryPanel() {
 
   // Memoized: this ran in the render body before, re-sorting the entire
   // library with localeCompare on every keystroke and unrelated re-render.
+  // Sort ignores leading articles, matching the TV panel.
   const filtered = useMemo(
-    () =>
-      (movies ?? [])
+    () => {
+      const sortKey = (t: string) => t.replace(/^(the|a|an)\s+/i, '');
+      return (movies ?? [])
         .filter((m) => m.title.toLowerCase().includes(query.toLowerCase()))
-        .sort((a, b) => a.title.localeCompare(b.title)),
+        .sort((a, b) => sortKey(a.title).localeCompare(sortKey(b.title)));
+    },
     [movies, query]
   );
 
