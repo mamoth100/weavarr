@@ -13,7 +13,7 @@ interface LedgerRequest {
   source: string;
   seasons: string | null;
   requestedAt: string;
-  status: 'downloading' | 'importing' | 'searching' | 'available' | 'partial' | 'removed' | 'unknown';
+  status: 'downloading' | 'importing' | 'searching' | 'available' | 'partial' | 'fulfilled' | 'removed' | 'unknown';
   percent: number | null;
   detailHref: string | null;
 }
@@ -24,6 +24,7 @@ const STATUS_STYLE: Record<LedgerRequest['status'], string> = {
   searching: 'bg-amber-500/15 text-amber-400 ring-amber-500/25',
   available: 'bg-green-500/15 text-green-400 ring-green-500/25',
   partial: 'bg-amber-500/15 text-amber-400 ring-amber-500/25',
+  fulfilled: 'bg-green-500/10 text-green-300 ring-green-500/20',
   removed: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/25',
   unknown: 'bg-zinc-500/15 text-zinc-500 ring-zinc-500/25',
 };
@@ -51,6 +52,7 @@ function statusLabel(r: LedgerRequest): string {
     }
     case 'available': return 'Available';
     case 'partial': return 'Partially available';
+    case 'fulfilled': return 'Downloaded · since deleted';
     case 'removed': return 'Removed';
     default: return 'Unknown';
   }
@@ -93,7 +95,7 @@ export default function RequestsPanel() {
   const filtered = (requests ?? []).filter((r) => {
     if (filter === 'all') return true;
     if (filter === 'active') return r.status === 'downloading' || r.status === 'importing' || r.status === 'searching';
-    if (filter === 'available') return r.status === 'available' || r.status === 'partial';
+    if (filter === 'available') return r.status === 'available' || r.status === 'partial' || r.status === 'fulfilled';
     return r.status === 'removed';
   });
 

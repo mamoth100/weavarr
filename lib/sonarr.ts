@@ -300,6 +300,18 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
   return set;
 }
 
+/** Did this episode EVER successfully import? Distinguishes "downloaded then deleted" from "never found" for the requests ledger - deletion is not still-searching. */
+export async function sonarrEpisodeWasImported(episodeId: number): Promise<boolean> {
+  if (!SONARR_URL || !SONARR_KEY) return false;
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/history?episodeId=${episodeId}&pageSize=50`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  return ((data.records ?? []) as { eventType?: string }[]).some((r) => r.eventType === 'downloadFolderImported');
+}
+
 /** Like getSonarrEpisodeFileSet but keeps the episode titles - the Watch page's dropdowns read a lot better as "S01E02 · The Merge" than bare codes. Same single Sonarr call. */
 export async function getSonarrEpisodeFileMap(seriesId: number): Promise<Map<string, string>> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
