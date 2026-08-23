@@ -85,11 +85,15 @@ export default function SonarrLibraryPanel() {
 
   // Memoized: this ran in the render body before, re-sorting the entire
   // library with localeCompare on every keystroke and unrelated re-render.
+  // Sort ignores leading articles like Sonarr's own sortTitle - "The 1%
+  // Club" belongs near the top with the numbers, not buried in the T's.
   const filtered = useMemo(
-    () =>
-      (series ?? [])
+    () => {
+      const sortKey = (t: string) => t.replace(/^(the|a|an)\s+/i, '');
+      return (series ?? [])
         .filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
-        .sort((a, b) => a.title.localeCompare(b.title)),
+        .sort((a, b) => sortKey(a.title).localeCompare(sortKey(b.title)));
+    },
     [series, query]
   );
 
