@@ -53,7 +53,7 @@ function statusLabel(r: LedgerRequest): string {
     case 'available': return 'Available';
     case 'partial': return 'Partially available';
     case 'fulfilled': return 'Downloaded · since deleted';
-    case 'removed': return 'Removed';
+    case 'removed': return 'Completely Removed';
     default: return 'Unknown';
   }
 }
