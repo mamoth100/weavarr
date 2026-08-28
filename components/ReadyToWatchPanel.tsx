@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
@@ -10,6 +11,7 @@ const PAGE_SIZE = 50;
 interface ReadyToWatchItem {
   type: 'movie' | 'tv';
   id: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number; title?: string }[];
@@ -31,7 +33,12 @@ function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNu
       {shown.map(formatEpisode).join(', ')}
       {remaining > 0 && (
         <button
-          onClick={() => setExpanded((e) => !e)}
+          onClick={(e) => {
+            // Lives inside the row's detail-page link now - expanding must not navigate.
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
           className="ml-1 text-amber-400 hover:text-amber-300 font-medium"
         >
           {expanded ? 'show less' : `+${remaining} more`}
@@ -904,29 +911,42 @@ function ReadyToWatchRow({
   // this: deleting a specific episode already removes it from both dropdowns at once.
   const [movieDeleted, setMovieDeleted] = useState(false);
 
+  // Poster and title link to the detail page when the TMDB id is known;
+  // the episode "+N more" toggle inside stays a plain span-level button.
+  const detailHref = item.tmdbId ? (item.type === 'tv' ? `/tv/${item.tmdbId}` : `/documentary/${item.tmdbId}`) : null;
+  const identity = (
+    <>
+      <Poster id={item.id} hasPoster={Boolean(item.posterPath)} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">
+          {item.title}{' '}
+          {item.type === 'movie' && item.year
+            ? `(${item.year})`
+            : item.type === 'tv' && item.unwatchedEpisodes
+            ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
+            : ''}
+        </p>
+        <p className="text-xs text-zinc-500">
+          {item.type === 'tv' && item.unwatchedEpisodes && (
+            <>
+              <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+            </>
+          )}
+          {formatBytes(item.sizeOnDisk)}
+        </p>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-      <div className="flex items-center gap-3 min-w-0">
-        <Poster id={item.id} hasPoster={Boolean(item.posterPath)} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
-        <div className="min-w-0">
-          <p className="text-sm font-medium truncate">
-            {item.title}{' '}
-            {item.type === 'movie' && item.year
-              ? `(${item.year})`
-              : item.type === 'tv' && item.unwatchedEpisodes
-              ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
-              : ''}
-          </p>
-          <p className="text-xs text-zinc-500">
-            {item.type === 'tv' && item.unwatchedEpisodes && (
-              <>
-                <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
-              </>
-            )}
-            {formatBytes(item.sizeOnDisk)}
-          </p>
-        </div>
-      </div>
+      {detailHref ? (
+        <Link href={detailHref} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+          {identity}
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 min-w-0">{identity}</div>
+      )}
       <div className="flex items-center gap-2">
         {item.type === 'movie' ? (
           <>
