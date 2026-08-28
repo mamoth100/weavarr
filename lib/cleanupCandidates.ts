@@ -36,11 +36,17 @@ interface WatchSignal {
 export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate[]> {
   const excluded = getExcludedShows();
   const threshold = getWatchedPercentThreshold();
+  // Fetch history MUCH deeper than the display limit: the filter below
+  // discards rewatches and rows whose files are already gone, and a window
+  // sized to the limit meant only whatever survived the last 30 raw rows
+  // ever showed - watched shows flickered in and out between visits as new
+  // watch events shuffled the window. One Plex call either way.
+  const historyDepth = Math.max(limit * 10, 500);
   const [history, inProgress, series, playedKeys] = await Promise.all([
-    getEpisodeWatchHistory(limit),
+    getEpisodeWatchHistory(historyDepth),
     getInProgressEpisodes(),
     getSonarrSeriesList(),
-    getPlayedSessionKeys(limit),
+    getPlayedSessionKeys(historyDepth),
   ]);
 
   // Two independent signals, either one qualifies: Plex's own watch state
