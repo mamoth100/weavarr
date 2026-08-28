@@ -5,6 +5,8 @@ import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServe
 export interface ReadyToWatchMovie {
   type: 'movie';
   id: number;
+  /** For the detail-page link; the id above is the Radarr/Sonarr id. */
+  tmdbId: number | null;
   title: string;
   year: number;
   sizeOnDisk: number;
@@ -14,6 +16,7 @@ export interface ReadyToWatchMovie {
 export interface ReadyToWatchShow {
   type: 'tv';
   id: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   unwatchedEpisodes: { seasonNumber: number; episodeNumber: number; title: string }[];
@@ -52,7 +55,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
     .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
-    .map((m) => ({ type: 'movie', id: m.id, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
+    .map((m) => ({ type: 'movie' as const, id: m.id, tmdbId: m.tmdbId ?? null, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
 
   const showItems: ReadyToWatchShow[] = [];
   showsWithFiles.forEach((s, i) => {
@@ -73,6 +76,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
       showItems.push({
         type: 'tv',
         id: s.id,
+        tmdbId: s.tmdbId ?? null,
         title: s.title,
         year: s.year,
         unwatchedEpisodes,
