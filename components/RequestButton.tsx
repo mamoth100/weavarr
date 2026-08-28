@@ -112,29 +112,72 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
   );
 }
 
+/** Delete with a choice: episode files only (registration stays, future setting untouched) or the whole series. */
 function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
-  const [done, setDone] = useState(false);
+  const [mode, setMode] = useState<'idle' | 'choose' | 'busy' | 'doneFiles' | 'doneAll' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
-  if (done) {
-    return <span className="text-xs font-medium text-green-400 inline-block">Deleted</span>;
+  async function run(kind: 'files' | 'all') {
+    setMode('busy');
+    setError(null);
+    try {
+      const res = await fetch(kind === 'all' ? '/api/sonarr/delete' : '/api/sonarr/delete-files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seriesId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      setMode(kind === 'all' ? 'doneAll' : 'doneFiles');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setMode('error');
+    }
+  }
+
+  if (mode === 'doneAll') return <span className="text-xs font-medium text-green-400 inline-block">Removed from Sonarr</span>;
+  if (mode === 'doneFiles') return <span className="text-xs font-medium text-green-400 inline-block">Episodes deleted - show still tracked</span>;
+
+  if (mode === 'choose' || mode === 'busy') {
+    return (
+      <span className="inline-flex items-center gap-1.5 flex-wrap">
+        <button
+          onClick={() => run('files')}
+          disabled={mode === 'busy'}
+          className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-600/80 text-white hover:bg-red-500 disabled:opacity-60"
+        >
+          {mode === 'busy' ? 'Working…' : 'Episodes only'}
+        </button>
+        <button
+          onClick={() => run('all')}
+          disabled={mode === 'busy'}
+          className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-700 text-white hover:bg-red-600 disabled:opacity-60"
+        >
+          Completely remove
+        </button>
+        <button
+          onClick={() => setMode('idle')}
+          disabled={mode === 'busy'}
+          className="px-2 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
+        >
+          Cancel
+        </button>
+      </span>
+    );
   }
 
   return (
-    <ConfirmButton
-      label="Delete from Sonarr"
-      confirmLabel="Really delete?"
-      busyLabel="Deleting…"
-      onSuccess={() => setDone(true)}
-      action={async () => {
-        const res = await fetch('/api/sonarr/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ seriesId }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      }}
-    />
+    <span className="inline-flex flex-col items-start gap-1">
+      <button
+        onClick={() => setMode('choose')}
+        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+          mode === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+        }`}
+      >
+        {mode === 'error' ? 'Failed - retry' : 'Delete from Sonarr'}
+      </button>
+      {error && <span className="text-xs text-red-400 line-clamp-3 max-w-xs">{error}</span>}
+    </span>
   );
 }
 

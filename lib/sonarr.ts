@@ -300,6 +300,28 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
   return set;
 }
 
+/**
+ * Delete every episode file of a series but KEEP its Sonarr registration -
+ * the detail page's "episodes only" delete choice. Deleted episodes get
+ * unmonitored so Sonarr doesn't immediately re-grab them; the series'
+ * future-episodes setting is left alone.
+ */
+export async function deleteSonarrSeriesFiles(seriesId: number): Promise<number> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const info = await getSonarrEpisodeFileInfoMap(seriesId);
+  const entries = Array.from(info.values());
+  const fileIds = Array.from(new Set(entries.map((v) => v.episodeFileId).filter((id) => id > 0)));
+  if (fileIds.length === 0) return 0;
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episodefile/bulk`, {
+    method: 'DELETE',
+    headers: headers(),
+    body: JSON.stringify({ episodeFileIds: fileIds }),
+  });
+  if (!res.ok) throw new Error(await readableApiError(res, 'Sonarr episode file delete failed'));
+  await monitorSonarrEpisodes(entries.map((v) => v.episodeId), false).catch(() => {});
+  return fileIds.length;
+}
+
 /** Did this episode EVER successfully import? Distinguishes "downloaded then deleted" from "never found" for the requests ledger - deletion is not still-searching. */
 export async function sonarrEpisodeWasImported(episodeId: number): Promise<boolean> {
   if (!SONARR_URL || !SONARR_KEY) return false;
