@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react';
 import ConfirmButton from '@/components/ConfirmButton';
+import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 export interface RecentlyWatchedMovie {
   type: 'movie';
@@ -83,7 +84,7 @@ export function Poster({
   );
 }
 
-function RecentlyWatchedDeleteButton({ item, onDeleted }: { item: RecentlyWatchedItem; onDeleted: () => void }) {
+function RecentlyWatchedDeleteButton({ item, onDeleted, onAftermath }: { item: RecentlyWatchedItem; onDeleted: () => void; onAftermath: (a: DeleteAftermath) => void }) {
   return (
     <ConfirmButton
       label="Delete"
@@ -102,6 +103,7 @@ function RecentlyWatchedDeleteButton({ item, onDeleted }: { item: RecentlyWatche
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+        if (data.after && data.after.remainingFiles === 0) onAftermath(data.after);
       }}
     />
   );
@@ -148,6 +150,7 @@ function ClearButton({ itemKey, onCleared }: { itemKey: string; onCleared: () =>
 export default function RecentlyWatchedSection({ onCountChange }: { onCountChange?: (count: number) => void }) {
   const [items, setItems] = useState<RecentlyWatchedItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aftermath, setAftermath] = useState<DeleteAftermath | null>(null);
 
   useEffect(() => {
     fetch('/api/recently-watched', { cache: 'no-store' })
@@ -203,7 +206,7 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
                         <RecentlyWatchedDeleteButton
                           item={item}
                           onDeleted={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
-                        />
+                        onAftermath={setAftermath} />
                       </div>
                     </div>
                   </div>
@@ -211,6 +214,7 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
               );
             })}
       </div>
+      <LastEpisodeModal aftermath={aftermath} onClose={() => setAftermath(null)} />
     </div>
   );
 }

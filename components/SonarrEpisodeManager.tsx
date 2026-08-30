@@ -21,6 +21,7 @@ interface QualityProfileOption {
 export { formatBytes } from '@/components/RecentlyWatchedSection';
 import { formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 function isDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
   return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();
@@ -31,11 +32,13 @@ function DeleteEpisodeButton({
   seasonNumber,
   episodeNumber,
   onDeleted,
+  onAftermath,
 }: {
   seriesId: number;
   seasonNumber: number;
   episodeNumber: number;
   onDeleted: () => void;
+  onAftermath: (a: DeleteAftermath) => void;
 }) {
   const [done, setDone] = useState(false);
 
@@ -61,6 +64,7 @@ function DeleteEpisodeButton({
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+        if (data.after && data.after.remainingFiles === 0) onAftermath(data.after);
       }}
     />
   );
@@ -154,6 +158,7 @@ function SeasonActions({
   profileOverrideId,
   onSearchStarted,
   onSeasonDeleted,
+  onAftermath,
 }: {
   seriesId: number;
   seasonNumber: number;
@@ -162,6 +167,7 @@ function SeasonActions({
   profileOverrideId?: number;
   onSearchStarted: () => void;
   onSeasonDeleted: () => void;
+  onAftermath: (a: DeleteAftermath) => void;
 }) {
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +233,7 @@ function SeasonActions({
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+            if (data.after && data.after.remainingFiles === 0) onAftermath(data.after);
           }}
         />
       )}
@@ -246,6 +253,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   const [error, setError] = useState<string | null>(null);
   const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
+  const [aftermath, setAftermath] = useState<DeleteAftermath | null>(null);
 
   // One compact override for the whole show - applies to whichever season or
   // episode Download button gets clicked next, rather than a picker on every
@@ -368,6 +376,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                 profileOverrideId={profileOverrideId}
                 onSearchStarted={() => setSearchingSeasons((prev) => new Set(prev).add(seasonNumber))}
                 onSeasonDeleted={() => markSeasonDeleted(seasonNumber)}
+                onAftermath={setAftermath}
               />
             </div>
             {isExpanded && (
@@ -388,6 +397,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                         seasonNumber={e.seasonNumber}
                         episodeNumber={e.episodeNumber}
                         onDeleted={() => markDeleted(e.id)}
+                        onAftermath={setAftermath}
                       />
                     </div>
                   ) : isDownloadable(e) ? (
@@ -407,6 +417,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
           </div>
         );
       })}
+      <LastEpisodeModal aftermath={aftermath} onClose={() => setAftermath(null)} />
     </div>
   );
 }
