@@ -1,31 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import RadarrLibraryPanel from '@/components/RadarrLibraryPanel';
 import SonarrLibraryPanel from '@/components/SonarrLibraryPanel';
 
-const SECTIONS = [
-  { id: 'movies', label: 'Movies' },
-  { id: 'tv', label: 'TV Shows' },
-] as const;
-
-type SectionId = (typeof SECTIONS)[number]['id'];
+const LABELS: Record<'movies' | 'tv', string> = { movies: 'Movies', tv: 'TV Shows' };
 
 export default function LibraryLayout() {
-  const [section, setSection] = useState<SectionId>('movies');
+  // Order comes from Settings > Menu > Library tabs; first is the default.
+  const [order, setOrder] = useState<('movies' | 'tv')[]>(['movies', 'tv']);
+  const [section, setSection] = useState<'movies' | 'tv'>('movies');
+  // A click before the config arrives must win over the config's default.
+  const clicked = useRef(false);
+
+  useEffect(() => {
+    fetch('/api/menu', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        const tabs = Array.isArray(data.libraryTabs) ? (data.libraryTabs as ('movies' | 'tv')[]) : null;
+        if (tabs && tabs.length === 2) {
+          setOrder(tabs);
+          if (!clicked.current) setSection(tabs[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="flex flex-col sm:flex-row gap-6">
       <nav className="flex sm:flex-col gap-1 sm:w-44 flex-shrink-0">
-        {SECTIONS.map((s) => (
+        {order.map((id) => (
           <button
-            key={s.id}
-            onClick={() => setSection(s.id)}
+            key={id}
+            onClick={() => {
+              clicked.current = true;
+              setSection(id);
+            }}
             className={`text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              section === s.id ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              section === id ? 'bg-white text-zinc-950' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
             }`}
           >
-            {s.label}
+            {LABELS[id]}
           </button>
         ))}
       </nav>

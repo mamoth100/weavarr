@@ -28,12 +28,15 @@ export default function DraggableCheckList({
   onReorder,
   onToggle,
   onRemove,
+  orderOnly = false,
 }: {
   items: DraggableItem[];
   onReorder: (orderedIds: string[]) => void;
   onToggle: (id: string) => void;
   /** Removable mode: rows get an × instead of a checkbox - for lists whose items are built dynamically (Discover sections) rather than picked from a fixed catalog. */
   onRemove?: (id: string) => void;
+  /** Order-only mode: grip + label, no checkbox or × - for fixed sets where only the order matters (Library tabs). */
+  orderOnly?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -92,7 +95,9 @@ export default function DraggableCheckList({
           >
             <GripIcon />
           </span>
-          {onRemove ? (
+          {orderOnly ? (
+            <span className="text-sm font-medium flex-1">{item.label}</span>
+          ) : onRemove ? (
             <>
               <span className="text-sm font-medium flex-1">{item.label}</span>
               <button

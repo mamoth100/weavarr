@@ -65,6 +65,8 @@ export default function MenuSettingsPanel() {
   const [tabItems, setTabItems] = useState<DraggableItem[]>([]);
   const [pageItems, setPageItems] = useState<DraggableItem[]>([]);
   const [discoverSpecs, setDiscoverSpecs] = useState<DiscoverSectionSpec[]>([]);
+  const [libraryTabs, setLibraryTabs] = useState<string[]>(['movies', 'tv']);
+  const [originalLibraryTabs, setOriginalLibraryTabs] = useState<string[]>(['movies', 'tv']);
   const [originalGenres, setOriginalGenres] = useState<string[]>([]);
   const [originalLinks, setOriginalLinks] = useState<string[]>([]);
   const [originalDiscover, setOriginalDiscover] = useState<string[]>([]);
@@ -89,6 +91,10 @@ export default function MenuSettingsPanel() {
         const specs = parseDiscoverSections(menuFields.find((f) => f.key === 'DISCOVER_SECTIONS')?.value);
         setDiscoverSpecs(specs);
         setOriginalDiscover(specs.map(specId));
+        const rawTabs = parseSavedIds(menuFields.find((f) => f.key === 'LIBRARY_TABS')?.value, ['movies', 'tv']).filter((t) => t === 'movies' || t === 'tv');
+        const tabs = [...rawTabs, ...['movies', 'tv'].filter((t) => !rawTabs.includes(t as 'movies' | 'tv'))];
+        setLibraryTabs(tabs);
+        setOriginalLibraryTabs(tabs);
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
         setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
@@ -145,7 +151,8 @@ export default function MenuSettingsPanel() {
   const genresChanged = currentGenreIds.join(',') !== originalGenres.join(',');
   const linksChanged = currentLinkIds.join(',') !== originalLinks.join(',');
   const discoverChanged = currentDiscoverIds.join(',') !== originalDiscover.join(',');
-  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0) + (discoverChanged ? 1 : 0);
+  const libraryTabsChanged = libraryTabs.join(',') !== originalLibraryTabs.join(',');
+  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0) + (discoverChanged ? 1 : 0) + (libraryTabsChanged ? 1 : 0);
 
   // Genres offered in the builder, narrowed by the chosen type - a
   // movies-only Reality row would always be empty (Reality has no TMDB
@@ -170,6 +177,7 @@ export default function MenuSettingsPanel() {
     if (genresChanged) updates.MENU_GENRES = currentGenreIds.join(',');
     if (linksChanged) updates.MENU_LINKS = currentLinkIds.join(',');
     if (discoverChanged) updates.DISCOVER_SECTIONS = currentDiscoverIds.join(',');
+    if (libraryTabsChanged) updates.LIBRARY_TABS = libraryTabs.join(',');
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -223,6 +231,17 @@ export default function MenuSettingsPanel() {
           items={pageItems}
           onReorder={(ids) => reorder(pageItems, setPageItems, ids)}
           onToggle={(id) => toggle(pageItems, setPageItems, id)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Library tabs</h2>
+        <p className="text-xs text-zinc-500">Drag to reorder. The first tab is what the Library page opens on.</p>
+        <DraggableCheckList
+          orderOnly
+          items={libraryTabs.map((t) => ({ id: t, label: t === 'movies' ? 'Movies' : 'TV Shows', checked: true }))}
+          onReorder={(ids) => setLibraryTabs(ids)}
+          onToggle={() => {}}
         />
       </div>
 
