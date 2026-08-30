@@ -112,10 +112,30 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
   );
 }
 
-/** Delete with a choice: episode files only (registration stays, future setting untouched) or the whole series. */
+/** Delete with a choice: episode files only (registration stays, future setting untouched) or the whole series. Protected shows render a badge instead - the API refuses anyway, but the button shouldn't even exist. */
 function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
   const [mode, setMode] = useState<'idle' | 'choose' | 'busy' | 'doneFiles' | 'doneAll' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [isProtected, setIsProtected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/sonarr/episodes?seriesId=${seriesId}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setIsProtected(Boolean(data.protected)))
+      .catch(() => setIsProtected(false));
+  }, [seriesId]);
+
+  if (isProtected === null) return null;
+  if (isProtected) {
+    return (
+      <span
+        title="On the Cleanup Excluded Shows list - deletes through Weavarr are blocked to protect these files."
+        className="px-2.5 py-1.5 rounded-lg text-xs font-medium ring-1 bg-amber-500/15 text-amber-400 ring-amber-500/25 inline-block"
+      >
+        Protected
+      </span>
+    );
+  }
 
   async function run(kind: 'files' | 'all') {
     setMode('busy');

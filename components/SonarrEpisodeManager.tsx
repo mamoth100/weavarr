@@ -159,6 +159,7 @@ function SeasonActions({
   onSearchStarted,
   onSeasonDeleted,
   onAftermath,
+  deletable,
 }: {
   seriesId: number;
   seasonNumber: number;
@@ -168,6 +169,7 @@ function SeasonActions({
   onSearchStarted: () => void;
   onSeasonDeleted: () => void;
   onAftermath: (a: DeleteAftermath) => void;
+  deletable: boolean;
 }) {
   const [downloadStatus, setDownloadStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -218,7 +220,7 @@ function SeasonActions({
           </button>
         )
       )}
-      {hasFiles && (
+      {hasFiles && deletable && (
         <ConfirmButton
           compact
           label="Delete Season"
@@ -254,6 +256,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
   const [aftermath, setAftermath] = useState<DeleteAftermath | null>(null);
+  const [isProtected, setIsProtected] = useState(false);
 
   // One compact override for the whole show - applies to whichever season or
   // episode Download button gets clicked next, rather than a picker on every
@@ -284,7 +287,10 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
       .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setEpisodes(data.episodes);
+        else {
+          setEpisodes(data.episodes);
+          setIsProtected(Boolean(data.protected));
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [seriesId]);
@@ -314,6 +320,11 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
+        {isProtected && (
+          <span className="text-[11px] font-medium text-amber-400">
+            Protected show - deletes are disabled to keep these files safe
+          </span>
+        )}
         <button
           type="button"
           onClick={toggleQualityOverride}
@@ -377,6 +388,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                 onSearchStarted={() => setSearchingSeasons((prev) => new Set(prev).add(seasonNumber))}
                 onSeasonDeleted={() => markSeasonDeleted(seasonNumber)}
                 onAftermath={setAftermath}
+                deletable={!isProtected}
               />
             </div>
             {isExpanded && (
@@ -392,13 +404,15 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                   {e.hasFile ? (
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs text-zinc-500">{formatBytes(e.sizeOnDisk)}</span>
-                      <DeleteEpisodeButton
-                        seriesId={seriesId}
-                        seasonNumber={e.seasonNumber}
-                        episodeNumber={e.episodeNumber}
-                        onDeleted={() => markDeleted(e.id)}
-                        onAftermath={setAftermath}
-                      />
+                      {!isProtected && (
+                        <DeleteEpisodeButton
+                          seriesId={seriesId}
+                          seasonNumber={e.seasonNumber}
+                          episodeNumber={e.episodeNumber}
+                          onDeleted={() => markDeleted(e.id)}
+                          onAftermath={setAftermath}
+                        />
+                      )}
                     </div>
                   ) : isDownloadable(e) ? (
                     <SearchEpisodeButton
