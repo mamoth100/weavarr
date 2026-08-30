@@ -82,6 +82,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'MENU_GENRES', label: 'Genre tabs, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'MENU_LINKS', label: 'Other menu items, in order (comma-separated ids)', group: 'Menu', secret: false },
   { key: 'DISCOVER_SECTIONS', label: 'Discover sections, in order (comma-separated kind.type.genre specs)', group: 'Menu', secret: false },
+  { key: 'LIBRARY_TABS', label: 'Library tabs, in order (comma-separated: movies,tv)', group: 'Menu', secret: false },
   { key: 'ENABLE_SCHEDULED_BACKUPS', label: 'Enable Scheduled Backups', group: 'Backup', secret: false, type: 'boolean' },
   { key: 'BACKUP_RETENTION_COUNT', label: 'Backups to Keep', group: 'Backup', secret: false },
 ];
@@ -89,6 +90,8 @@ export const SETTINGS_SCHEMA: SettingField[] = [
 export interface MenuConfig {
   genres: GenreDef[];
   links: MenuLinkDef[];
+  /** Library page tab order - first is the default tab. */
+  libraryTabs: ('movies' | 'tv')[];
 }
 
 /** null (key never saved) means "not configured yet" -> use defaults. An explicit empty string means the user deliberately chose zero items. */
@@ -109,7 +112,11 @@ export async function getMenuConfig(): Promise<MenuConfig> {
   const links = linkIds
     .map((id) => MENU_LINK_CATALOG.find((l) => l.id === id))
     .filter((l): l is MenuLinkDef => Boolean(l));
-  return { genres, links };
+  // Both tabs always exist; the setting only orders them. Unknown ids are
+  // dropped, missing ones appended, so the value can never lose a tab.
+  const tabIds = parseOrderedIds(lines, 'LIBRARY_TABS', ['movies', 'tv']).filter((t): t is 'movies' | 'tv' => t === 'movies' || t === 'tv');
+  const libraryTabs = [...tabIds, ...(['movies', 'tv'] as const).filter((t) => !tabIds.includes(t))];
+  return { genres, links, libraryTabs };
 }
 
 async function readEnvLines(): Promise<string[]> {
