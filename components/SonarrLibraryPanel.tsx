@@ -12,6 +12,7 @@ const PAGE_SIZE = 50;
 interface SonarrSeries {
   id: number;
   title: string;
+  protected?: boolean;
   year: number;
   imdbId: string | null;
   tmdbId: number | null;
@@ -159,7 +160,16 @@ export default function SonarrLibraryPanel() {
                   </Link>
                 )}
                 <StatusBadge status={show.status} />
-                <DeleteButton seriesId={show.id} />
+                {show.protected ? (
+                  <span
+                    title="On the Cleanup Excluded Shows list - deletes through Weavarr are blocked to protect these files."
+                    className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-amber-500/15 text-amber-400 ring-amber-500/25"
+                  >
+                    Protected
+                  </span>
+                ) : (
+                  <DeleteButton seriesId={show.id} />
+                )}
               </div>
             </div>
             {expanded === show.id && (

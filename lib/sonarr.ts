@@ -300,6 +300,26 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
   return set;
 }
 
+/**
+ * Refuses any app-driven delete touching a show on the Cleanup Excluded
+ * Shows list. Those files are the user's irreplaceable hand-edited work
+ * ("if they were to be deleted, all of that work is gone") - exclusion
+ * means protected, not just hidden from cleanup suggestions.
+ */
+export async function assertSeriesDeletable(seriesId: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const { getExcludedShows } = await import('./cleanupCandidates');
+  const excluded = getExcludedShows();
+  if (excluded.size === 0) return;
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+  if (!res.ok) return; // series unknown - nothing to protect
+  const detail = await res.json();
+  const title = ((detail.title as string) ?? '').trim().toLowerCase();
+  if (excluded.has(title)) {
+    throw new Error(`"${detail.title}" is protected (Cleanup Excluded Shows) - deleting it through Weavarr is blocked. Remove it from the list in Settings to allow this.`);
+  }
+}
+
 export interface SeriesDeleteAftermath {
   seriesId: number;
   remainingFiles: number;

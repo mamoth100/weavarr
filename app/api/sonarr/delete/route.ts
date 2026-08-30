@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { deleteSonarrSeries } from '@/lib/sonarr';
+import { assertSeriesDeletable } from '@/lib/sonarr';
 import { refreshTvLibrary } from '@/lib/mediaServer';
 
 // Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
   if (!seriesId) return NextResponse.json({ error: 'seriesId required' }, { status: 400 });
 
   try {
+    await assertSeriesDeletable(Number(seriesId));
     await deleteSonarrSeries(seriesId);
     try {
       await refreshTvLibrary();

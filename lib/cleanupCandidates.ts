@@ -20,7 +20,7 @@ export function getWatchedPercentThreshold(): number {
   return (Number.isFinite(raw) && raw > 0 ? raw : 90) / 100;
 }
 
-function getExcludedShows(): Set<string> {
+export function getExcludedShows(): Set<string> {
   const raw = process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
   return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 }
