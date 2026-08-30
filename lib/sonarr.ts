@@ -300,6 +300,32 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
   return set;
 }
 
+export interface SeriesDeleteAftermath {
+  seriesId: number;
+  remainingFiles: number;
+  title: string;
+  /** Sonarr production status: 'continuing' | 'ended' | 'upcoming' | 'deleted'. */
+  status: string;
+  monitorFuture: boolean;
+}
+
+/** Post-delete snapshot for the "that was the last episode" prompt: how many files remain, whether the show ended, and the current future-episodes setting (drives the modal's pre-checked box). */
+export async function getSeriesDeleteAftermath(seriesId: number): Promise<SeriesDeleteAftermath> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const [episodes, detailRes] = await Promise.all([
+    getSonarrSeriesEpisodes(seriesId),
+    fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' }),
+  ]);
+  const detail = detailRes.ok ? await detailRes.json() : {};
+  return {
+    seriesId,
+    remainingFiles: episodes.filter((e) => e.hasFile).length,
+    title: (detail.title as string) ?? '',
+    status: (detail.status as string) ?? 'unknown',
+    monitorFuture: detail.monitorNewItems === 'all',
+  };
+}
+
 /**
  * Delete every episode file of a series but KEEP its Sonarr registration -
  * the detail page's "episodes only" delete choice. Deleted episodes get

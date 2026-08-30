@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 const PAGE_SIZE = 50;
 
@@ -71,9 +72,11 @@ function MovieDeleteButton({ item, onDeleted }: { item: ReadyToWatchItem; onDele
 function ShowDeleteDropdown({
   item,
   onEpisodeDeleted,
+  onAftermath,
 }: {
   item: ReadyToWatchItem;
   onEpisodeDeleted: (seasonNumber: number, episodeNumber: number) => void;
+  onAftermath: (a: DeleteAftermath) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<{ seasonNumber: number; episodeNumber: number } | null>(null);
@@ -115,6 +118,7 @@ function ShowDeleteDropdown({
       setOpen(false);
       setConfirming(null);
       onEpisodeDeleted(seasonNumber, episodeNumber);
+      if (data.after && data.after.remainingFiles === 0) onAftermath(data.after);
     } catch (err) {
       setStatus('error');
       setError(err instanceof Error ? err.message : String(err));
@@ -900,11 +904,13 @@ function ReadyToWatchRow({
   onWatched,
   onEpisodeWatched,
   onEpisodeDeleted,
+  onAftermath,
 }: {
   item: ReadyToWatchItem;
   onWatched: () => void;
   onEpisodeWatched: (seasonNumber: number, episodeNumber: number) => void;
   onEpisodeDeleted: (seasonNumber: number, episodeNumber: number) => void;
+  onAftermath: (a: DeleteAftermath) => void;
 }) {
   // Movies only - once the file's deleted, Plex drops it from its own index almost
   // immediately, so a later Watched click has nothing left to mark. TV doesn't need
@@ -961,7 +967,7 @@ function ReadyToWatchRow({
         ) : (
           <>
             <ShowWatchedDropdown item={item} onEpisodeWatched={onEpisodeWatched} />
-            <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} />
+            <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} onAftermath={onAftermath} />
           </>
         )}
       </div>
@@ -989,6 +995,7 @@ export default function ReadyToWatchPanel() {
   const [missingAiredCount, setMissingAiredCount] = useState(0);
   const [missingMoviesCount, setMissingMoviesCount] = useState(0);
   const [stalledCount, setStalledCount] = useState(0);
+  const [aftermath, setAftermath] = useState<DeleteAftermath | null>(null);
   const [recentlyWatchedCount, setRecentlyWatchedCount] = useState(0);
 
   function refreshItems() {
@@ -1055,6 +1062,7 @@ export default function ReadyToWatchPanel() {
         onWatched={() => setItems((prev) => (prev ?? []).filter((i) => !(i.type === item.type && i.id === item.id)))}
         onEpisodeWatched={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
         onEpisodeDeleted={(seasonNumber, episodeNumber) => removeUnwatchedEpisode(item.id, seasonNumber, episodeNumber)}
+        onAftermath={setAftermath}
       />
     );
   }
@@ -1118,6 +1126,7 @@ export default function ReadyToWatchPanel() {
       <MissingMoviesSection onCountChange={setMissingMoviesCount} />
       <StalledShowsSection onCountChange={setStalledCount} />
       <RecentlyWatchedSection onCountChange={setRecentlyWatchedCount} />
+      <LastEpisodeModal aftermath={aftermath} onClose={() => setAftermath(null)} />
     </div>
   );
 }
