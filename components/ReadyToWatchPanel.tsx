@@ -13,6 +13,7 @@ interface ReadyToWatchItem {
   type: 'movie' | 'tv';
   id: number;
   tmdbId: number | null;
+  protected?: boolean;
   title: string;
   year: number;
   unwatchedEpisodes?: { seasonNumber: number; episodeNumber: number; title?: string }[];
@@ -967,7 +968,16 @@ function ReadyToWatchRow({
         ) : (
           <>
             <ShowWatchedDropdown item={item} onEpisodeWatched={onEpisodeWatched} />
-            <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} onAftermath={onAftermath} />
+            {item.protected ? (
+              <span
+                title="On the Cleanup Excluded Shows list - deletes through Weavarr are blocked to protect these files."
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-amber-500/15 text-amber-400 ring-amber-500/25"
+              >
+                Protected
+              </span>
+            ) : (
+              <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} onAftermath={onAftermath} />
+            )}
           </>
         )}
       </div>

@@ -307,17 +307,22 @@ export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<str
  * means protected, not just hidden from cleanup suggestions.
  */
 export async function assertSeriesDeletable(seriesId: number): Promise<void> {
-  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const title = await getProtectedTitle(seriesId);
+  if (title !== null) {
+    throw new Error(`"${title}" is protected (Cleanup Excluded Shows) - deleting it through Weavarr is blocked. Remove it from the list in Settings to allow this.`);
+  }
+}
+
+/** The series' display title when it's on the protected list, else null. Shared by the delete guard and every UI surface that must hide its delete buttons. */
+export async function getProtectedTitle(seriesId: number): Promise<string | null> {
+  if (!SONARR_URL || !SONARR_KEY) return null;
   const { getExcludedShows } = await import('./cleanupCandidates');
   const excluded = getExcludedShows();
-  if (excluded.size === 0) return;
+  if (excluded.size === 0) return null;
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
-  if (!res.ok) return; // series unknown - nothing to protect
+  if (!res.ok) return null; // series unknown - nothing to protect
   const detail = await res.json();
-  const title = ((detail.title as string) ?? '').trim().toLowerCase();
-  if (excluded.has(title)) {
-    throw new Error(`"${detail.title}" is protected (Cleanup Excluded Shows) - deleting it through Weavarr is blocked. Remove it from the list in Settings to allow this.`);
-  }
+  return excluded.has(((detail.title as string) ?? '').trim().toLowerCase()) ? ((detail.title as string) ?? '') : null;
 }
 
 export interface SeriesDeleteAftermath {
@@ -854,6 +859,8 @@ export async function monitorSonarrEpisodes(episodeIds: number[], monitored: boo
 export interface SonarrSeriesState {
   seriesId: number;
   monitorFuture: boolean;
+  /** On the Cleanup Excluded Shows list - delete affordances must not render. */
+  protected: boolean;
   episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean }[];
 }
 
@@ -874,9 +881,11 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
   if (!detailRes.ok) throw new Error(`Sonarr series fetch failed: ${detailRes.status}`);
   const detail = await detailRes.json();
 
+  const { getExcludedShows } = await import('./cleanupCandidates');
   return {
     seriesId: match.id,
     monitorFuture: detail.monitorNewItems === 'all',
+    protected: getExcludedShows().has(match.title.trim().toLowerCase()),
     // Season 0 (specials) stays in on purpose - the request modal offers
     // specials now, so their owned/locked state has to be visible too.
     episodes: episodes.map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile })),

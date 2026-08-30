@@ -1,5 +1,6 @@
 import { getAllRadarrMovies } from './radarr';
 import { getAllSonarrSeries, getSonarrEpisodeFileMap } from './sonarr';
+import { getExcludedShows } from './cleanupCandidates';
 import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServer';
 
 export interface ReadyToWatchMovie {
@@ -17,6 +18,8 @@ export interface ReadyToWatchShow {
   type: 'tv';
   id: number;
   tmdbId: number | null;
+  /** On the Cleanup Excluded Shows list - no delete affordances. */
+  protected: boolean;
   title: string;
   year: number;
   unwatchedEpisodes: { seasonNumber: number; episodeNumber: number; title: string }[];
@@ -57,6 +60,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
     .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie' as const, id: m.id, tmdbId: m.tmdbId ?? null, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
 
+  const excludedShows = getExcludedShows();
   const showItems: ReadyToWatchShow[] = [];
   showsWithFiles.forEach((s, i) => {
     const fileMap = fileSets[i];
@@ -77,6 +81,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
         type: 'tv',
         id: s.id,
         tmdbId: s.tmdbId ?? null,
+        protected: excludedShows.has(s.title.trim().toLowerCase()),
         title: s.title,
         year: s.year,
         unwatchedEpisodes,
