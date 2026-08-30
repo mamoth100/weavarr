@@ -69,9 +69,11 @@ export default function FilterBar({
   useEffect(() => {
     if (!filtersOpen) return;
     function handleOutsideClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-      }
+      // Close unless the click lands on the panel itself or its trigger -
+      // the old wrapper-ref check treated the whole chips row (empty space
+      // included) as "inside", so clicking beside a chip left it open.
+      const el = e.target as HTMLElement;
+      if (!el.closest?.('[data-filters-ui]')) setFiltersOpen(false);
     }
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -158,6 +160,7 @@ export default function FilterBar({
         <div className="relative" ref={panelRef}>
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              data-filters-ui
               onClick={() => setFiltersOpen((o) => !o)}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
                 filtersOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
@@ -197,6 +200,7 @@ export default function FilterBar({
           )}
 
           <div
+            data-filters-ui
             className={`
               ${filtersOpen ? 'flex' : 'hidden'}
               flex-col gap-5 z-50 bg-zinc-900 border-zinc-800
@@ -354,6 +358,7 @@ export default function FilterBar({
           {/* Filters trigger + active chips */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              data-filters-ui
               onClick={() => setFiltersOpen((o) => !o)}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
                 filtersOpen ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
@@ -395,6 +400,7 @@ export default function FilterBar({
 
           {/* Filters panel: dropdown on desktop, bottom sheet on mobile */}
           <div
+            data-filters-ui
             className={`
               ${filtersOpen ? 'flex' : 'hidden'}
               flex-col gap-5 z-50 bg-zinc-900 border-zinc-800
