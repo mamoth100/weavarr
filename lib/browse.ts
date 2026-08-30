@@ -4,7 +4,7 @@
  * subsequent pages from - both MUST interpret filters identically or page 2
  * would show different results than page 1's view of the world.
  */
-import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv } from '@/lib/tmdb';
+import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, enrichWithLanguage, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import { ALL_GENRE, DISCOVER_ID, getGenre, type GenreDef } from '@/lib/genreCatalog';
 import { getMenuConfig } from '@/lib/settings';
@@ -113,6 +113,21 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
 }
 
 const EMPTY_PAGE = { page: 1, results: [] as TmdbMovie[], total_pages: 1, total_results: 0 };
+
+/**
+ * TMDB's discover filter runs on original_language, and that field is
+ * community-edited and sometimes flat wrong (La Casa de los Famosos, a
+ * Telemundo show, is tagged "en"). spoken_languages on the detail record
+ * is reliable, so with the English filter active each result gets
+ * verified against it (per-title lookups, cached a day) and confirmed
+ * non-English ones are dropped. Unknown stays in - only positive proof
+ * removes a title.
+ */
+export async function dropMislabeledForeign(results: TmdbMovie[], language: string, fallbackType: 'movie' | 'tv'): Promise<TmdbMovie[]> {
+  if (language !== 'en' || results.length === 0) return results;
+  const enriched = await enrichWithLanguage(results, fallbackType);
+  return enriched.filter((r) => !r.spoken_language || r.spoken_language === 'English');
+}
 
 /**
  * Search ordering: exact title matches first, then TMDB popularity.
@@ -246,7 +261,7 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
 
   if (!hasMovies) {
     const data = await discoverTv({ page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.tvGenreId });
-    return { results: data.results, totalPages: data.total_pages, totalResults: data.total_results };
+    return { results: await dropMislabeledForeign(data.results, language, 'tv'), totalPages: data.total_pages, totalResults: data.total_results };
   }
 
   if (!hasTv && query) {
@@ -256,7 +271,7 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
 
   if (!hasTv) {
     const data = await discoverMovies({ page, sortBy: sort, minVotes, dateGte, dateLte, language, genre: activeGenre.movieGenreId });
-    return { results: data.results, totalPages: data.total_pages, totalResults: data.total_results };
+    return { results: await dropMislabeledForeign(data.results, language, 'movie'), totalPages: data.total_pages, totalResults: data.total_results };
   }
 
   if (query) {
@@ -273,9 +288,13 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
   const tvMinVotes = yearParam === currentYear ? 0 : keywordIds.length > 0 ? 5 : minVotes;
   const tvArgs = { page, sortBy: sort, minVotes: tvMinVotes, dateGte, dateLte, language, genre: activeGenre.tvGenreId, keywordIds };
   const [movieData, tvData] = await Promise.all([discoverMovies(movieArgs), discoverTv(tvArgs)]);
+  const [cleanMovies, cleanTv] = await Promise.all([
+    dropMislabeledForeign(movieData.results, language, 'movie'),
+    dropMislabeledForeign(tvData.results, language, 'tv'),
+  ]);
   // Movies first (already sorted by TMDb), TV appended after - movies always appear
   return {
-    results: [...movieData.results, ...tvData.results],
+    results: [...cleanMovies, ...cleanTv],
     totalPages: Math.max(movieData.total_pages, tvData.total_pages),
     totalResults: movieData.total_results + tvData.total_results,
   };
