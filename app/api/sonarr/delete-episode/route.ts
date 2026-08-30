@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { findSonarrEpisodeFile, deleteSonarrEpisodeFile, getSeriesDeleteAftermath } from '@/lib/sonarr';
+import { assertSeriesDeletable } from '@/lib/sonarr';
 import { refreshTvLibrary } from '@/lib/mediaServer';
 
 // Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertSeriesDeletable(Number(seriesId));
     const file = await findSonarrEpisodeFile(seriesId, seasonNumber, episodeNumber);
     if (!file) return NextResponse.json({ error: 'No file found for that episode' }, { status: 404 });
 
