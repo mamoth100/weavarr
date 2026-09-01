@@ -102,6 +102,43 @@ function InfoTooltip({ ariaLabel, text, linkLabel, linkHref }: { ariaLabel: stri
   );
 }
 
+/** On-demand media-server sync: starts Plex/Jellyfin library rescans and runs the watched sync. Lives in the Watched Sync group header. */
+function SyncNowButton() {
+  const [status, setStatus] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function run() {
+    setStatus('busy');
+    setMessage(null);
+    try {
+      const res = await fetch('/api/watched-sync/run', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
+      const parts = [];
+      if (data.refreshed) parts.push('library rescans started');
+      if (typeof data.marks === 'number') parts.push(`${data.marks} watched mark${data.marks === 1 ? '' : 's'} synced`);
+      setMessage(parts.join(' · ') || 'Done');
+      setStatus('done');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+      setStatus('error');
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        onClick={run}
+        disabled={status === 'busy'}
+        className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
+      >
+        {status === 'busy' ? 'Syncing…' : 'Sync now'}
+      </button>
+      {message && <span className={`text-xs font-medium ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>{message}</span>}
+    </span>
+  );
+}
+
 function GroupInfoTooltip({ group }: { group: string }) {
   const info = GROUP_INFO[group];
   if (!info) return null;
@@ -513,6 +550,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                         {/* PIN sign-in fills PLEX_TOKEN automatically - finding the token by hand is obscure enough that Seerr-style login is the sane default path. */}
                         {/* Subscriptions are per-device browser state, not a saved setting - the button lives in the group header. */}
                         {group === 'Webpush' && <WebpushDeviceButton />}
+                        {group === 'Watched Sync' && <SyncNowButton />}
                         {group === 'Plex' && (
                           <PlexSignIn
                             onSaved={() =>
