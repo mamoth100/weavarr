@@ -144,10 +144,11 @@ async function mapWithConcurrency<T>(items: T[], fn: (item: T) => Promise<void>)
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker()));
 }
 
-export async function syncWatchedBetweenServers(): Promise<void> {
+export async function syncWatchedBetweenServers(): Promise<number> {
   const seen = await loadSynced();
   let changed = false;
   let sinceFlush = 0;
+  let marks = 0;
 
   // A large first-time backlog can take a while even with concurrency - flush
   // progress periodically instead of only at the very end, so a killed or
@@ -215,6 +216,7 @@ export async function syncWatchedBetweenServers(): Promise<void> {
       await markTarget(match.serverKey);
       seen.add(key);
       await markDirty();
+      marks += 1;
       console.log(`[watchedSync] marked "${movie.title}" watched ${direction}`);
     } catch (err) {
       console.error(`[watchedSync] failed to sync "${movie.title}" ${direction}:`, err instanceof Error ? err.message : err);
@@ -264,6 +266,7 @@ export async function syncWatchedBetweenServers(): Promise<void> {
       await markTargetEpisodes(targetShow.serverKey, [{ seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber }], ep.showTitle);
       seen.add(key);
       await markDirty();
+      marks += 1;
       console.log(`[watchedSync] marked "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} watched ${direction}`);
     } catch (err) {
       console.error(`[watchedSync] failed to sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}:`, err instanceof Error ? err.message : err);
@@ -294,4 +297,5 @@ export async function syncWatchedBetweenServers(): Promise<void> {
   ]);
 
   if (changed) await persistSynced();
+  return marks;
 }
