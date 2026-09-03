@@ -139,6 +139,44 @@ function SyncNowButton() {
   );
 }
 
+/** Per-player library rescan - makes Plex or Jellyfin re-read what's on disk right now. */
+function RescanButton({ server }: { server: 'plex' | 'jellyfin' }) {
+  const [status, setStatus] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function run() {
+    setStatus('busy');
+    setMessage(null);
+    try {
+      const res = await fetch('/api/media-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ server }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Rescan failed');
+      setMessage('Scan started - the server finishes it on its own time');
+      setStatus('done');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+      setStatus('error');
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        onClick={run}
+        disabled={status === 'busy'}
+        className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-60"
+      >
+        {status === 'busy' ? 'Starting…' : 'Rescan library'}
+      </button>
+      {message && <span className={`text-xs font-medium ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>{message}</span>}
+    </span>
+  );
+}
+
 function GroupInfoTooltip({ group }: { group: string }) {
   const info = GROUP_INFO[group];
   if (!info) return null;
@@ -551,6 +589,8 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                         {/* Subscriptions are per-device browser state, not a saved setting - the button lives in the group header. */}
                         {group === 'Webpush' && <WebpushDeviceButton />}
                         {group === 'Watched Sync' && <SyncNowButton />}
+                        {group === 'Plex' && <RescanButton server="plex" />}
+                        {group === 'Jellyfin' && <RescanButton server="jellyfin" />}
                         {group === 'Plex' && (
                           <PlexSignIn
                             onSaved={() =>
