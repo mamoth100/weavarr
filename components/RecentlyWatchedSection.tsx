@@ -8,6 +8,7 @@
  * different name ("Ready to Clean Up") and different buttons on Status.
  */
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import ConfirmButton from '@/components/ConfirmButton';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
@@ -15,6 +16,7 @@ export interface RecentlyWatchedMovie {
   type: 'movie';
   key: string;
   id: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   watchedAt: string;
@@ -27,6 +29,7 @@ export interface RecentlyWatchedEpisode {
   type: 'tv';
   key: string;
   seriesId: number;
+  tmdbId: number | null;
   title: string;
   seasonNumber: number;
   episodeNumber: number;
@@ -179,18 +182,36 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
           : items.map((item) => {
               return (
                 <div key={item.key} className="flex items-start gap-3 bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-                  <Poster
-                    id={item.type === 'movie' ? item.id : item.seriesId}
-                    hasPoster={Boolean(item.posterPath)}
-                    title={item.title}
-                    service={item.type === 'movie' ? 'radarr' : 'sonarr'}
-                  />
+                  {item.tmdbId ? (
+                    <Link href={item.type === 'movie' ? `/documentary/${item.tmdbId}` : `/tv/${item.tmdbId}`} className="flex-shrink-0 hover:opacity-80 transition-opacity">
+                      <Poster
+                        id={item.type === 'movie' ? item.id : item.seriesId}
+                        hasPoster={Boolean(item.posterPath)}
+                        title={item.title}
+                        service={item.type === 'movie' ? 'radarr' : 'sonarr'}
+                      />
+                    </Link>
+                  ) : (
+                    <Poster
+                      id={item.type === 'movie' ? item.id : item.seriesId}
+                      hasPoster={Boolean(item.posterPath)}
+                      title={item.title}
+                      service={item.type === 'movie' ? 'radarr' : 'sonarr'}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
+                      {item.tmdbId ? (
+                        <Link href={item.type === 'movie' ? `/documentary/${item.tmdbId}` : `/tv/${item.tmdbId}`} className="text-sm font-medium truncate hover:text-amber-400 transition-colors">
+                          {item.title}
+                          {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
+                        </Link>
+                      ) : (
                       <p className="text-sm font-medium truncate">
                         {item.title}
                         {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
                       </p>
+                      )}
                       <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-1">

@@ -207,6 +207,7 @@ export async function forceImportRadarr(downloadId: string) {
 
 export interface MissingMovie {
   movieId: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   hasPoster: boolean;
@@ -226,6 +227,7 @@ export async function getMissingMovies(): Promise<MissingMovie[]> {
     const images = (m.images as RadarrImage[] | undefined) ?? [];
     return {
       movieId: m.id as number,
+      tmdbId: typeof m.tmdbId === 'number' && (m.tmdbId as number) > 0 ? (m.tmdbId as number) : null,
       title: m.title as string,
       year: m.year as number,
       hasPoster: images.some((img) => img.coverType === 'poster'),
