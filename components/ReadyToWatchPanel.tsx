@@ -304,6 +304,7 @@ function ShowWatchedDropdown({
 interface MissingAiredEpisode {
   episodeId: number;
   seriesId: number;
+  tmdbId: number | null;
   seriesTitle: string;
   hasPoster: boolean;
   seasonNumber: number;
@@ -419,6 +420,7 @@ function GiveUpEpisodeButton({ episodeId, onGivenUp }: { episodeId: number; onGi
 
 interface MissingShowGroup {
   seriesId: number;
+  tmdbId: number | null;
   seriesTitle: string;
   hasPoster: boolean;
   episodes: MissingAiredEpisode[];
@@ -527,7 +529,7 @@ function MissingAiredSection({
     for (const e of episodes) {
       let g = bySeriesId.get(e.seriesId);
       if (!g) {
-        g = { seriesId: e.seriesId, seriesTitle: e.seriesTitle, hasPoster: e.hasPoster, episodes: [] };
+        g = { seriesId: e.seriesId, tmdbId: e.tmdbId, seriesTitle: e.seriesTitle, hasPoster: e.hasPoster, episodes: [] };
         bySeriesId.set(e.seriesId, g);
       }
       g.episodes.push(e);
@@ -548,12 +550,19 @@ function MissingAiredSection({
               return (
               <div key={g.seriesId} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 overflow-hidden">
                 <div className="flex items-center gap-3 p-3">
+                  {/* Poster links to the detail page; the rest of the row keeps its expand behavior. */}
+                  {g.tmdbId ? (
+                    <Link href={`/tv/${g.tmdbId}`} className="flex-shrink-0 hover:opacity-80 transition-opacity">
+                      <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
+                    </Link>
+                  ) : (
+                    <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
+                  )}
                   <button
                     onClick={() => setExpanded((prev) => (prev === g.seriesId ? null : g.seriesId))}
                     className="flex items-center gap-3 text-left min-w-0 flex-1"
                   >
                     <span className={`text-zinc-500 text-xs transition-transform ${expanded === g.seriesId ? 'rotate-90' : ''}`}>▶</span>
-                    <Poster id={g.seriesId} hasPoster={g.hasPoster} title={g.seriesTitle} service="sonarr" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{g.seriesTitle}</p>
                       <p className="text-xs text-zinc-500">
@@ -625,6 +634,7 @@ function MissingAiredSection({
 
 interface MissingMovie {
   movieId: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   hasPoster: boolean;
@@ -794,6 +804,18 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
           ? [1, 2].map((i) => <div key={i} className="h-14 bg-zinc-900 rounded-lg animate-pulse" />)
           : movies.map((m) => (
               <div key={m.movieId} className="flex items-center gap-3 bg-zinc-900 rounded-lg ring-1 ring-white/5 p-3">
+                {m.tmdbId ? (
+                  <Link href={`/documentary/${m.tmdbId}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+                    <Poster id={m.movieId} hasPoster={m.hasPoster} title={m.title} service="radarr" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {m.title} <span className="text-zinc-500">({m.year})</span>
+                      </p>
+                      {m.releaseDate && <p className="text-xs text-zinc-500">released {formatAirDate(m.releaseDate)}</p>}
+                    </div>
+                  </Link>
+                ) : (
+                <>
                 <Poster id={m.movieId} hasPoster={m.hasPoster} title={m.title} service="radarr" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">
@@ -801,6 +823,8 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
                   </p>
                   {m.releaseDate && <p className="text-xs text-zinc-500">released {formatAirDate(m.releaseDate)}</p>}
                 </div>
+                </>
+                )}
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   <SearchMissingMovieButton
                     movie={m}

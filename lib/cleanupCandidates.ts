@@ -4,6 +4,7 @@ import { titlesMatch } from './titleMatch';
 
 export interface CleanupCandidate {
   showTitle: string;
+  tmdbId: number | null;
   seasonNumber: number;
   episodeNumber: number;
   viewedAt: string;
@@ -80,7 +81,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   // per-episode cache could never hit, because the dedupe directly above it
   // already skipped every repeated key.
   const seen = new Set<string>();
-  const resolved: { watched: WatchSignal; seriesId: number; posterPath: string | null }[] = [];
+  const resolved: { watched: WatchSignal; seriesId: number; tmdbId: number | null; posterPath: string | null }[] = [];
 
   for (const watched of [...watchedSignals, ...almostDoneSignals]) {
     if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
@@ -100,7 +101,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    resolved.push({ watched, seriesId: matchedSeries.id, posterPath: matchedSeries.posterPath });
+    resolved.push({ watched, seriesId: matchedSeries.id, tmdbId: matchedSeries.tmdbId ?? null, posterPath: matchedSeries.posterPath });
   }
 
   const fileMaps = new Map<number, Map<string, { episodeId: number; episodeFileId: number }>>();
@@ -111,12 +112,13 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   );
 
   const candidates: CleanupCandidate[] = [];
-  for (const { watched, seriesId, posterPath } of resolved) {
+  for (const { watched, seriesId, tmdbId, posterPath } of resolved) {
     const episodeFile = fileMaps.get(seriesId)?.get(`${watched.seasonNumber}:${watched.episodeNumber}`);
     if (!episodeFile) continue; // no file on disk - already cleaned up, or never had one
 
     candidates.push({
       showTitle: watched.showTitle,
+      tmdbId,
       seasonNumber: watched.seasonNumber,
       episodeNumber: watched.episodeNumber,
       viewedAt: watched.viewedAt,

@@ -404,6 +404,7 @@ export async function getSonarrEpisodeFileMap(seriesId: number): Promise<Map<str
 export interface SonarrSeriesLite {
   id: number;
   title: string;
+  tmdbId: number | null;
   posterPath: string | null;
 }
 
@@ -416,6 +417,7 @@ export async function getSonarrSeriesList(): Promise<SonarrSeriesLite[]> {
     const images = (s.images as SonarrImage[] | undefined) ?? [];
     return {
       id: s.id as number,
+      tmdbId: typeof s.tmdbId === 'number' && (s.tmdbId as number) > 0 ? (s.tmdbId as number) : null,
       title: s.title as string,
       posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
     };
@@ -758,6 +760,7 @@ export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: nu
 export interface MissingAiredEpisode {
   episodeId: number;
   seriesId: number;
+  tmdbId: number | null;
   seriesTitle: string;
   hasPoster: boolean;
   seasonNumber: number;
@@ -793,6 +796,7 @@ export async function getMissingAiredEpisodes(): Promise<MissingAiredEpisode[]> 
       return {
         episodeId: r.id as number,
         seriesId: r.seriesId as number,
+        tmdbId: typeof series?.tmdbId === 'number' && (series.tmdbId as number) > 0 ? (series.tmdbId as number) : null,
         seriesTitle: (series?.title as string) ?? 'Unknown Show',
         hasPoster: images.some((img) => img.coverType === 'poster'),
         seasonNumber: r.seasonNumber as number,

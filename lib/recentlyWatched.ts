@@ -9,6 +9,7 @@ export interface RecentlyWatchedMovie {
   type: 'movie';
   key: string;
   id: number;
+  tmdbId: number | null;
   title: string;
   year: number;
   watchedAt: string;
@@ -21,6 +22,7 @@ export interface RecentlyWatchedEpisode {
   type: 'tv';
   key: string;
   seriesId: number;
+  tmdbId: number | null;
   title: string;
   seasonNumber: number;
   episodeNumber: number;
@@ -92,6 +94,7 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
       type: 'movie',
       key: `movie-${matched.id}`,
       id: matched.id,
+      tmdbId: matched.tmdbId ?? null,
       title: matched.title,
       year: matched.year,
       watchedAt: s.watchedAt,
@@ -128,6 +131,7 @@ export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedIte
     type: 'tv',
     key: `tv-${e.seriesId}-${e.seasonNumber}-${e.episodeNumber}`,
     seriesId: e.seriesId,
+    tmdbId: e.tmdbId,
     title: e.showTitle,
     seasonNumber: e.seasonNumber,
     episodeNumber: e.episodeNumber,
