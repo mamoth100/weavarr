@@ -5,7 +5,6 @@ import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/men
 
 const ENV_FILE = path.join(process.cwd(), '.env.local');
 const BACKUP_DIR = path.join(process.cwd(), 'data', 'env-backups');
-const MAX_BACKUPS = 10;
 
 export interface SettingField {
   key: string;
@@ -182,7 +181,14 @@ export async function getSettingsStatus(): Promise<SettingStatus[]> {
   });
 }
 
-/** Copies the current .env.local into data/env-backups/ before any write, pruning old backups beyond MAX_BACKUPS. */
+/** How many backups to keep - the user's "Backups to Keep" setting (default 10), shared by the scheduled data backups and these pre-save env backups. */
+export function backupRetentionCount(lines?: string[]): number {
+  const raw = lines ? parseEnvValue(lines, 'BACKUP_RETENTION_COUNT') : process.env.BACKUP_RETENTION_COUNT ?? null;
+  const n = Number(raw);
+  return raw !== null && raw !== '' && Number.isInteger(n) && n > 0 ? n : 10;
+}
+
+/** Copies the current .env.local into data/env-backups/ before any write, pruning old backups beyond the configured "Backups to Keep". */
 async function backupEnvFile(): Promise<void> {
   let current: string;
   try {
@@ -194,8 +200,9 @@ async function backupEnvFile(): Promise<void> {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   await writeFile(path.join(BACKUP_DIR, `.env.local.${stamp}.bak`), current, 'utf8');
 
+  const keep = backupRetentionCount(current.split('\n'));
   const files = (await readdir(BACKUP_DIR)).filter((f) => f.endsWith('.bak')).sort();
-  const toDelete = files.slice(0, Math.max(0, files.length - MAX_BACKUPS));
+  const toDelete = files.slice(0, Math.max(0, files.length - keep));
   await Promise.all(toDelete.map((f) => unlink(path.join(BACKUP_DIR, f))));
 }
 

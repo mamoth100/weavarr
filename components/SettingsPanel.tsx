@@ -643,7 +643,15 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>Secret fields (API keys, tokens) never show their current value - leave blank to keep it unchanged.</p>
-        <p>Every save is backed up first (last 10 kept), so a bad value can always be rolled back.</p>
+        {/* The kept count is the real "Backups to Keep" setting, not a hardcoded number - it also governs these pre-save env backups. */}
+        <p>
+          Every save is backed up first (last{' '}
+          {(() => {
+            const n = Number(settings.find((s) => s.key === 'BACKUP_RETENTION_COUNT')?.value);
+            return Number.isInteger(n) && n > 0 ? n : 10;
+          })()}{' '}
+          kept), so a bad value can always be rolled back.
+        </p>
         {/* Only warn about restarting once there's actually something to restart for - a permanent warning is noise. */}
         {(changedCount > 0 || saveStatus === 'saved') && (
           <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
