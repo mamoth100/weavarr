@@ -32,6 +32,8 @@ export interface TmdbSeason {
   season_number: number;
   name: string;
   episode_count: number;
+  /** First-episode air date; optional because older callers pass seasons without it. */
+  air_date?: string | null;
 }
 
 export interface TmdbDetailResponse extends TmdbMovie {
