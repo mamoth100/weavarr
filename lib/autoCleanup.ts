@@ -1,4 +1,4 @@
-import { getCleanupCandidates } from './cleanupCandidates';
+import { getCleanupCandidates, type CleanupCandidate } from './cleanupCandidates';
 import { deleteSonarrEpisodeFile, assertSeriesDeletable } from './sonarr';
 import { getDismissedKeys } from './recentlyWatched';
 import { refreshTvLibrary } from './mediaServer';
@@ -7,6 +7,63 @@ import { getRawEnvValue } from './settings';
 
 function episodeLabel(showTitle: string, seasonNumber: number, episodeNumber: number): string {
   return `${showTitle} S${String(seasonNumber).padStart(2, '0')}E${String(episodeNumber).padStart(2, '0')}`;
+}
+
+/** The saved auto-delete config, read off disk so Settings changes apply without a restart. */
+async function readAutoCleanupConfig(): Promise<{ enabled: boolean; days: number; allowMarked: boolean }> {
+  const [enabledRaw, daysRaw, markedRaw] = await Promise.all([
+    getRawEnvValue('ENABLE_AUTO_CLEANUP').catch(() => null),
+    getRawEnvValue('AUTO_CLEANUP_DAYS').catch(() => null),
+    getRawEnvValue('ENABLE_AUTO_CLEANUP_MARKED').catch(() => null),
+  ]);
+  const parsed = daysRaw === null || daysRaw.trim() === '' ? 3 : Number(daysRaw);
+  return {
+    enabled: enabledRaw === 'true',
+    days: Number.isFinite(parsed) && parsed >= 0 ? parsed : 3,
+    allowMarked: markedRaw === 'true',
+  };
+}
+
+/**
+ * When this candidate's grace clock started, or null when it doesn't qualify
+ * for auto-delete at all under the current config. The one place the
+ * qualification rules live - the hourly job and the chopping-block preview
+ * must always agree.
+ */
+function graceStartFor(c: CleanupCandidate, allowMarked: boolean): number | null {
+  if (c.reason === 'Watched') return new Date(c.viewedAt).getTime();
+  if (c.reason === 'Watched to cleanup threshold') return new Date(c.thresholdFirstSeen ?? c.viewedAt).getTime();
+  if (/% watched$/.test(c.reason)) return c.thresholdFirstSeen ? new Date(c.thresholdFirstSeen).getTime() : null;
+  if (c.reason === 'Marked watched manually' && allowMarked) return new Date(c.viewedAt).getTime();
+  return null;
+}
+
+export interface ChoppingBlockItem {
+  label: string;
+  reason: string;
+  /** When the grace period runs out - already in the past means "goes on the next hourly check". */
+  deleteAt: string;
+}
+
+/** What auto-delete would remove and when, under the currently saved settings - the Settings "chopping block" preview. Never deletes anything. */
+export async function getChoppingBlock(): Promise<{ enabled: boolean; days: number; allowMarked: boolean; items: ChoppingBlockItem[] }> {
+  const cfg = await readAutoCleanupConfig();
+  const [candidates, dismissed] = await Promise.all([getCleanupCandidates(100), getDismissedKeys()]);
+  const graceMs = cfg.days * 24 * 60 * 60 * 1000;
+
+  const items: ChoppingBlockItem[] = [];
+  for (const c of candidates) {
+    if (dismissed.has(`tv-${c.seriesId}-${c.seasonNumber}-${c.episodeNumber}`)) continue;
+    const start = graceStartFor(c, cfg.allowMarked);
+    if (start === null) continue;
+    items.push({
+      label: episodeLabel(c.showTitle, c.seasonNumber, c.episodeNumber),
+      reason: c.reason,
+      deleteAt: new Date(start + graceMs).toISOString(),
+    });
+  }
+  items.sort((a, b) => a.deleteAt.localeCompare(b.deleteAt));
+  return { ...cfg, items };
 }
 
 /**
@@ -34,27 +91,13 @@ export async function runAutoCleanup(): Promise<void> {
   // observation pass always runs; only the deleting is gated.
   const [candidates, dismissed] = await Promise.all([getCleanupCandidates(100), getDismissedKeys()]);
 
-  const enabled = (await getRawEnvValue('ENABLE_AUTO_CLEANUP').catch(() => null)) === 'true';
-  if (!enabled) return;
-
-  const daysRaw = await getRawEnvValue('AUTO_CLEANUP_DAYS').catch(() => null);
-  const parsed = daysRaw === null || daysRaw.trim() === '' ? 3 : Number(daysRaw);
-  const days = Number.isFinite(parsed) && parsed >= 0 ? parsed : 3;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  const allowMarked = (await getRawEnvValue('ENABLE_AUTO_CLEANUP_MARKED').catch(() => null)) === 'true';
+  const cfg = await readAutoCleanupConfig();
+  if (!cfg.enabled) return;
+  const cutoff = Date.now() - cfg.days * 24 * 60 * 60 * 1000;
 
   const deleted: string[] = [];
   for (const c of candidates) {
-    let graceStart: number | null = null;
-    if (c.reason === 'Watched') {
-      graceStart = new Date(c.viewedAt).getTime();
-    } else if (c.reason === 'Watched to cleanup threshold') {
-      graceStart = new Date(c.thresholdFirstSeen ?? c.viewedAt).getTime();
-    } else if (/% watched$/.test(c.reason)) {
-      graceStart = c.thresholdFirstSeen ? new Date(c.thresholdFirstSeen).getTime() : null;
-    } else if (c.reason === 'Marked watched manually' && allowMarked) {
-      graceStart = new Date(c.viewedAt).getTime();
-    }
+    const graceStart = graceStartFor(c, cfg.allowMarked);
     if (graceStart === null || graceStart > cutoff) continue;
     if (dismissed.has(`tv-${c.seriesId}-${c.seasonNumber}-${c.episodeNumber}`)) continue;
 
