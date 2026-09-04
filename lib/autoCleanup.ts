@@ -12,14 +12,18 @@ function episodeLabel(showTitle: string, seasonNumber: number, episodeNumber: nu
 /**
  * Opt-in hourly job: delete episode files the user has genuinely watched,
  * after a grace period. Deliberately narrow:
- * - real playback only ('Watched' candidates - a manual mark-watched or a
- *   nearly-done in-progress episode never qualifies)
- * - only after AUTO_CLEANUP_DAYS days have passed since the watch, so an
- *   accidental play or a rewatch urge doesn't lose the file instantly
+ * - real playback qualifies: a finished watch, or one played past the
+ *   cleanup threshold (label 'Watched to cleanup threshold' or the live
+ *   'N% watched' rows). A manual mark-watched only qualifies when the
+ *   separate ENABLE_AUTO_CLEANUP_MARKED toggle is on.
+ * - only after AUTO_CLEANUP_DAYS days have passed - counted from the watch
+ *   for history rows, and from when the app first saw the episode past the
+ *   threshold for threshold rows (their viewedAt is recomputed as "now" on
+ *   every run and would never age otherwise)
  * - Cleanup Excluded Shows never appear as candidates, and the server-side
  *   delete guard is asserted again anyway
  * - anything cleared from Recently Watched stays untouched
- * Both settings are read off disk per run, so Settings changes (including
+ * All settings are read off disk per run, so Settings changes (including
  * turning the whole thing off) apply without a restart. One notification per
  * run lists everything deleted - this must never be silent.
  */
@@ -31,13 +35,23 @@ export async function runAutoCleanup(): Promise<void> {
   const parsed = daysRaw === null || daysRaw.trim() === '' ? 3 : Number(daysRaw);
   const days = Number.isFinite(parsed) && parsed >= 0 ? parsed : 3;
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const allowMarked = (await getRawEnvValue('ENABLE_AUTO_CLEANUP_MARKED').catch(() => null)) === 'true';
 
   const [candidates, dismissed] = await Promise.all([getCleanupCandidates(100), getDismissedKeys()]);
 
   const deleted: string[] = [];
   for (const c of candidates) {
-    if (c.reason !== 'Watched') continue;
-    if (new Date(c.viewedAt).getTime() > cutoff) continue;
+    let graceStart: number | null = null;
+    if (c.reason === 'Watched') {
+      graceStart = new Date(c.viewedAt).getTime();
+    } else if (c.reason === 'Watched to cleanup threshold') {
+      graceStart = new Date(c.thresholdFirstSeen ?? c.viewedAt).getTime();
+    } else if (/% watched$/.test(c.reason)) {
+      graceStart = c.thresholdFirstSeen ? new Date(c.thresholdFirstSeen).getTime() : null;
+    } else if (c.reason === 'Marked watched manually' && allowMarked) {
+      graceStart = new Date(c.viewedAt).getTime();
+    }
+    if (graceStart === null || graceStart > cutoff) continue;
     if (dismissed.has(`tv-${c.seriesId}-${c.seasonNumber}-${c.episodeNumber}`)) continue;
 
     const label = episodeLabel(c.showTitle, c.seasonNumber, c.episodeNumber);
