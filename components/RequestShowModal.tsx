@@ -159,17 +159,44 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       .then((data) => setWarnThreshold(Number(data.count) || 0))
       .catch(() => setWarnThreshold(0));
   }, [open, warnThreshold]);
-  const [bigAddCount, setBigAddCount] = useState<number | null>(null);
 
-  /** Episodes this submission would actually download: cherry-picks plus, per ticked season, its episodes minus what's already owned. */
-  function selectedEpisodeCount(): number {
-    let total = episodePicks.size;
-    for (const n of Array.from(fullSeasons)) {
-      const s = seasons.find((x) => x.season_number === n);
-      if (s) total += Math.max(0, s.episode_count - (ownedCountBySeason.get(n) ?? 0));
-    }
-    return total;
+  // The warning fires WHILE selecting, the moment the running count crosses
+  // the threshold - not on the Add click. 'live' mode just asks "sure?";
+  // 'submit' mode is a backstop for reaching Add without ever touching the
+  // picker (the preselected latest season can already be over the line) and
+  // its confirm button submits. "That's fine" arms `acknowledged` so the
+  // popup stays quiet for the rest of this selection; dropping back under
+  // the threshold re-arms it. `warnedAt` keeps "Go back" from re-popping
+  // the modal until the count actually changes again.
+  const [warnMode, setWarnMode] = useState<'live' | 'submit' | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [warnedAt, setWarnedAt] = useState<number | null>(null);
+
+  // Episodes this selection would actually download: cherry-picks plus, per ticked season, its episodes minus what's already owned.
+  let totalSelected = episodePicks.size;
+  for (const n of Array.from(fullSeasons)) {
+    const s = seasons.find((x) => x.season_number === n);
+    if (s) totalSelected += Math.max(0, s.episode_count - (ownedCountBySeason.get(n) ?? 0));
   }
+
+  useEffect(() => {
+    if (!open) {
+      setWarnMode(null);
+      setAcknowledged(false);
+      setWarnedAt(null);
+      return;
+    }
+    if (!warnThreshold || !touched) return;
+    if (totalSelected < warnThreshold) {
+      setAcknowledged(false);
+      setWarnedAt(null);
+      return;
+    }
+    if (!acknowledged && warnedAt !== totalSelected && warnMode === null) {
+      setWarnMode('live');
+      setWarnedAt(totalSelected);
+    }
+  }, [open, warnThreshold, touched, totalSelected, acknowledged, warnedAt, warnMode]);
 
   function isSeasonFullyOwned(s: TmdbSeason): boolean {
     return (ownedCountBySeason.get(s.season_number) ?? 0) >= s.episode_count && s.episode_count > 0;
@@ -234,9 +261,9 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const nothingSelected = fullSeasons.size === 0 && episodePicks.size === 0 && !(owned ? futureChanged : monitorFuture);
 
   function handleSubmitClick() {
-    const total = selectedEpisodeCount();
-    if (warnThreshold && total >= warnThreshold) {
-      setBigAddCount(total);
+    if (warnThreshold && totalSelected >= warnThreshold && !acknowledged) {
+      setWarnMode('submit');
+      setWarnedAt(totalSelected);
       return;
     }
     void handleSubmit();
@@ -293,9 +320,9 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
     <Modal
       open={open}
       onClose={() => {
-        // While the big-add confirm is up, Escape/outside-click peels off
+        // While the big-add warning is up, Escape/outside-click peels off
         // just that layer instead of abandoning the whole selection.
-        if (bigAddCount !== null) setBigAddCount(null);
+        if (warnMode !== null) setWarnMode(null);
         else onClose();
       }}
       title={owned ? `Get more of "${title}"` : `Add "${title}"`}
@@ -510,33 +537,35 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       </div>
     </Modal>
     <Modal
-      open={bigAddCount !== null}
-      onClose={() => setBigAddCount(null)}
+      open={warnMode !== null}
+      onClose={() => setWarnMode(null)}
       title="That's a lot of episodes"
       footer={
         <>
           <button
-            onClick={() => setBigAddCount(null)}
+            onClick={() => setWarnMode(null)}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
           >
             Go back
           </button>
           <button
             onClick={() => {
-              setBigAddCount(null);
-              void handleSubmit();
+              setAcknowledged(true);
+              const submitNow = warnMode === 'submit';
+              setWarnMode(null);
+              if (submitNow) void handleSubmit();
             }}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
           >
-            Add them all
+            {warnMode === 'submit' ? 'Add them all' : "That's fine"}
           </button>
         </>
       }
     >
       <div className="space-y-2">
         <p className="text-sm text-zinc-300">
-          This request will download <span className="font-semibold text-amber-400">{bigAddCount} episodes</span>. That can tie up the
-          download queue and eat disk space for quite a while.
+          Your selection is up to <span className="font-semibold text-amber-400">{totalSelected} episodes</span> to download. That can
+          tie up the download queue and eat disk space for quite a while.
         </p>
         <p className="text-xs text-zinc-500">
           This warning triggers at {warnThreshold} episodes. You can change that number or turn it off in Settings under App Config.
