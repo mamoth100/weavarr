@@ -96,6 +96,26 @@ export async function register() {
     }
   }
 
+  // Opt-in destructive job: delete watched episodes after a grace period.
+  // Scheduled unconditionally (unlike the boot-gated jobs above) because the
+  // enable toggle is read off disk on EVERY run - flipping it off in Settings
+  // stops it within the hour, no restart. Every safety check happens inside
+  // runAutoCleanup itself; disabled runs are a no-op file read.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { runAutoCleanup } = await import('./lib/autoCleanup');
+
+    runAutoCleanup().catch((err) => {
+      console.error('[autoCleanup] run failed:', err instanceof Error ? err.message : err);
+    });
+
+    const AUTO_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+    setInterval(() => {
+      runAutoCleanup().catch((err) => {
+        console.error('[autoCleanup] run failed:', err instanceof Error ? err.message : err);
+      });
+    }, AUTO_CLEANUP_INTERVAL_MS);
+  }
+
   // Always-on maintenance: prune cached posters for titles deleted directly
   // in Radarr/Sonarr (Weavarr's own delete buttons already clean up their
   // poster - this catches the external deletes). Fail-closed inside the
