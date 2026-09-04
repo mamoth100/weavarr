@@ -28,6 +28,12 @@ function episodeLabel(showTitle: string, seasonNumber: number, episodeNumber: nu
  * run lists everything deleted - this must never be silent.
  */
 export async function runAutoCleanup(): Promise<void> {
+  // Computing candidates ALSO records threshold sightings (the memory that
+  // tells a threshold watch apart from a manual mark later). That labeling
+  // evidence matters even while auto-delete is off, so the hourly
+  // observation pass always runs; only the deleting is gated.
+  const [candidates, dismissed] = await Promise.all([getCleanupCandidates(100), getDismissedKeys()]);
+
   const enabled = (await getRawEnvValue('ENABLE_AUTO_CLEANUP').catch(() => null)) === 'true';
   if (!enabled) return;
 
@@ -36,8 +42,6 @@ export async function runAutoCleanup(): Promise<void> {
   const days = Number.isFinite(parsed) && parsed >= 0 ? parsed : 3;
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const allowMarked = (await getRawEnvValue('ENABLE_AUTO_CLEANUP_MARKED').catch(() => null)) === 'true';
-
-  const [candidates, dismissed] = await Promise.all([getCleanupCandidates(100), getDismissedKeys()]);
 
   const deleted: string[] = [];
   for (const c of candidates) {
