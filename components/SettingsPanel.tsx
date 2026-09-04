@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Modal from '@/components/Modal';
 import Toggle from '@/components/Toggle';
 import PlexSignIn from '@/components/PlexSignIn';
 import WebpushDeviceButton from '@/components/WebpushDeviceButton';
@@ -147,6 +148,108 @@ function SyncNowButton() {
 }
 
 /** Per-player library rescan - makes Plex or Jellyfin re-read what's on disk right now. */
+function formatTimeLeft(deleteAt: string): string {
+  const ms = new Date(deleteAt).getTime() - Date.now();
+  if (ms <= 0) return 'next check';
+  const mins = Math.ceil(ms / 60000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `in ${hours}h ${mins % 60}m`;
+  return `in ${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+interface ChoppingBlockData {
+  enabled: boolean;
+  days: number;
+  items: { label: string; reason: string; deleteAt: string }[];
+}
+
+/** Read-only preview of what auto-delete would remove and when - lets people gauge the feature before (and after) trusting it. */
+function ChoppingBlockButton() {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<ChoppingBlockData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function show() {
+    setOpen(true);
+    setData(null);
+    setError(null);
+    fetch('/api/auto-cleanup/preview', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((d) => {
+        if (d.error) setError(d.error);
+        else setData(d);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
+
+  return (
+    <>
+      <button
+        onClick={show}
+        className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 whitespace-nowrap"
+      >
+        Chopping block
+      </button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="On the chopping block"
+        footer={
+          <button
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          >
+            Close
+          </button>
+        }
+      >
+        {error ? (
+          <p className="text-sm text-red-400">{error}</p>
+        ) : !data ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 bg-zinc-800 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {!data.enabled && (
+              <p className="text-xs text-amber-400">
+                Auto-delete is currently off. This is what would go if you turned it on.
+              </p>
+            )}
+            {data.items.length === 0 ? (
+              <p className="text-sm text-zinc-400">Nothing qualifies right now.</p>
+            ) : (
+              <div className="rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800 max-h-72 overflow-y-auto">
+                {data.items.map((it) => (
+                  <div key={it.label} className="px-3 py-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm truncate">{it.label}</p>
+                      <p className="text-xs text-zinc-500">{it.reason}</p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium whitespace-nowrap ${
+                        formatTimeLeft(it.deleteAt) === 'next check' ? 'text-red-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {formatTimeLeft(it.deleteAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-zinc-500">
+              Checked hourly. Grace period: {data.days} {data.days === 1 ? 'day' : 'days'} after the watch.
+            </p>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
+
 function RescanButton({ server }: { server: 'plex' | 'jellyfin' }) {
   const [status, setStatus] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
@@ -304,6 +407,7 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Application: 'App Config',
   Network: 'App Config',
   'App Behavior': 'App Config',
+  'Auto-Delete': 'App Config',
 };
 
 // Backup gets its own top-level tab in SettingsLayout.tsx (BackupPanel.tsx),
@@ -598,6 +702,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                         {group === 'Watched Sync' && <SyncNowButton />}
                         {group === 'Plex' && <RescanButton server="plex" />}
                         {group === 'Jellyfin' && <RescanButton server="jellyfin" />}
+                        {group === 'Auto-Delete' && <ChoppingBlockButton />}
                         {group === 'Plex' && (
                           <PlexSignIn
                             onSaved={() =>
