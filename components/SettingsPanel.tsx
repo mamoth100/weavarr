@@ -605,13 +605,39 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                       </div>
                       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
                         {settings
-                          .filter((s) => s.group === group)
+                          // The threshold renders inside the Big Add Warning row, not as its own row.
+                          .filter((s) => s.group === group && s.key !== 'EPISODE_WARN_COUNT')
                           .map((s) => (
                             <div key={s.key} className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
                               <div className="sm:w-52 flex-shrink-0">
                                 <p className="text-sm font-medium">{s.label}</p>
                               </div>
-                              {s.type === 'boolean' && s.key === 'ENABLE_WATCHED_SYNC' && !watchedSyncEligible ? (
+                              {s.key === 'ENABLE_EPISODE_WARN' ? (
+                                (() => {
+                                  const countField = settings.find((f) => f.key === 'EPISODE_WARN_COUNT');
+                                  const enabled = (edits[s.key] ?? s.value ?? s.defaultValue ?? 'false') === 'true';
+                                  return (
+                                    <div className="flex-1 flex items-center gap-3">
+                                      <Toggle
+                                        checked={enabled}
+                                        onChange={(next) => setEdits((prev) => ({ ...prev, [s.key]: String(next) }))}
+                                        ariaLabel={s.label}
+                                      />
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={edits.EPISODE_WARN_COUNT ?? countField?.value ?? ''}
+                                        onChange={(e) => setEdits((prev) => ({ ...prev, EPISODE_WARN_COUNT: e.target.value }))}
+                                        disabled={!enabled}
+                                        placeholder="30"
+                                        aria-label="Big Add Warning Threshold (episodes)"
+                                        className="w-24 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-40"
+                                      />
+                                      <span className={`text-xs ${enabled ? 'text-zinc-500' : 'text-zinc-600'}`}>episodes</span>
+                                    </div>
+                                  );
+                                })()
+                              ) : s.type === 'boolean' && s.key === 'ENABLE_WATCHED_SYNC' && !watchedSyncEligible ? (
                                 <div className="flex-1 flex items-center gap-3">
                                   <Toggle checked={false} onChange={() => {}} disabled ariaLabel={s.label} />
                                   {/* Visible instead of a hover-only title tooltip - touch and keyboard users can never see those. */}
