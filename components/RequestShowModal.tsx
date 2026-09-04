@@ -462,7 +462,12 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
           </div>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="rounded-lg bg-red-500/10 ring-1 ring-red-500/30 px-3 py-2 text-sm">
+            <p className="font-medium text-red-300">{owned ? "Couldn't update the show" : "Couldn't add the show"}</p>
+            <p className="text-red-300/80 mt-0.5">{error}</p>
+          </div>
+        )}
       </div>
     </Modal>
   );

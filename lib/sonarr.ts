@@ -63,11 +63,25 @@ export async function addSeriesToSonarr({
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
   async function lookup(term: string) {
-    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
-      headers: headers(),
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`Sonarr lookup failed: ${res.status}`);
+    const doFetch = () =>
+      fetchWithTimeout(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
+        headers: headers(),
+        cache: 'no-store',
+      });
+    let res = await doFetch();
+    // Sonarr's metadata upstream (skyhook) throws occasional one-off 5xxs
+    // that clear on their own - pause and retry once before giving up.
+    if (res.status >= 500) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      res = await doFetch();
+    }
+    if (!res.ok) {
+      throw new Error(
+        res.status >= 500
+          ? "Sonarr couldn't reach its show database. That service usually recovers within a minute or two, so give it a moment and try again."
+          : `Sonarr lookup failed: ${res.status}`
+      );
+    }
     return res.json();
   }
 
