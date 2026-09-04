@@ -298,6 +298,19 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
     });
 }
 
+/** Episodes Sonarr knows are still coming for this show: a future air date, any season. Feeds the "N unaired episodes remain" tail on ready-to-watch pings. */
+export async function getSonarrUnairedCount(seriesId: number): Promise<number> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}`, {
+    headers: headers(),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
+  const episodes: Record<string, unknown>[] = await res.json();
+  const now = Date.now();
+  return episodes.filter((e) => typeof e.airDateUtc === 'string' && new Date(e.airDateUtc).getTime() > now).length;
+}
+
 /** Season:episode keys that currently have a file, for a series that's confirmed to still exist. */
 export async function getSonarrEpisodeFileSet(seriesId: number): Promise<Set<string>> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
