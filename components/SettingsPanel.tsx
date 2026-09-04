@@ -48,6 +48,13 @@ const GROUP_INFO: Record<string, { text: string; linkLabel?: string; linkHref?: 
   },
 };
 
+/** Toggle-plus-number settings pairs rendered as one row: the toggle's row hosts the number input, one "?" covers both, and the number field never gets its own row. */
+const INLINE_NUMBER_PAIRS: Record<string, { countKey: string; unit: string; placeholder: string; min: number; aria: string }> = {
+  ENABLE_EPISODE_WARN: { countKey: 'EPISODE_WARN_COUNT', unit: 'episodes', placeholder: '30', min: 1, aria: 'Big Add Warning Threshold (episodes)' },
+  ENABLE_AUTO_CLEANUP: { countKey: 'AUTO_CLEANUP_DAYS', unit: 'days after watch', placeholder: '3', min: 0, aria: 'Auto-Delete Grace Period (days)' },
+};
+const INLINE_NUMBER_KEYS = new Set(Object.values(INLINE_NUMBER_PAIRS).map((p) => p.countKey));
+
 /** The one "?" tooltip - group headers and individual field rows both use it. Click to open, outside-click/Escape to close. */
 function InfoTooltip({ ariaLabel, text, linkLabel, linkHref }: { ariaLabel: string; text: string; linkLabel?: string; linkHref?: string }) {
   const [open, setOpen] = useState(false);
@@ -605,16 +612,16 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                       </div>
                       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800">
                         {settings
-                          // The threshold renders inside the Big Add Warning row, not as its own row.
-                          .filter((s) => s.group === group && s.key !== 'EPISODE_WARN_COUNT')
+                          .filter((s) => s.group === group && !INLINE_NUMBER_KEYS.has(s.key))
                           .map((s) => (
                             <div key={s.key} className="p-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
                               <div className="sm:w-52 flex-shrink-0">
                                 <p className="text-sm font-medium">{s.label}</p>
                               </div>
-                              {s.key === 'ENABLE_EPISODE_WARN' ? (
+                              {INLINE_NUMBER_PAIRS[s.key] ? (
                                 (() => {
-                                  const countField = settings.find((f) => f.key === 'EPISODE_WARN_COUNT');
+                                  const pair = INLINE_NUMBER_PAIRS[s.key];
+                                  const countField = settings.find((f) => f.key === pair.countKey);
                                   const enabled = (edits[s.key] ?? s.value ?? s.defaultValue ?? 'false') === 'true';
                                   return (
                                     <div className="flex-1 flex items-center gap-3">
@@ -625,15 +632,15 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                                       />
                                       <input
                                         type="number"
-                                        min={1}
-                                        value={edits.EPISODE_WARN_COUNT ?? countField?.value ?? ''}
-                                        onChange={(e) => setEdits((prev) => ({ ...prev, EPISODE_WARN_COUNT: e.target.value }))}
+                                        min={pair.min}
+                                        value={edits[pair.countKey] ?? countField?.value ?? ''}
+                                        onChange={(e) => setEdits((prev) => ({ ...prev, [pair.countKey]: e.target.value }))}
                                         disabled={!enabled}
-                                        placeholder="30"
-                                        aria-label="Big Add Warning Threshold (episodes)"
+                                        placeholder={pair.placeholder}
+                                        aria-label={pair.aria}
                                         className="w-24 bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500 placeholder:text-zinc-500 disabled:opacity-40"
                                       />
-                                      <span className={`text-xs ${enabled ? 'text-zinc-500' : 'text-zinc-600'}`}>episodes</span>
+                                      <span className={`text-xs ${enabled ? 'text-zinc-500' : 'text-zinc-600'}`}>{pair.unit}</span>
                                     </div>
                                   );
                                 })()

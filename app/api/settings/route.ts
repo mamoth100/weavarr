@@ -29,6 +29,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Big Add Warning Threshold must be a whole number, 1 or higher. To turn the warning off, use the Big Add Warning toggle instead.' }, { status: 400 });
     }
   }
+  const graceDays = (updates as Record<string, unknown>).AUTO_CLEANUP_DAYS;
+  if (typeof graceDays === 'string' && graceDays.trim() !== '') {
+    const n = Number(graceDays);
+    if (!Number.isInteger(n) || n < 0) {
+      return NextResponse.json({ error: 'Auto-Delete Grace Period must be a whole number of days, 0 or higher.' }, { status: 400 });
+    }
+  }
 
   try {
     await updateSettings(updates);

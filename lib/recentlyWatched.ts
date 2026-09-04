@@ -51,6 +51,11 @@ async function loadDismissed(): Promise<Set<string>> {
   return dismissed;
 }
 
+/** Read-only view of the dismissed set - the auto-cleanup job treats a cleared item as "leave this alone". */
+export async function getDismissedKeys(): Promise<Set<string>> {
+  return loadDismissed();
+}
+
 export async function dismissRecentlyWatched(key: string): Promise<void> {
   const seen = await loadDismissed();
   seen.add(key);
