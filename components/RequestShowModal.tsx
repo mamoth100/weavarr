@@ -39,6 +39,15 @@ function epKey(seasonNumber: number, episodeNumber: number): string {
   return `${seasonNumber}:${episodeNumber}`;
 }
 
+function formatAirDate(d: string): string {
+  return new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+interface AirInfo {
+  firstAirDate: string | null;
+  nextEpisodeAirDate: string | null;
+}
+
 /**
  * The one request surface for shows, at any point in their life:
  * - not added yet: pick whole seasons (checkbox) or expand a season
@@ -50,17 +59,35 @@ function epKey(seasonNumber: number, episodeNumber: number): string {
  * lazy-loaded per season so thirty-season shows stay instant.
  */
 export default function RequestShowModal({ open, onClose, title, imdbId, seasons: seasonsProp, tmdbId, highestConfigured, onSuccess }: Props) {
-  // --- season list (TMDB) ---
+  // --- season list + air-date info (TMDB) ---
+  // Always fetched, even when seasons arrive via prop: the prop path carries
+  // no premiere/next-episode dates, and those drive the unaired warning.
   const [fetchedSeasons, setFetchedSeasons] = useState<TmdbSeason[] | null>(null);
+  const [airInfo, setAirInfo] = useState<AirInfo | null>(null);
   useEffect(() => {
-    if (!open || seasonsProp.length > 0 || fetchedSeasons !== null) return;
+    if (!open || airInfo !== null) return;
     fetch(`/api/tmdb/seasons?id=${tmdbId}`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setFetchedSeasons(((data.seasons ?? []) as TmdbSeason[]).filter((s) => s.season_number >= 0 && s.episode_count > 0)))
+      .then((data) => {
+        setAirInfo({ firstAirDate: data.firstAirDate ?? null, nextEpisodeAirDate: data.nextEpisodeAirDate ?? null });
+        setFetchedSeasons(((data.seasons ?? []) as TmdbSeason[]).filter((s) => s.season_number >= 0 && s.episode_count > 0));
+      })
       .catch(() => setFetchedSeasons([]));
-  }, [open, seasonsProp.length, tmdbId, fetchedSeasons]);
+  }, [open, tmdbId, airInfo]);
   const seasons = seasonsProp.length > 0 ? seasonsProp : fetchedSeasons ?? [];
   const seasonsPending = seasonsProp.length === 0 && fetchedSeasons === null;
+
+  // Aired-yet check. Season air_date is the season's first episode, so a
+  // future/missing date on every season means nothing has aired at all;
+  // a scheduled next episode or a future season means some of what's
+  // selectable here doesn't exist yet.
+  const today = new Date().toISOString().slice(0, 10);
+  const nothingAired =
+    airInfo !== null &&
+    (!airInfo.firstAirDate || airInfo.firstAirDate > today) &&
+    !seasons.some((s) => s.air_date != null && s.air_date <= today);
+  const someUnaired =
+    airInfo !== null && !nothingAired && (airInfo.nextEpisodeAirDate !== null || seasons.some((s) => s.air_date != null && s.air_date > today));
 
   // --- what Sonarr already has ---
   const [sonarrState, setSonarrState] = useState<SonarrState | null>(null);
@@ -254,6 +281,19 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       }
     >
       <div className="space-y-4">
+        {nothingAired && (
+          <div className="rounded-lg bg-amber-500/10 ring-1 ring-amber-500/30 px-3 py-2 text-sm text-amber-300">
+            This show hasn&apos;t premiered yet, so no episodes have aired.{' '}
+            {airInfo?.firstAirDate ? `The first episode airs ${formatAirDate(airInfo.firstAirDate)}.` : 'No air date has been announced.'}{' '}
+            You can still add it, and episodes will download once they air.
+          </div>
+        )}
+        {!owned && someUnaired && (
+          <div className="rounded-lg bg-zinc-800/60 ring-1 ring-white/5 px-3 py-2 text-xs text-zinc-400">
+            Some episodes haven&apos;t aired yet.
+            {airInfo?.nextEpisodeAirDate ? ` The next one airs ${formatAirDate(airInfo.nextEpisodeAirDate)}.` : ''} Anything unaired will download once it airs.
+          </div>
+        )}
         {pending ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
@@ -339,6 +379,8 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                           <span className="text-xs text-amber-400 font-medium">{picked} picked</span>
                         ) : ownedCount > 0 ? (
                           <span className="text-xs text-zinc-500">{ownedCount}/{s.episode_count} owned</span>
+                        ) : s.air_date && s.air_date > today ? (
+                          <span className="text-xs text-amber-400/80">Airs {formatAirDate(s.air_date)}</span>
                         ) : (
                           <span className="text-xs text-zinc-500">{s.episode_count} ep</span>
                         )}

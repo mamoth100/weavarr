@@ -349,14 +349,31 @@ export async function discoverTv({
   };
 }
 
-export async function getTvSeasons(id: number): Promise<{ season_number: number; name: string; episode_count: number }[]> {
+export interface TvSeasonsResult {
+  seasons: { season_number: number; name: string; episode_count: number; air_date: string | null }[];
+  /** Show premiere date - null means TMDB has no announced date at all. */
+  firstAirDate: string | null;
+  /** Air date of the next scheduled episode - present exactly when not everything has aired yet. */
+  nextEpisodeAirDate: string | null;
+}
+
+export async function getTvSeasons(id: number): Promise<TvSeasonsResult> {
   const res = await tmdbFetch(`${BASE_URL}/tv/${id}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
   if (!res.ok) throw new Error(`TMDb TV seasons failed: ${res.status}`);
   const data = await res.json();
-  return data.seasons ?? [];
+  return {
+    seasons: ((data.seasons ?? []) as Record<string, unknown>[]).map((s) => ({
+      season_number: s.season_number as number,
+      name: s.name as string,
+      episode_count: s.episode_count as number,
+      air_date: (s.air_date as string) ?? null,
+    })),
+    firstAirDate: (data.first_air_date as string) || null,
+    nextEpisodeAirDate: (data.next_episode_to_air?.air_date as string) ?? null,
+  };
 }
 
 export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {

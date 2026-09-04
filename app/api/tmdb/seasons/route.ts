@@ -11,8 +11,8 @@ export async function GET(request: Request) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   try {
-    const seasons = await getTvSeasons(id);
-    return NextResponse.json({ seasons });
+    const result = await getTvSeasons(id);
+    return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
