@@ -60,6 +60,23 @@ export function getExcludedShows(): Set<string> {
   return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 }
 
+/**
+ * Tolerant lookup into "title:season:episode"-keyed signal sets: the
+ * season/episode suffix must match exactly, the title part via titlesMatch.
+ * Exact key equality silently broke the labeling - the in-progress, session
+ * log, and watch-history sources format the same show's title differently
+ * ("Big Brother (US)" vs "Big Brother"), so a real threshold watch fell
+ * through to "Marked watched manually".
+ */
+function findSignalKey(keys: Set<string> | string[], showTitle: string, seasonNumber: number, episodeNumber: number): string | null {
+  const suffix = `:${seasonNumber}:${episodeNumber}`;
+  for (const k of Array.from(keys)) {
+    if (!k.endsWith(suffix)) continue;
+    if (titlesMatch(k.slice(0, -suffix.length), showTitle)) return k;
+  }
+  return null;
+}
+
 interface WatchSignal {
   showTitle: string;
   seasonNumber: number;
@@ -99,38 +116,42 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   let thresholdStateChanged = false;
   const overThreshold = inProgress.filter((e) => e.duration > 0 && e.viewOffset / e.duration >= threshold);
   for (const e of overThreshold) {
-    const key = `${e.showTitle.toLowerCase().trim()}:${e.seasonNumber}:${e.episodeNumber}`;
-    if (!thresholdSeen[key]) {
-      thresholdSeen[key] = nowIso;
+    if (!findSignalKey(Object.keys(thresholdSeen), e.showTitle, e.seasonNumber, e.episodeNumber)) {
+      thresholdSeen[`${e.showTitle.toLowerCase().trim()}:${e.seasonNumber}:${e.episodeNumber}`] = nowIso;
       thresholdStateChanged = true;
     }
   }
   if (thresholdStateChanged) await saveThresholdSeen(thresholdSeen).catch(() => {});
 
+  const thresholdSeenKeys = Object.keys(thresholdSeen);
   const watchedSignals: WatchSignal[] = history.map((w) => {
-    const key = `${w.showTitle.toLowerCase().trim()}:${w.seasonNumber}:${w.episodeNumber}`;
     // Three-way split: a logged play session is a real watch; no session but
     // the app saw it played past the cleanup threshold means the watched
     // flag came from that playback; neither means someone marked it watched
     // by hand in Plex/Jellyfin (or in this app).
-    const firstSeen = thresholdSeen[key] ?? null;
+    const played = findSignalKey(playedKeys, w.showTitle, w.seasonNumber, w.episodeNumber) !== null;
+    const seenKey = findSignalKey(thresholdSeenKeys, w.showTitle, w.seasonNumber, w.episodeNumber);
+    const firstSeen = seenKey ? thresholdSeen[seenKey] : null;
     return {
       showTitle: w.showTitle,
       seasonNumber: w.seasonNumber,
       episodeNumber: w.episodeNumber,
       viewedAt: w.viewedAt,
-      reason: playedKeys.has(key) ? 'Watched' : firstSeen ? 'Watched to cleanup threshold' : 'Marked watched manually',
+      reason: played ? 'Watched' : firstSeen ? 'Watched to cleanup threshold' : 'Marked watched manually',
       thresholdFirstSeen: firstSeen,
     };
   });
-  const almostDoneSignals: WatchSignal[] = overThreshold.map((e) => ({
-    showTitle: e.showTitle,
-    seasonNumber: e.seasonNumber,
-    episodeNumber: e.episodeNumber,
-    viewedAt: new Date().toISOString(),
-    reason: `${Math.round((e.viewOffset / e.duration) * 100)}% watched`,
-    thresholdFirstSeen: thresholdSeen[`${e.showTitle.toLowerCase().trim()}:${e.seasonNumber}:${e.episodeNumber}`] ?? nowIso,
-  }));
+  const almostDoneSignals: WatchSignal[] = overThreshold.map((e) => {
+    const seenKey = findSignalKey(Object.keys(thresholdSeen), e.showTitle, e.seasonNumber, e.episodeNumber);
+    return {
+      showTitle: e.showTitle,
+      seasonNumber: e.seasonNumber,
+      episodeNumber: e.episodeNumber,
+      viewedAt: new Date().toISOString(),
+      reason: `${Math.round((e.viewOffset / e.duration) * 100)}% watched`,
+      thresholdFirstSeen: (seenKey ? thresholdSeen[seenKey] : null) ?? nowIso,
+    };
+  });
 
   // Resolve every signal to a series first (deduped), THEN fetch each
   // distinct series' episode list exactly once, in parallel. The old shape
