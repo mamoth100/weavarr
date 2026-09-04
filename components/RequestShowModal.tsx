@@ -147,6 +147,30 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // --- big-add warning ---
+  // Threshold comes from Settings (EPISODE_WARN_COUNT, 0 = off), fetched per
+  // open so a Settings change applies to the very next add. Fetch failure
+  // falls back to 0 so a hiccup can never block adding.
+  const [warnThreshold, setWarnThreshold] = useState<number | null>(null);
+  useEffect(() => {
+    if (!open || warnThreshold !== null) return;
+    fetch('/api/settings/episode-warn', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setWarnThreshold(Number(data.count) || 0))
+      .catch(() => setWarnThreshold(0));
+  }, [open, warnThreshold]);
+  const [bigAddCount, setBigAddCount] = useState<number | null>(null);
+
+  /** Episodes this submission would actually download: cherry-picks plus, per ticked season, its episodes minus what's already owned. */
+  function selectedEpisodeCount(): number {
+    let total = episodePicks.size;
+    for (const n of Array.from(fullSeasons)) {
+      const s = seasons.find((x) => x.season_number === n);
+      if (s) total += Math.max(0, s.episode_count - (ownedCountBySeason.get(n) ?? 0));
+    }
+    return total;
+  }
+
   function isSeasonFullyOwned(s: TmdbSeason): boolean {
     return (ownedCountBySeason.get(s.season_number) ?? 0) >= s.episode_count && s.episode_count > 0;
   }
@@ -209,6 +233,15 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const futureChanged = owned && sonarrState !== null && monitorFuture !== sonarrState.monitorFuture;
   const nothingSelected = fullSeasons.size === 0 && episodePicks.size === 0 && !(owned ? futureChanged : monitorFuture);
 
+  function handleSubmitClick() {
+    const total = selectedEpisodeCount();
+    if (warnThreshold && total >= warnThreshold) {
+      setBigAddCount(total);
+      return;
+    }
+    void handleSubmit();
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
@@ -256,9 +289,15 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const pending = seasonsPending || statePending;
 
   return (
+    <>
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        // While the big-add confirm is up, Escape/outside-click peels off
+        // just that layer instead of abandoning the whole selection.
+        if (bigAddCount !== null) setBigAddCount(null);
+        else onClose();
+      }}
       title={owned ? `Get more of "${title}"` : `Add "${title}"`}
       footer={
         <>
@@ -270,7 +309,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={handleSubmitClick}
             disabled={submitting || nothingSelected || pending}
             title={nothingSelected ? 'Pick seasons or episodes (or change the future-seasons setting)' : undefined}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40"
@@ -470,5 +509,40 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
         )}
       </div>
     </Modal>
+    <Modal
+      open={bigAddCount !== null}
+      onClose={() => setBigAddCount(null)}
+      title="That's a lot of episodes"
+      footer={
+        <>
+          <button
+            onClick={() => setBigAddCount(null)}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+          >
+            Go back
+          </button>
+          <button
+            onClick={() => {
+              setBigAddCount(null);
+              void handleSubmit();
+            }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
+          >
+            Add them all
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-2">
+        <p className="text-sm text-zinc-300">
+          This request will download <span className="font-semibold text-amber-400">{bigAddCount} episodes</span>. That can tie up the
+          download queue and eat disk space for quite a while.
+        </p>
+        <p className="text-xs text-zinc-500">
+          This warning triggers at {warnThreshold} episodes. You can change that number or turn it off in Settings under App Config.
+        </p>
+      </div>
+    </Modal>
+    </>
   );
 }
