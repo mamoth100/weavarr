@@ -21,6 +21,13 @@ interface SonarrState {
   episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean; title?: string }[];
 }
 
+interface LookupSeason {
+  seasonNumber: number;
+  episodeCount: number;
+  airDate: string | null;
+  episodes: { episodeNumber: number; title: string | null }[];
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -103,11 +110,11 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   // Sonarr can know seasons TMDB doesn't - TVDB files a revival as more
   // seasons of the same show while TMDB splits it off (Kitchen Nightmares:
   // TMDB stops at season 6, TVDB carries 7-9). Owned shows merge in every
-  // season Sonarr has episodes for; NOT-yet-added shows ask Sonarr's lookup
-  // (the same call the add flow uses) for TVDB's season numbers, so the
-  // initial add can pick those seasons too. Lookup gives no episode counts
-  // for un-added shows - such seasons render "? ep".
-  const [lookupSeasons, setLookupSeasons] = useState<number[] | null>(null);
+  // season Sonarr has episodes for; NOT-yet-added shows get TVDB's full
+  // season/episode picture (counts, titles, air dates) through the same
+  // lookup + metadata service Sonarr itself uses, so the initial add can
+  // offer exactly what Sonarr would know after adding.
+  const [lookupSeasons, setLookupSeasons] = useState<LookupSeason[] | null>(null);
   useEffect(() => {
     if (!open || statePending || owned || lookupSeasons !== null) return;
     fetch(`/api/sonarr/season-preview?title=${encodeURIComponent(title)}${imdbId ? `&imdbId=${encodeURIComponent(imdbId)}` : ''}`, { cache: 'no-store' })
@@ -115,17 +122,24 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       .then((data) => setLookupSeasons(Array.isArray(data.seasons) ? data.seasons : []))
       .catch(() => setLookupSeasons([]));
   }, [open, statePending, owned, lookupSeasons, title, imdbId]);
+  const lookupBySeason = new Map<number, LookupSeason>();
+  for (const ls of lookupSeasons ?? []) lookupBySeason.set(ls.seasonNumber, ls);
 
   const sonarrSeasonTotals = new Map<number, number>();
   for (const e of sonarrState?.episodes ?? []) {
     sonarrSeasonTotals.set(e.seasonNumber, (sonarrSeasonTotals.get(e.seasonNumber) ?? 0) + 1);
   }
-  for (const n of lookupSeasons ?? []) {
-    if (!sonarrSeasonTotals.has(n)) sonarrSeasonTotals.set(n, 0); // 0 = Sonarr knows the season, count unknown until added
+  for (const ls of lookupSeasons ?? []) {
+    if (!sonarrSeasonTotals.has(ls.seasonNumber)) sonarrSeasonTotals.set(ls.seasonNumber, ls.episodeCount);
   }
   const extraSeasons: TmdbSeason[] = Array.from(sonarrSeasonTotals.entries())
     .filter(([n]) => !baseSeasons.some((s) => s.season_number === n))
-    .map(([n, count]) => ({ season_number: n, name: n === 0 ? 'Specials' : `Season ${n}`, episode_count: count }));
+    .map(([n, count]) => ({
+      season_number: n,
+      name: n === 0 ? 'Specials' : `Season ${n}`,
+      episode_count: count,
+      air_date: lookupBySeason.get(n)?.airDate ?? null,
+    }));
   const seasons =
     extraSeasons.length > 0 ? [...baseSeasons, ...extraSeasons].sort((a, b) => a.season_number - b.season_number) : baseSeasons;
 
@@ -486,14 +500,17 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                         {eps === 'loading' || eps === undefined ? (
                           <div className="h-6 bg-zinc-800 rounded animate-pulse my-1" />
                         ) : (
-                          // TMDB has no episode list for a season it doesn't know about - fall back to Sonarr's own episodes (real titles included). A not-yet-added show has neither: say so instead of rendering nothing.
+                          // TMDB has no episode list for a season it doesn't know about - fall back to Sonarr's own episodes for owned shows, or the TVDB lookup preview for un-added ones. Only if all three are empty does the note render.
                           (() => {
-                            const shown = eps.length > 0
-                              ? eps
-                              : (sonarrState?.episodes ?? [])
-                                  .filter((se) => se.seasonNumber === n)
-                                  .sort((a, b) => a.episodeNumber - b.episodeNumber)
-                                  .map((se) => ({ episode_number: se.episodeNumber, name: se.title ?? `Episode ${se.episodeNumber}` }));
+                            const sonarrEps = (sonarrState?.episodes ?? [])
+                              .filter((se) => se.seasonNumber === n)
+                              .sort((a, b) => a.episodeNumber - b.episodeNumber)
+                              .map((se) => ({ episode_number: se.episodeNumber, name: se.title ?? `Episode ${se.episodeNumber}` }));
+                            const lookupEps = (lookupBySeason.get(n)?.episodes ?? []).map((le) => ({
+                              episode_number: le.episodeNumber,
+                              name: le.title ?? `Episode ${le.episodeNumber}`,
+                            }));
+                            const shown = eps.length > 0 ? eps : sonarrEps.length > 0 ? sonarrEps : lookupEps;
                             if (shown.length === 0) {
                               return <p className="text-xs text-zinc-500 py-1">Episode list shows up once the show is added. Ticking the season grabs all of it.</p>;
                             }
