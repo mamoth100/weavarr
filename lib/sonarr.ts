@@ -933,18 +933,56 @@ export async function lookupSonarrSeriesForAdd(imdbId: string | null, title: str
   return results[0] ?? null;
 }
 
+export interface LookupSeasonPreview {
+  seasonNumber: number;
+  episodeCount: number;
+  /** First episode's air date - lets merged seasons drive the unaired chip and warning like TMDB ones. */
+  airDate: string | null;
+  episodes: { episodeNumber: number; title: string | null; airDate: string | null }[];
+}
+
 /**
- * TVDB's season numbers for a show that is NOT in the library yet, via the
- * same lookup the add uses - so the initial-add picker can offer seasons
- * TMDB doesn't know about (revivals TVDB files as extra seasons of the same
- * show). Episode counts aren't available for un-added shows.
+ * TVDB's full season/episode picture for a show NOT in the library yet -
+ * exactly what Sonarr itself would know right after adding it. The series
+ * comes from the same lookup the add flow uses; the episode detail comes
+ * straight from Sonarr's metadata service (skyhook), which serves it
+ * publicly - Sonarr's lookup response carries no per-season data for
+ * un-added shows. Skyhook being unreachable degrades to bare season
+ * numbers, never an error - the picker still lists the seasons.
  */
-export async function getSonarrLookupSeasonNumbers(imdbId: string | null, title: string): Promise<number[]> {
+export async function getSonarrLookupSeasonPreview(imdbId: string | null, title: string): Promise<LookupSeasonPreview[]> {
   const series = await lookupSonarrSeriesForAdd(imdbId, title);
-  const seasons = (series?.seasons ?? []) as { seasonNumber?: number }[];
-  return seasons
+  if (!series) return [];
+  const bare: LookupSeasonPreview[] = ((series.seasons ?? []) as { seasonNumber?: number }[])
     .map((s) => s.seasonNumber)
-    .filter((n): n is number => typeof n === 'number' && n > 0);
+    .filter((n): n is number => typeof n === 'number' && n > 0)
+    .map((n) => ({ seasonNumber: n, episodeCount: 0, airDate: null, episodes: [] }));
+
+  const tvdbId = typeof series.tvdbId === 'number' && series.tvdbId > 0 ? series.tvdbId : null;
+  if (!tvdbId) return bare;
+  try {
+    const res = await fetchWithTimeout(`https://skyhook.sonarr.tv/v1/tvdb/shows/en/${tvdbId}`, { next: { revalidate: 3600 } });
+    if (!res.ok) return bare;
+    const data = await res.json();
+    const bySeason = new Map<number, LookupSeasonPreview>();
+    for (const e of (data.episodes ?? []) as Record<string, unknown>[]) {
+      const sn = e.seasonNumber;
+      const en = e.episodeNumber;
+      if (typeof sn !== 'number' || typeof en !== 'number' || sn <= 0) continue;
+      const season = bySeason.get(sn) ?? { seasonNumber: sn, episodeCount: 0, airDate: null, episodes: [] };
+      const airDate = typeof e.airDate === 'string' ? e.airDate : null;
+      season.episodes.push({ episodeNumber: en, title: typeof e.title === 'string' ? e.title : null, airDate });
+      season.episodeCount += 1;
+      if (airDate && (season.airDate === null || airDate < season.airDate)) season.airDate = airDate;
+      bySeason.set(sn, season);
+    }
+    if (bySeason.size === 0) return bare;
+    return Array.from(bySeason.values())
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)
+      .map((s) => ({ ...s, episodes: s.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber) }));
+  } catch {
+    return bare;
+  }
 }
 
 /**
