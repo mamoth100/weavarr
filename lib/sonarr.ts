@@ -62,36 +62,7 @@ export async function addSeriesToSonarr({
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  async function lookup(term: string) {
-    const doFetch = () =>
-      fetchWithTimeout(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
-        headers: headers(),
-        cache: 'no-store',
-      });
-    let res = await doFetch();
-    // Sonarr's metadata upstream (skyhook) throws occasional one-off 5xxs
-    // that clear on their own - pause and retry once before giving up.
-    if (res.status >= 500) {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-      res = await doFetch();
-    }
-    if (!res.ok) {
-      throw new Error(
-        res.status >= 500
-          ? "Sonarr couldn't reach its show database. That service usually recovers within a minute or two, so give it a moment and try again."
-          : `Sonarr lookup failed: ${res.status}`
-      );
-    }
-    return res.json();
-  }
-
-  // Sonarr's imdb: lookup uses a separate, less complete index than its
-  // title search and can come back empty even for a show it knows by title
-  // (confirmed live: it has no imdb: entry for its own reported imdbId on
-  // some shows) - fall back to a plain title search when that happens.
-  let results = imdbId ? await lookup(`imdb:${imdbId}`) : [];
-  if (results.length === 0) results = await lookup(title);
-  const series = results[0];
+  const series = await lookupSonarrSeriesForAdd(imdbId ?? null, title);
   if (!series) throw new Error('No matching series found in Sonarr');
 
   if (series.id) return { alreadyAdded: true };
@@ -177,7 +148,7 @@ export async function addSeriesToSonarr({
       tmdbId: typeof series.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null,
       tvdbId: typeof series.tvdbId === 'number' && series.tvdbId > 0 ? series.tvdbId : null,
       mediaType: 'tv',
-      title: series.title ?? title,
+      title: typeof series.title === 'string' ? series.title : title,
       posterUrl,
       source,
       seasons: picked || hasEpisodePicks ? JSON.stringify([...(picked ?? []), ...episodeSummary]) : monitor,
@@ -923,6 +894,57 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
     // doesn't know about (TVDB revival seasons).
     episodes: episodes.map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile, title: e.title })),
   };
+}
+
+async function sonarrLookup(term: string) {
+  const doFetch = () =>
+    fetchWithTimeout(`${SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(term)}`, {
+      headers: headers(),
+      cache: 'no-store',
+    });
+  let res = await doFetch();
+  // Sonarr's metadata upstream (skyhook) throws occasional one-off 5xxs
+  // that clear on their own - pause and retry once before giving up.
+  if (res.status >= 500) {
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    res = await doFetch();
+  }
+  if (!res.ok) {
+    throw new Error(
+      res.status >= 500
+        ? "Sonarr couldn't reach its show database. That service usually recovers within a minute or two, so give it a moment and try again."
+        : `Sonarr lookup failed: ${res.status}`
+    );
+  }
+  return res.json();
+}
+
+/**
+ * The exact series record the add flow would target. Sonarr's imdb: lookup
+ * uses a separate, less complete index than its title search and can come
+ * back empty even for a show it knows by title (confirmed live: it has no
+ * imdb: entry for its own reported imdbId on some shows) - fall back to a
+ * plain title search when that happens.
+ */
+export async function lookupSonarrSeriesForAdd(imdbId: string | null, title: string): Promise<Record<string, unknown> | null> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  let results = imdbId ? await sonarrLookup(`imdb:${imdbId}`) : [];
+  if (results.length === 0) results = await sonarrLookup(title);
+  return results[0] ?? null;
+}
+
+/**
+ * TVDB's season numbers for a show that is NOT in the library yet, via the
+ * same lookup the add uses - so the initial-add picker can offer seasons
+ * TMDB doesn't know about (revivals TVDB files as extra seasons of the same
+ * show). Episode counts aren't available for un-added shows.
+ */
+export async function getSonarrLookupSeasonNumbers(imdbId: string | null, title: string): Promise<number[]> {
+  const series = await lookupSonarrSeriesForAdd(imdbId, title);
+  const seasons = (series?.seasons ?? []) as { seasonNumber?: number }[];
+  return seasons
+    .map((s) => s.seasonNumber)
+    .filter((n): n is number => typeof n === 'number' && n > 0);
 }
 
 /**
