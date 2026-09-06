@@ -18,7 +18,7 @@ interface TmdbSeasonEpisode {
 interface SonarrState {
   seriesId: number | null;
   monitorFuture: boolean;
-  episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean }[];
+  episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean; title?: string }[];
 }
 
 interface Props {
@@ -74,20 +74,8 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       })
       .catch(() => setFetchedSeasons([]));
   }, [open, tmdbId, airInfo]);
-  const seasons = seasonsProp.length > 0 ? seasonsProp : fetchedSeasons ?? [];
+  const baseSeasons = seasonsProp.length > 0 ? seasonsProp : fetchedSeasons ?? [];
   const seasonsPending = seasonsProp.length === 0 && fetchedSeasons === null;
-
-  // Aired-yet check. Season air_date is the season's first episode, so a
-  // future/missing date on every season means nothing has aired at all;
-  // a scheduled next episode or a future season means some of what's
-  // selectable here doesn't exist yet.
-  const today = new Date().toISOString().slice(0, 10);
-  const nothingAired =
-    airInfo !== null &&
-    (!airInfo.firstAirDate || airInfo.firstAirDate > today) &&
-    !seasons.some((s) => s.air_date != null && s.air_date <= today);
-  const someUnaired =
-    airInfo !== null && !nothingAired && (airInfo.nextEpisodeAirDate !== null || seasons.some((s) => s.air_date != null && s.air_date > today));
 
   // --- what Sonarr already has ---
   const [sonarrState, setSonarrState] = useState<SonarrState | null>(null);
@@ -111,6 +99,33 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   for (const e of sonarrState?.episodes ?? []) {
     if (e.hasFile) ownedCountBySeason.set(e.seasonNumber, (ownedCountBySeason.get(e.seasonNumber) ?? 0) + 1);
   }
+
+  // Sonarr can know seasons TMDB doesn't - TVDB files a revival as more
+  // seasons of the same show while TMDB splits it off (Kitchen Nightmares:
+  // TMDB stops at season 6, TVDB carries 7-9). For owned shows, merge in any
+  // season Sonarr has episodes for so everything it can actually grab is
+  // offered here.
+  const sonarrSeasonTotals = new Map<number, number>();
+  for (const e of sonarrState?.episodes ?? []) {
+    sonarrSeasonTotals.set(e.seasonNumber, (sonarrSeasonTotals.get(e.seasonNumber) ?? 0) + 1);
+  }
+  const extraSeasons: TmdbSeason[] = Array.from(sonarrSeasonTotals.entries())
+    .filter(([n, count]) => count > 0 && !baseSeasons.some((s) => s.season_number === n))
+    .map(([n, count]) => ({ season_number: n, name: n === 0 ? 'Specials' : `Season ${n}`, episode_count: count }));
+  const seasons =
+    extraSeasons.length > 0 ? [...baseSeasons, ...extraSeasons].sort((a, b) => a.season_number - b.season_number) : baseSeasons;
+
+  // Aired-yet check. Season air_date is the season's first episode, so a
+  // future/missing date on every season means nothing has aired at all;
+  // a scheduled next episode or a future season means some of what's
+  // selectable here doesn't exist yet.
+  const today = new Date().toISOString().slice(0, 10);
+  const nothingAired =
+    airInfo !== null &&
+    (!airInfo.firstAirDate || airInfo.firstAirDate > today) &&
+    !seasons.some((s) => s.air_date != null && s.air_date <= today);
+  const someUnaired =
+    airInfo !== null && !nothingAired && (airInfo.nextEpisodeAirDate !== null || seasons.some((s) => s.air_date != null && s.air_date > today));
 
   // --- selection state ---
   const [fullSeasons, setFullSeasons] = useState<Set<number>>(new Set());
@@ -457,7 +472,14 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                         {eps === 'loading' || eps === undefined ? (
                           <div className="h-6 bg-zinc-800 rounded animate-pulse my-1" />
                         ) : (
-                          eps.map((e) => {
+                          // TMDB has no episode list for a season it doesn't know about - fall back to Sonarr's own episodes (real titles included).
+                          (eps.length > 0
+                            ? eps
+                            : (sonarrState?.episodes ?? [])
+                                .filter((se) => se.seasonNumber === n)
+                                .sort((a, b) => a.episodeNumber - b.episodeNumber)
+                                .map((se) => ({ episode_number: se.episodeNumber, name: se.title ?? `Episode ${se.episodeNumber}` }))
+                          ).map((e) => {
                             const key = epKey(n, e.episode_number);
                             const has = ownedEpisodes.has(key);
                             const seasonTicked = fullSeasons.has(n) && !fullyOwned;

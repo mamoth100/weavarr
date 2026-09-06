@@ -919,7 +919,9 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
     protected: getExcludedShows().has(match.title.trim().toLowerCase()),
     // Season 0 (specials) stays in on purpose - the request modal offers
     // specials now, so their owned/locked state has to be visible too.
-    episodes: episodes.map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile })),
+    // Titles ride along so the modal can list episodes of seasons TMDB
+    // doesn't know about (TVDB revival seasons).
+    episodes: episodes.map((e) => ({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber, hasFile: e.hasFile, title: e.title })),
   };
 }
 
