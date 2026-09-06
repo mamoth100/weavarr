@@ -116,6 +116,21 @@ export async function register() {
     }, AUTO_CLEANUP_INTERVAL_MS);
   }
 
+  // Always-on maintenance: clear queue debris - downloads marked completed
+  // that never imported (second-grab duplicates, cleaned-up folders). The
+  // arrs retry and error on these forever; nobody wants an alert, they want
+  // them gone. Entry removal only, files untouched, logged in the Logs tab.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { sweepStuckQueueItems } = await import('./lib/queueJanitor');
+
+    sweepStuckQueueItems().catch(() => {});
+
+    const QUEUE_JANITOR_INTERVAL_MS = 60 * 60 * 1000;
+    setInterval(() => {
+      sweepStuckQueueItems().catch(() => {});
+    }, QUEUE_JANITOR_INTERVAL_MS);
+  }
+
   // Always-on maintenance: prune cached posters for titles deleted directly
   // in Radarr/Sonarr (Weavarr's own delete buttons already clean up their
   // poster - this catches the external deletes). Fail-closed inside the
