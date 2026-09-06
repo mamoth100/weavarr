@@ -311,6 +311,8 @@ export interface ImportHistoryItem {
   episodeNumber?: number;
   movieId?: number;
   seriesId?: number;
+  /** The episode's air date (yyyy-mm-dd), Sonarr items only - lets library checks match by date when a media server numbers seasons differently than TVDB. */
+  airDate?: string | null;
 }
 
 export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {

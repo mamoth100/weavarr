@@ -55,6 +55,7 @@ interface JellyfinItem {
   // IndexNumberEnd 24), while Plex lists each number separately - episode
   // matching has to treat the item as covering every number in the range.
   IndexNumberEnd?: number;
+  PremiereDate?: string;
   UserData?: {
     Played?: boolean;
     LastPlayedDate?: string;
@@ -87,7 +88,7 @@ export async function jellyfinHasTitle(title: string): Promise<boolean> {
 }
 
 /** True if this specific season/episode of the show has actually been scanned into Jellyfin - not just the show existing. */
-export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number): Promise<boolean> {
+export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number, airDate?: string | null): Promise<boolean> {
   requireConfig();
   const searchQuery = stripDisambiguator(showTitle);
   const shows = await searchJellyfin(searchQuery, 'Series');
@@ -95,7 +96,10 @@ export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number
   if (!matchedShow?.Id) return false;
 
   const episodes = await getSeriesEpisodes(matchedShow.Id);
-  return episodes.some((ep) => episodeCovers(ep, seasonNumber, episodeNumber));
+  if (episodes.some((ep) => episodeCovers(ep, seasonNumber, episodeNumber))) return true;
+  // Jellyfin's agent can number seasons differently than TVDB/Sonarr - an
+  // episode with the same air date counts, since air dates survive renumbering.
+  return Boolean(airDate) && episodes.some((ep) => typeof ep.PremiereDate === 'string' && ep.PremiereDate.slice(0, 10) === airDate);
 }
 
 /** Whether this Jellyfin episode item covers the given season/episode number, including double episodes spanning IndexNumber..IndexNumberEnd. */
@@ -108,7 +112,7 @@ function episodeCovers(ep: JellyfinItem, seasonNumber: number, episodeNumber: nu
 async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
   const params = new URLSearchParams({
     userId: await resolveUserId(),
-    Fields: 'UserData',
+    Fields: 'UserData,PremiereDate',
   });
   const res = await fetchWithTimeout(`${JELLYFIN_URL}/Shows/${seriesId}/Episodes?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin episode lookup failed: ${res.status}`);

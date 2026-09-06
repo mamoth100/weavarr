@@ -52,11 +52,11 @@ export async function hasTitle(title: string): Promise<boolean> {
   return (await Promise.all(checks)).some(Boolean);
 }
 
-/** True if this specific episode has been scanned into any enabled backend. */
-export async function hasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number): Promise<boolean> {
+/** True if this specific episode has been scanned into any enabled backend. airDate lets the backends match by date when they number seasons differently than TVDB. */
+export async function hasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number, airDate?: string | null): Promise<boolean> {
   const checks: Promise<boolean>[] = [];
-  if (plexEnabled()) checks.push(plex.plexHasEpisode(showTitle, seasonNumber, episodeNumber).catch(() => false));
-  if (jellyfinEnabled()) checks.push(jellyfin.jellyfinHasEpisode(showTitle, seasonNumber, episodeNumber).catch(() => false));
+  if (plexEnabled()) checks.push(plex.plexHasEpisode(showTitle, seasonNumber, episodeNumber, airDate).catch(() => false));
+  if (jellyfinEnabled()) checks.push(jellyfin.jellyfinHasEpisode(showTitle, seasonNumber, episodeNumber, airDate).catch(() => false));
   if (checks.length === 0) return false;
   return (await Promise.all(checks)).some(Boolean);
 }

@@ -70,7 +70,7 @@ export async function checkForNewPlexImports(): Promise<void> {
     const label = item.episode ? `${item.title} ${item.episode}` : item.title;
     try {
       const inLibrary = item.seasonNumber !== undefined && item.episodeNumber !== undefined
-        ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber)
+        ? await hasEpisode(item.title, item.seasonNumber, item.episodeNumber, item.airDate ?? null)
         : await hasTitle(item.title);
       if (inLibrary) {
         const tail = item.episode ? await unairedTail(item.seriesId) : '';
