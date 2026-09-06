@@ -23,3 +23,28 @@
     overflow-y: scroll;
   }
 }
+
+/* iOS Safari auto-zooms the whole page when a focused field's font size is
+   under 16px, and every input here is text-sm (14px) - so tapping the search
+   bar or any settings field zoomed the app on iPhones. 16px on touch devices
+   kills that zoom at the source; desktop keeps the compact sizing. Outside
+   the layers on purpose: it must beat Tailwind's text-sm/text-xs utilities. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* The other iPhone zoom: double-tapping a button or link zooms the page.
+   `manipulation` keeps taps and pinch-zoom but drops double-tap-to-zoom on
+   the controls themselves, which also removes the 300ms tap delay. */
+button,
+a,
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
