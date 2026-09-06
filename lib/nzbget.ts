@@ -26,6 +26,12 @@ async function rpc<T>(method: string, params: unknown[] = []): Promise<T> {
   return data.result as T;
 }
 
+/** NZBGet has no plain "restart" RPC - "reload" is its restart: stop all activity, reread the config, relaunch the program. */
+export async function restartNzbget(): Promise<void> {
+  if (!nzbgetEnabled()) throw new Error('NZBGet is not configured');
+  await rpc('reload');
+}
+
 // Field names mirror SABnzbd's queue shape (see lib/sabnzbd.ts) so
 // lib/downloaders.ts can merge both into one combined queue.
 export interface NzbgetSlot {

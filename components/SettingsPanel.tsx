@@ -250,6 +250,47 @@ function ChoppingBlockButton() {
   );
 }
 
+/** Restart a service through its own API. Two-click confirm - a restart interrupts whatever the service is doing, so a stray tap shouldn't fire it. */
+function RestartServiceButton({ service }: { service: 'sonarr' | 'radarr' | 'sabnzbd' | 'nzbget' }) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'busy' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function run() {
+    setStatus('busy');
+    setMessage(null);
+    try {
+      const res = await fetch('/api/service-restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Restart failed');
+      setMessage('Restart sent - it should be back within a minute');
+      setStatus('done');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+      setStatus('error');
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        onClick={() => (status === 'confirm' ? run() : setStatus('confirm'))}
+        disabled={status === 'busy'}
+        className={`px-2.5 py-1 rounded-md text-xs font-medium disabled:opacity-60 ${
+          status === 'confirm' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+        }`}
+      >
+        {status === 'busy' ? 'Restarting…' : status === 'confirm' ? 'Really restart?' : 'Restart'}
+      </button>
+      {status === 'done' && <span className="text-xs font-medium text-green-400">{message}</span>}
+      {status === 'error' && <span className="text-xs font-medium text-red-400">{message}</span>}
+    </span>
+  );
+}
+
 function RescanButton({ server }: { server: 'plex' | 'jellyfin' }) {
   const [status, setStatus] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
@@ -711,6 +752,10 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                         {group === 'Plex' && <RescanButton server="plex" />}
                         {group === 'Jellyfin' && <RescanButton server="jellyfin" />}
                         {group === 'Auto-Delete' && <ChoppingBlockButton />}
+                        {group === 'Sonarr' && <RestartServiceButton service="sonarr" />}
+                        {group === 'Radarr' && <RestartServiceButton service="radarr" />}
+                        {group === 'SABnzbd' && <RestartServiceButton service="sabnzbd" />}
+                        {group === 'NZBGet' && <RestartServiceButton service="nzbget" />}
                         {group === 'Plex' && (
                           <PlexSignIn
                             onSaved={() =>
