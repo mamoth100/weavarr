@@ -239,6 +239,8 @@ export interface ImportHistoryItem {
   episodeNumber?: number;
   seriesId?: number;
   movieId?: number;
+  /** The episode's air date (yyyy-mm-dd) - lets library checks match by date when a media server numbers seasons differently than TVDB. */
+  airDate?: string | null;
 }
 
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
@@ -254,7 +256,7 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
     .filter((r: Record<string, unknown>) => (r.eventType as string) === 'downloadFolderImported')
     .slice(0, limit)
     .map((r: Record<string, unknown>) => {
-      const episode = r.episode as { seasonNumber?: number; episodeNumber?: number } | undefined;
+      const episode = r.episode as { seasonNumber?: number; episodeNumber?: number; airDateUtc?: string } | undefined;
       return {
         historyId: r.id as number,
         title: (r.series as { title?: string } | undefined)?.title ?? (r.sourceTitle as string | undefined) ?? 'Unknown',
@@ -265,6 +267,7 @@ export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryI
         seasonNumber: episode?.seasonNumber,
         episodeNumber: episode?.episodeNumber,
         seriesId: r.seriesId as number,
+        airDate: typeof episode?.airDateUtc === 'string' ? episode.airDateUtc.slice(0, 10) : null,
       };
     });
 }

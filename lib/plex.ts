@@ -46,8 +46,14 @@ export async function plexHasTitle(title: string): Promise<boolean> {
   return items.some((item) => titlesMatch(item.title ?? '', searchQuery));
 }
 
-/** True if this specific season/episode of the show has actually been scanned into Plex - not just the show existing. */
-export async function plexHasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number): Promise<boolean> {
+/**
+ * True if this specific season/episode of the show has actually been scanned
+ * into Plex - not just the show existing. Plex's agent can number seasons
+ * differently than TVDB/Sonarr (Kitchen Nightmares: Sonarr's S6 is Plex's
+ * S7), so when the exact numbers miss, an episode with the same air date
+ * counts as a match - air dates survive renumbering.
+ */
+export async function plexHasEpisode(showTitle: string, seasonNumber: number, episodeNumber: number, airDate?: string | null): Promise<boolean> {
   if (!PLEX_URL || !PLEX_TOKEN) throw new Error('Plex is not configured');
 
   const searchQuery = stripDisambiguator(showTitle);
@@ -64,9 +70,10 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
   );
   if (!episodesRes.ok) throw new Error(`Plex episode lookup failed: ${episodesRes.status}`);
   const episodesData = await episodesRes.json();
-  const episodes: { parentIndex?: number; index?: number }[] = episodesData.MediaContainer?.Metadata ?? [];
+  const episodes: { parentIndex?: number; index?: number; originallyAvailableAt?: string }[] = episodesData.MediaContainer?.Metadata ?? [];
 
-  return episodes.some((ep) => ep.parentIndex === seasonNumber && ep.index === episodeNumber);
+  if (episodes.some((ep) => ep.parentIndex === seasonNumber && ep.index === episodeNumber)) return true;
+  return Boolean(airDate) && episodes.some((ep) => ep.originallyAvailableAt === airDate);
 }
 
 /** Marks a single Plex item (movie or episode) as watched via its ratingKey. */
