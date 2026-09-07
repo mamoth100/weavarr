@@ -341,15 +341,54 @@ async function getJellyfinFinishedPlaybackEntries(limit: number): Promise<{ show
   const entries: { Name?: string; Type?: string }[] = data.Items ?? [];
 
   const results: { showTitle: string; seasonNumber: number; episodeNumber: number }[] = [];
+  // Newer Jellyfin logs "{user} has finished playing {Show} - {Episode Name}
+  // on {Device}" with NO SxxExx anywhere, so the numbered regex below never
+  // matched and every Jellyfin play looked like a manual mark-watched.
+  // Those entries collect here and get resolved to season/episode numbers
+  // through each show's own episode list (matched by episode name).
+  const nameBased = new Map<string, Set<string>>();
   for (const entry of entries) {
     if (entry.Type !== 'VideoPlaybackStopped' || !entry.Name) continue;
-    const match = entry.Name.match(/has finished playing (.+?) - .*?[Ss](\d{1,2})[Ee](\d{1,3})/);
-    if (!match) continue;
-    results.push({
-      showTitle: match[1].trim(),
-      seasonNumber: Number(match[2]),
-      episodeNumber: Number(match[3]),
-    });
+    const numbered = entry.Name.match(/has finished playing (.+?) - .*?[Ss](\d{1,2})[Ee](\d{1,3})/);
+    if (numbered) {
+      results.push({
+        showTitle: numbered[1].trim(),
+        seasonNumber: Number(numbered[2]),
+        episodeNumber: Number(numbered[3]),
+      });
+      continue;
+    }
+    const named = entry.Name.match(/has finished playing (.+) on .+/);
+    if (!named) continue;
+    const label = named[1];
+    const sep = label.indexOf(' - ');
+    if (sep === -1) continue; // no show/episode split - a movie, not an episode
+    const show = label.slice(0, sep).trim();
+    const epName = label.slice(sep + 3).trim().toLowerCase();
+    if (!show || !epName) continue;
+    if (!nameBased.has(show)) nameBased.set(show, new Set());
+    nameBased.get(show)!.add(epName);
+  }
+
+  for (const [show, epNames] of Array.from(nameBased.entries())) {
+    try {
+      const shows = await searchJellyfin(stripDisambiguator(show), 'Series');
+      const matched = shows.find((s) => titlesMatch(s.Name ?? '', show));
+      if (!matched?.Id) continue;
+      const episodes = await getSeriesEpisodes(matched.Id);
+      for (const ep of episodes) {
+        if (
+          ep.Name &&
+          epNames.has(ep.Name.trim().toLowerCase()) &&
+          ep.ParentIndexNumber !== undefined &&
+          ep.IndexNumber !== undefined
+        ) {
+          results.push({ showTitle: show, seasonNumber: ep.ParentIndexNumber, episodeNumber: ep.IndexNumber });
+        }
+      }
+    } catch {
+      // One unresolvable show must not kill the whole played-session signal.
+    }
   }
   return results;
 }
