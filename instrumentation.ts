@@ -87,11 +87,15 @@ export async function register() {
     if (plexEnabled() && jellyfinEnabled()) {
       const { syncWatchedBetweenServers } = await import('./lib/watchedSync');
 
-      syncWatchedBetweenServers().catch(() => {});
+      syncWatchedBetweenServers().catch((err) => {
+        console.error('[watchedSync] run failed:', err instanceof Error ? err.message : err);
+      });
 
       const SYNC_INTERVAL_MS = 5 * 60 * 1000;
       setInterval(() => {
-        syncWatchedBetweenServers().catch(() => {});
+        syncWatchedBetweenServers().catch((err) => {
+          console.error('[watchedSync] run failed:', err instanceof Error ? err.message : err);
+        });
       }, SYNC_INTERVAL_MS);
     }
   }
