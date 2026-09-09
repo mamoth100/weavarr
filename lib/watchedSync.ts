@@ -33,7 +33,11 @@ import {
 import { titlesMatch } from './titleMatch';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'watched-sync-state.json');
-const HISTORY_LIMIT = 500;
+// 500 silently missed anything older in a large watch history (found live -
+// a Plex episode ranked #757 by lastViewedAt never reconciled because it
+// fell outside the window on every single poll). 2000 matches the limit
+// app/api/calendar/route.ts already uses against the same endpoints.
+const HISTORY_LIMIT = 2000;
 
 let synced: Set<string> | null = null;
 
