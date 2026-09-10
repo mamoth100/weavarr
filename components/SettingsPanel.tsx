@@ -164,16 +164,65 @@ interface ChoppingBlockData {
   items: { label: string; reason: string; deleteAt: string }[];
 }
 
+interface DismissedItem {
+  key: string;
+  type: 'movie' | 'tv';
+  title: string;
+  year?: number;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+function dismissedItemLabel(it: DismissedItem): string {
+  if (it.type === 'movie') return `${it.title}${it.year ? ` (${it.year})` : ''}`;
+  return `${it.title} S${String(it.seasonNumber).padStart(2, '0')}E${String(it.episodeNumber).padStart(2, '0')}`;
+}
+
+/** Undoes a Clear from Recently Watched - the item goes back to being a normal auto-cleanup candidate. */
+function UndismissButton({ itemKey, onDone }: { itemKey: string; onDone: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  async function handleClick() {
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/recently-watched/undismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: itemKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      onDone();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={status === 'loading'}
+      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 whitespace-nowrap ${
+        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+      }`}
+    >
+      {status === 'loading' ? 'Restoring…' : status === 'error' ? 'Failed - retry' : 'Restore'}
+    </button>
+  );
+}
+
 /** Read-only preview of what auto-delete would remove and when - lets people gauge the feature before (and after) trusting it. */
 function ChoppingBlockButton() {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<ChoppingBlockData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dismissedItems, setDismissedItems] = useState<DismissedItem[] | null>(null);
 
   function show() {
     setOpen(true);
     setData(null);
     setError(null);
+    setDismissedItems(null);
     fetch('/api/auto-cleanup/preview', { cache: 'no-store' })
       .then((res) => res.json())
       .then((d) => {
@@ -181,6 +230,10 @@ function ChoppingBlockButton() {
         else setData(d);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+    fetch('/api/recently-watched/dismissed', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((d) => setDismissedItems(d.items ?? []))
+      .catch(() => setDismissedItems([]));
   }
 
   return (
@@ -243,6 +296,22 @@ function ChoppingBlockButton() {
             <p className="text-xs text-zinc-500">
               Checked hourly. Grace period: {data.days} {data.days === 1 ? 'day' : 'days'} after the watch.
             </p>
+            {dismissedItems && dismissedItems.length > 0 && (
+              <div className="pt-3 border-t border-zinc-800 space-y-2">
+                <p className="text-xs text-zinc-500 uppercase tracking-wider">Protected (cleared from Recently Watched)</p>
+                <div className="rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800 max-h-52 overflow-y-auto">
+                  {dismissedItems.map((it) => (
+                    <div key={it.key} className="px-3 py-2 flex items-center justify-between gap-3">
+                      <p className="text-sm truncate">{dismissedItemLabel(it)}</p>
+                      <UndismissButton
+                        itemKey={it.key}
+                        onDone={() => setDismissedItems((prev) => prev?.filter((d) => d.key !== it.key) ?? null)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>
