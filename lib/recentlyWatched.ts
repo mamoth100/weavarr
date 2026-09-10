@@ -56,11 +56,22 @@ export async function getDismissedKeys(): Promise<Set<string>> {
   return loadDismissed();
 }
 
+async function persistDismissed(seen: Set<string>): Promise<void> {
+  await mkdir(path.dirname(STATE_FILE), { recursive: true });
+  await writeFile(STATE_FILE, JSON.stringify(Array.from(seen)), 'utf8');
+}
+
 export async function dismissRecentlyWatched(key: string): Promise<void> {
   const seen = await loadDismissed();
   seen.add(key);
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify(Array.from(seen)), 'utf8');
+  await persistDismissed(seen);
+}
+
+/** Undoes a dismissal - the item goes back to being a normal cleanup/Recently Watched candidate. */
+export async function undismissRecentlyWatched(key: string): Promise<void> {
+  const seen = await loadDismissed();
+  seen.delete(key);
+  await persistDismissed(seen);
 }
 
 /** Movie-side equivalent of getCleanupCandidates - same "watched or ≥threshold% in" signal, matched to Radarr for delete. */
@@ -111,7 +122,8 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
   return results;
 }
 
-export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedItem[]> {
+/** Shared by getRecentlyWatched and getDismissedRecentlyWatched - same candidate computation, sliced differently after the dismissed-set split. */
+async function fetchCandidates(limit: number): Promise<{ items: RecentlyWatchedItem[]; dismissed: Set<string> }> {
   // allSettled, not all: the episode branch needs Sonarr and the movie branch
   // needs Radarr - one backend restarting used to reject the whole call, so
   // the section silently vanished from both the Watch and Status pages even
@@ -145,8 +157,25 @@ export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedIte
     posterPath: e.posterPath,
   }));
 
-  return [...episodeItems, ...movies]
-    .filter((item) => !seenDismissed.has(item.key))
-    .sort((a, b) => b.watchedAt.localeCompare(a.watchedAt))
-    .slice(0, limit);
+  return {
+    items: [...episodeItems, ...movies].sort((a, b) => b.watchedAt.localeCompare(a.watchedAt)),
+    dismissed: seenDismissed,
+  };
+}
+
+export async function getRecentlyWatched(limit = 30): Promise<RecentlyWatchedItem[]> {
+  const { items, dismissed: seenDismissed } = await fetchCandidates(limit);
+  return items.filter((item) => !seenDismissed.has(item.key)).slice(0, limit);
+}
+
+/**
+ * Everything currently dismissed (protected from auto-cleanup) that's still
+ * a real candidate - i.e. still watched/in-library, just excluded on
+ * purpose. Uses a much wider window than the normal list so an old
+ * dismissal doesn't silently fall out of view (same class of bug as
+ * watched-sync's original history-limit issue).
+ */
+export async function getDismissedRecentlyWatched(limit = 500): Promise<RecentlyWatchedItem[]> {
+  const { items, dismissed: seenDismissed } = await fetchCandidates(limit);
+  return items.filter((item) => seenDismissed.has(item.key));
 }
