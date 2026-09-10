@@ -150,7 +150,7 @@ function SyncNowButton() {
 /** Per-player library rescan - makes Plex or Jellyfin re-read what's on disk right now. */
 function formatTimeLeft(deleteAt: string): string {
   const ms = new Date(deleteAt).getTime() - Date.now();
-  if (ms <= 0) return 'next check';
+  if (ms <= 0) return 'Out of time';
   const mins = Math.ceil(ms / 60000);
   if (mins < 60) return `in ${mins}m`;
   const hours = Math.floor(mins / 60);
@@ -231,7 +231,7 @@ function ChoppingBlockButton() {
                     </div>
                     <span
                       className={`text-xs font-medium whitespace-nowrap ${
-                        formatTimeLeft(it.deleteAt) === 'next check' ? 'text-red-400' : 'text-amber-400'
+                        formatTimeLeft(it.deleteAt) === 'Out of time' ? 'text-red-400' : 'text-amber-400'
                       }`}
                     >
                       {formatTimeLeft(it.deleteAt)}
