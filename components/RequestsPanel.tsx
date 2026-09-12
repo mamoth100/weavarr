@@ -62,11 +62,34 @@ function seasonsLabel(seasons: string | null): string | null {
   if (!seasons) return null;
   try {
     const arr = JSON.parse(seasons);
-    if (Array.isArray(arr)) return `Season${arr.length === 1 ? '' : 's'} ${arr.join(', ')}`;
+    if (Array.isArray(arr)) {
+      if (arr.length === 0) return 'Picked episodes';
+      return `Season${arr.length === 1 ? '' : 's'} ${arr.join(', ')}`;
+    }
   } catch {
     // not JSON - it's a preset string like "all"
   }
-  return seasons === 'all' ? 'All seasons' : seasons;
+  return seasons === 'all' ? 'All seasons' : seasons === 'future' ? 'Future episodes' : seasons;
+}
+
+/**
+ * The same title requested more than once shows as one row with a count,
+ * keeping the newest request. Requesting twice (a retry after a wrong
+ * edition, say) otherwise produced identical rows stacked on each other.
+ */
+function collapseRepeats(rows: LedgerRequest[]): (LedgerRequest & { repeats: number })[] {
+  const byKey = new Map<string, LedgerRequest & { repeats: number }>();
+  for (const r of rows) {
+    const key = `${r.mediaType}:${r.tmdbId}:${r.status}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.repeats += 1;
+      if (r.requestedAt > existing.requestedAt) byKey.set(key, { ...r, repeats: existing.repeats });
+    } else {
+      byKey.set(key, { ...r, repeats: 1 });
+    }
+  }
+  return Array.from(byKey.values());
 }
 
 /** The permanent request ledger: everything ever requested through Weavarr (clicks and watchlist auto-adds alike) with its LIVE current status. */
@@ -116,9 +139,13 @@ export default function RequestsPanel() {
   return (
     <div className="space-y-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
-        Everything requested through Weavarr - taps and watchlist auto-adds alike - kept forever, even after the
-        title itself is deleted. Status is live. Recording started when this feature shipped; older requests
-        aren&apos;t reconstructable.
+        Everything ever requested through Weavarr, with its current status.
+        <span
+          className="ml-1 text-zinc-500 underline decoration-dotted cursor-help"
+          title="Requests are kept even after the title itself is deleted. Recording started when this feature shipped, so older requests are not listed."
+        >
+          More
+        </span>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -141,7 +168,7 @@ export default function RequestsPanel() {
         </p>
       ) : (
         <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800/60">
-          {filtered.slice(0, visible).map((r) => (
+          {collapseRepeats(filtered).slice(0, visible).map((r) => (
             <div key={r.id} className="p-3 flex items-center gap-3">
               <div className="w-10 aspect-[2/3] rounded bg-zinc-800 overflow-hidden flex-shrink-0">
                 {r.posterUrl && (
@@ -161,6 +188,7 @@ export default function RequestsPanel() {
                   Requested {new Date(r.requestedAt).toLocaleDateString()}
                   {r.source === 'watchlist' ? ' · via Plex watchlist' : ''}
                   {seasonsLabel(r.seasons) ? ` · ${seasonsLabel(r.seasons)}` : ''}
+                  {r.repeats > 1 ? ` · requested ${r.repeats} times` : ''}
                 </p>
               </div>
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${STATUS_STYLE[r.status]}`}>

@@ -8,6 +8,7 @@
  */
 import * as plex from './plex';
 import * as jellyfin from './jellyfin';
+import { stripDisambiguator } from './titleMatch';
 
 export function plexEnabled(): boolean {
   return process.env.ENABLE_PLEX !== 'false' && Boolean(process.env.PLEX_URL && process.env.PLEX_TOKEN);
@@ -125,7 +126,19 @@ export async function getEpisodeWatchHistory(limit = 30): Promise<WatchedEpisode
     plexEnabled() ? plex.getPlexEpisodeWatchHistory(limit) : Promise.resolve([]),
     jellyfinEnabled() ? jellyfin.getJellyfinEpisodeWatchHistory(limit) : Promise.resolve([]),
   ]);
-  return [...p, ...j]
+  // The same episode usually appears from both servers, and the watched
+  // sync gives the copy on the second server a fresh timestamp when it
+  // relays a mark. Keep one row per episode with the EARLIEST date, which is
+  // when it was actually watched; the newer one is just the relay. Titles
+  // can differ by a disambiguator between servers ("Kitchen Nightmares"
+  // vs "Kitchen Nightmares (US)"), so the key strips that.
+  const earliest = new Map<string, WatchedEpisode>();
+  for (const w of [...p, ...j]) {
+    const key = `${stripDisambiguator(w.showTitle).toLowerCase().trim()}:${w.seasonNumber}:${w.episodeNumber}`;
+    const existing = earliest.get(key);
+    if (!existing || new Date(w.viewedAt).getTime() < new Date(existing.viewedAt).getTime()) earliest.set(key, w);
+  }
+  return Array.from(earliest.values())
     .sort((a, b) => new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime())
     .slice(0, limit);
 }
