@@ -25,3 +25,6 @@ Thumbs.db
 
 # TypeScript incremental build artifact
 tsconfig.tsbuildinfo
+
+# Docker: the settings file lives in this mounted folder (see docker-compose.yml)
+/config/

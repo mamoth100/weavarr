@@ -2,8 +2,8 @@ import { mkdir, readFile, writeFile, readdir, unlink } from 'fs/promises';
 import path from 'path';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS, type GenreDef } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/menuLinks';
+import { ENV_FILE } from './configDir';
 
-const ENV_FILE = path.join(process.cwd(), '.env.local');
 const BACKUP_DIR = path.join(process.cwd(), 'data', 'env-backups');
 
 export interface SettingField {
@@ -248,12 +248,12 @@ async function applyUpdates(updates: Record<string, string>): Promise<void> {
     if (!updatedKeys.has(k)) newLines.push(`${k}=${v}`);
   }
 
-  // Direct write, deliberately NOT write-then-rename: in Docker, .env.local
-  // is a single-file bind mount - the mounted file itself is writable, but
-  // creating a sibling tmp file in /app is EACCES (root-owned dir) and
-  // renaming over a bind-mounted file fails regardless (the mount pins the
-  // inode). A tmp+rename version shipped briefly and broke every settings
-  // save in production. Torn-write risk on power loss is covered by the
-  // automatic pre-write backups above; the write queue covers concurrency.
+  // Direct write, deliberately NOT write-then-rename. This file used to be a
+  // single-file bind mount in Docker, where renaming over the mounted inode
+  // fails; a tmp+rename version shipped briefly and broke every settings
+  // save in production. It now lives in a mounted directory, but the direct
+  // write is kept: torn-write risk on power loss is covered by the automatic
+  // pre-write backups above, and the write queue covers concurrency.
+  await mkdir(path.dirname(ENV_FILE), { recursive: true });
   await writeFile(ENV_FILE, newLines.join('\n'), 'utf8');
 }

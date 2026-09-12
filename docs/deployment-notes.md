@@ -121,6 +121,18 @@ Status as of 2026-08-08:
       empty file and showing everything as "not configured" despite the
       app working correctly via env vars, and any save from the UI would've
       been lost on the next rebuild. Found and fixed 2026-08-08.
+- [x] **Settings file moved to a mounted folder (2026-09-12).** The
+      single-file mount above failed on a fresh install: with no
+      `.env.local` on the host, Docker created a *directory* by that name
+      and every save then errored. Now `./config` is mounted at
+      `/app/config` (`CONFIG_DIR` in the image, `lib/configDir.ts`), the
+      `env_file` entry is `required: false`, and the app creates the file
+      on first save. The image also gained a root entrypoint
+      (`docker-entrypoint.sh`, `su-exec`) that chowns the mounted folders
+      before dropping to the `weavarr` user, because Docker creates a
+      missing bind-mount source as root-owned. `docker-compose.pull.yml`
+      is the copy-and-run file for people using the published image.
+      Existing installs: `mkdir config && mv .env.local config/` once.
 - [ ] **Test on amd64** - image has only ever been built/run on the Pi's
       arm64. `node:22-alpine` + `node:sqlite` both officially support amd64
       but this hasn't actually been verified on real x86 hardware yet.

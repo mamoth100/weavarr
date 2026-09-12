@@ -8,3 +8,4 @@ data
 tsconfig.tsbuildinfo
 docs
 .claude
+config

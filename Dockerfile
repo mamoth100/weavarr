@@ -17,10 +17,13 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs \
+# su-exec: the entrypoint starts as root only long enough to fix ownership of
+# the mounted folders, then switches to the weavarr user for the app itself.
+RUN apk add --no-cache su-exec \
+    && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 weavarr \
-    && mkdir -p /app/data \
-    && chown weavarr:nodejs /app/data
+    && mkdir -p /app/data /app/config \
+    && chown weavarr:nodejs /app/data /app/config
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=weavarr:nodejs /app/.next/standalone ./
@@ -30,7 +33,14 @@ COPY --from=builder --chown=weavarr:nodejs /app/.next/static ./.next/static
 # mount a volume here so it survives container restarts/image updates.
 VOLUME /app/data
 
-USER weavarr
+# /app/config holds the settings file (.env.local). It is a directory, not a
+# single-file mount, so a fresh install with no file yet just works: Docker
+# creates the empty folder and the app writes the file on the first save.
+ENV CONFIG_DIR=/app/config
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # 6767, following the same "subtract 1 from each digit" pattern as
 # Radarr (7878) and Sonarr (8989).
 EXPOSE 6767
@@ -43,4 +53,7 @@ ENV HOSTNAME="0.0.0.0"
 ARG GIT_SHA=unknown
 ENV GIT_SHA=$GIT_SHA
 
+# Runs as root just long enough to chown the mounted folders, then drops to
+# the weavarr user (see docker-entrypoint.sh). No USER directive on purpose.
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
