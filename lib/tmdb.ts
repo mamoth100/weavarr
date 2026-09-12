@@ -418,6 +418,30 @@ export async function findTvIdByImdbId(imdbId: string): Promise<number | null> {
   return findTvIdByExternalId(imdbId, 'imdb_id');
 }
 
+/**
+ * The reverse direction: a TMDB show's TVDB and IMDB ids. This is what lets
+ * a request that started from a browse or search card (which only knows the
+ * TMDB id) target the exact series in Sonarr instead of a title search -
+ * "Big Brother" by title lands on whichever country's edition Sonarr lists
+ * first. Never throws: a failed lookup just means falling back to title.
+ */
+export async function getTvExternalIds(tmdbId: number): Promise<{ tvdbId: number | null; imdbId: string | null }> {
+  try {
+    const res = await tmdbFetch(`${BASE_URL}/tv/${tmdbId}/external_ids`, {
+      headers: authHeaders(),
+      next: { revalidate: 604800 },
+    });
+    if (!res.ok) return { tvdbId: null, imdbId: null };
+    const data = await res.json();
+    return {
+      tvdbId: typeof data.tvdb_id === 'number' && data.tvdb_id > 0 ? data.tvdb_id : null,
+      imdbId: typeof data.imdb_id === 'string' && data.imdb_id ? data.imdb_id : null,
+    };
+  } catch {
+    return { tvdbId: null, imdbId: null };
+  }
+}
+
 async function findTvIdByExternalId(externalId: string, source: 'tvdb_id' | 'imdb_id'): Promise<number | null> {
   try {
     const res = await tmdbFetch(`${BASE_URL}/find/${externalId}?external_source=${source}`, {
