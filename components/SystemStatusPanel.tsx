@@ -81,7 +81,7 @@ export default function SystemStatusPanel() {
           answer. Private repo or offline = null = say nothing. */}
       {data.about.updateAvailable === true && (
         <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 text-sm text-amber-300">
-          Update available: this build is {data.about.commit}, the latest is {data.about.latestCommit}. To update, run <code className="text-amber-200">docker compose pull &amp;&amp; docker compose up -d</code> in the folder with your compose file.
+          Update available: this build is {data.about.commit}, the latest is {data.about.latestCommit}. To update, run <code className="text-amber-200">cd ~/weavarr &amp;&amp; docker compose pull &amp;&amp; docker compose up -d</code> (change the folder if you installed somewhere else).
         </div>
       )}
       {data.about.updateAvailable === false && (
