@@ -32,7 +32,9 @@ export default function SettingsLayout() {
 
   return (
     <div className="flex flex-col sm:flex-row gap-6">
-      <nav className="flex sm:flex-col gap-1 sm:w-44 flex-shrink-0">
+      {/* Wraps on phones: seven tabs in one row overflowed the viewport with
+          no scroll cue, so the last few were simply cut off. */}
+      <nav className="flex flex-wrap sm:flex-col gap-1 sm:w-44 flex-shrink-0">
         {SECTIONS.map((s) => (
           <button
             key={s.id}

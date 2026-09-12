@@ -491,7 +491,89 @@ function ShowListEditor({ value, onChange, disabled }: { value: string; onChange
 
 // Groups whose quality-profile dropdowns should auto-populate on load if
 // already configured, rather than staying greyed out until a manual Test.
-const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr'];
+// Auto-tested on load when configured, so the status dots and profile
+// dropdowns are live without clicking Test. Never the notification groups:
+// their Test sends a real message.
+const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb'];
+
+// What "configured" means per service - the fields that have to be set for
+// it to work at all. Drives the status dots and the setup card.
+const GROUP_REQUIRED_KEYS: Record<string, string[]> = {
+  TMDB: ['TMDB_TOKEN'],
+  OMDb: ['OMDB_API_KEY'],
+  Trakt: ['TRAKT_CLIENT_ID'],
+  Radarr: ['RADARR_URL', 'RADARR_KEY'],
+  Sonarr: ['SONARR_URL', 'SONARR_KEY'],
+  SABnzbd: ['SABNZBD_URL', 'SABNZBD_API_KEY'],
+  NZBGet: ['NZBGET_URL', 'NZBGET_USERNAME', 'NZBGET_PASSWORD'],
+  Plex: ['PLEX_URL', 'PLEX_TOKEN'],
+  Jellyfin: ['JELLYFIN_URL', 'JELLYFIN_API_KEY'],
+  Pushover: ['PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'],
+  Webhook: ['WEBHOOK_NOTIFY_URL'],
+  Discord: ['DISCORD_WEBHOOK_URL'],
+};
+const GROUP_ENABLE_KEY: Record<string, string> = {
+  OMDb: 'ENABLE_OMDB',
+  Trakt: 'ENABLE_TRAKT',
+  Radarr: 'ENABLE_RADARR',
+  Sonarr: 'ENABLE_SONARR',
+  SABnzbd: 'ENABLE_SABNZBD',
+  NZBGet: 'ENABLE_NZBGET',
+  Plex: 'ENABLE_PLEX',
+  Jellyfin: 'ENABLE_JELLYFIN',
+  Pushover: 'ENABLE_PUSHOVER',
+  Webhook: 'ENABLE_WEBHOOK_NOTIFY',
+  Discord: 'ENABLE_DISCORD_NOTIFY',
+};
+
+type ConfigState = 'off' | 'unset' | 'set';
+
+function groupConfigState(settings: SettingStatus[], group: string): ConfigState {
+  const enableKey = GROUP_ENABLE_KEY[group];
+  if (enableKey) {
+    const f = settings.find((s) => s.key === enableKey);
+    if ((f?.value ?? f?.defaultValue ?? 'false') !== 'true') return 'off';
+  }
+  const required = GROUP_REQUIRED_KEYS[group] ?? [];
+  return required.every((k) => settings.find((s) => s.key === k)?.isSet) ? 'set' : 'unset';
+}
+
+/** One dot per service on a section header, so the state is visible without expanding anything. */
+function StatusDot({ label, state, testStatus }: { label: string; state: ConfigState; testStatus?: TestState['status'] }) {
+  const detail =
+    state === 'off' ? 'disabled' :
+    state === 'unset' ? 'not configured' :
+    testStatus === 'ok' ? 'connected' :
+    testStatus === 'fail' ? 'last test failed' :
+    testStatus === 'testing' ? 'testing' :
+    'configured';
+  const color =
+    state === 'off' ? 'bg-zinc-700' :
+    state === 'unset' ? 'bg-transparent ring-1 ring-zinc-500' :
+    testStatus === 'ok' ? 'bg-green-400' :
+    testStatus === 'fail' ? 'bg-red-400' :
+    testStatus === 'testing' ? 'bg-zinc-300 animate-pulse' :
+    'bg-zinc-300';
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] normal-case tracking-normal font-medium text-zinc-500" title={`${label}: ${detail}`}>
+      <span className={`inline-block w-2 h-2 rounded-full ${color}`} aria-hidden />
+      <span className={state === 'off' ? 'line-through' : ''}>{label}</span>
+      <span className="sr-only">{detail}</span>
+    </span>
+  );
+}
+
+// The first-ten-minutes checklist. Discover works with nothing configured
+// (TMDB access is bundled); these are the three things that unlock the rest.
+const SETUP_STEPS = [
+  { id: 'arr', label: 'Connect Sonarr or Radarr', why: 'Lets you request shows and movies.', groups: ['Sonarr', 'Radarr'], section: 'Media Management', required: true },
+  { id: 'player', label: 'Connect Plex or Jellyfin', why: 'Powers the Watch page, watched history and cleanup.', groups: ['Plex', 'Jellyfin'], section: 'Media Players', required: true },
+  { id: 'downloader', label: 'Connect SABnzbd or NZBGet', why: 'Optional. Shows download progress and the queue.', groups: ['SABnzbd', 'NZBGet'], section: 'Downloaders', required: false },
+];
+
+function sectionDomId(section: string): string {
+  return `settings-section-${section.toLowerCase().replace(/\s+/g, '-')}`;
+}
 
 // Groups each service's Settings fields into a broader category so the page
 // reads as ~7 sections instead of 12 flat, equally-weighted blocks.
@@ -548,9 +630,25 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
+  // Set on a successful save, cleared when the app comes back from a
+  // restart. Every key on these tabs is read at boot, so a save is not live
+  // until then - this is what makes that visible.
+  const [needsRestart, setNeedsRestart] = useState(false);
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(SECTION_ORDER));
   const autoTestedRef = useRef(false);
+
+  function expandSection(section: string, scroll = false) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.delete(section);
+      return next;
+    });
+    if (scroll) {
+      // After the expand has rendered.
+      setTimeout(() => document.getElementById(sectionDomId(section))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }
 
   function toggleSection(section: string) {
     setCollapsedSections((prev) => {
@@ -565,10 +663,22 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
     fetch('/api/settings', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        if (data.error) setError(data.error);
-        else setSettings(data.settings);
+        if (data.error) {
+          setError(data.error);
+          return;
+        }
+        setSettings(data.settings);
+        // A section whose required service is still unconfigured starts
+        // open, so a fresh install sees the fields it needs to fill in
+        // instead of four collapsed headers.
+        for (const step of SETUP_STEPS) {
+          if (!step.required) continue;
+          const done = step.groups.some((g) => groupConfigState(data.settings, g) === 'set');
+          if (!done) expandSection(step.section);
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quality-profile dropdowns need a live profile list from the service itself -
@@ -581,9 +691,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
       // Only auto-test services this instance actually renders - the App
       // Config / Notifications tabs shouldn't fire Radarr/Sonarr probes.
       if (!renderSections.includes(GROUP_TO_SECTION[group] ?? 'Misc')) continue;
-      const urlField = settings.find((s) => s.key === `${group.toUpperCase()}_URL`);
-      const keyField = settings.find((s) => s.key === `${group.toUpperCase()}_KEY`);
-      if (urlField?.isSet && keyField?.isSet) handleTest(group);
+      if (groupConfigState(settings, group) === 'set') handleTest(group);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -656,6 +764,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
         const res = await fetch('/api/settings', { cache: 'no-store' });
         if (res.ok) {
           setRestartStatus('back');
+          setNeedsRestart(false);
           return;
         }
       } catch {
@@ -738,6 +847,8 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
       setSaveStatus('saved');
+      setNeedsRestart(true);
+      setRestartStatus('idle');
       setEdits({});
       setClearedKeys(new Set());
       // Reload so non-secret fields reflect the saved values
@@ -749,8 +860,57 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
     }
   }
 
+  // Setup card: only on the Connections tab, and only while something
+  // required is still missing. Once both required rows are done it goes
+  // away rather than sitting there as a permanent green checklist.
+  const showSetup = renderSections.includes('Media Management');
+  const setupRows = SETUP_STEPS.map((step) => ({
+    ...step,
+    done: step.groups.some((g) => groupConfigState(settings, g) === 'set'),
+  }));
+  const setupPending = showSetup && setupRows.some((r) => r.required && !r.done);
+
   return (
     <div className="space-y-6">
+      {setupPending && (
+        <div className="bg-zinc-900 border border-amber-500/40 rounded-lg p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Get started</h2>
+            <p className="text-xs text-zinc-400 mt-0.5">Browsing already works. Connect these to unlock the rest, then Save and Restart.</p>
+          </div>
+          <ul className="space-y-2">
+            {setupRows.map((row) => (
+              <li key={row.id} className="flex items-start gap-3">
+                <span
+                  className={`mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 text-xs ${
+                    row.done ? 'bg-green-500 text-zinc-950' : 'ring-1 ring-zinc-600 text-transparent'
+                  }`}
+                  aria-label={row.done ? 'Done' : 'Not done'}
+                >
+                  ✓
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${row.done ? 'text-zinc-400 line-through' : 'text-white'}`}>
+                    {row.label}
+                    {!row.required && <span className="ml-2 text-[11px] font-normal text-zinc-500 no-underline">optional</span>}
+                  </p>
+                  <p className="text-xs text-zinc-500">{row.why}</p>
+                </div>
+                {!row.done && (
+                  <button
+                    type="button"
+                    onClick={() => expandSection(row.section, true)}
+                    className="px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500 text-black hover:bg-amber-400 flex-shrink-0"
+                  >
+                    Set up
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>Secret fields (API keys, tokens) never show their current value - leave blank to keep it unchanged.</p>
         {/* The kept count is the real "Backups to Keep" setting, not a hardcoded number - it also governs these pre-save env backups. */}
@@ -762,10 +922,6 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
           })()}{' '}
           kept), so a bad value can always be rolled back.
         </p>
-        {/* Only warn about restarting once there's actually something to restart for - a permanent warning is noise. */}
-        {(changedCount > 0 || saveStatus === 'saved') && (
-          <p className="text-amber-400">Changes need a restart to apply - use the Restart App button below after saving.</p>
-        )}
       </div>
 
       {renderSections.map((section) => {
@@ -773,8 +929,10 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
         if (sectionGroups.length === 0) return null;
         const sectionCollapsed = !singleSection && collapsedSections.has(section);
 
+        const dotGroups = sectionGroups.filter((g) => GROUP_REQUIRED_KEYS[g]);
+
         return (
-          <div key={section} className={singleSection ? '' : 'border border-zinc-800 rounded-lg overflow-hidden'}>
+          <div key={section} id={sectionDomId(section)} className={singleSection ? '' : 'border border-zinc-800 rounded-lg overflow-hidden scroll-mt-4'}>
             {!singleSection && (
             <button
               onClick={() => toggleSection(section)}
@@ -786,6 +944,15 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                   nothing on Logs), which made switching tabs feel like
                   switching apps. */}
               <h2 className="text-sm font-semibold text-zinc-400 group-hover:text-white uppercase tracking-wider">{section}</h2>
+              {/* Per-service state on the header itself, so nothing has to be
+                  expanded to see what is connected, missing, or failing. */}
+              {dotGroups.length > 0 && (
+                <span className="ml-auto flex items-center gap-3 flex-wrap justify-end">
+                  {dotGroups.map((g) => (
+                    <StatusDot key={g} label={g} state={groupConfigState(settings, g)} testStatus={testStates[g]?.status} />
+                  ))}
+                </span>
+              )}
             </button>
             )}
 
@@ -994,19 +1161,23 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
         >
           {saveStatus === 'saving' ? 'Saving…' : `Save${changedCount > 0 ? ` (${changedCount} changed)` : ''}`}
         </button>
-        {saveStatus === 'saved' && restartStatus === 'idle' && (
-          <span className="text-sm text-green-400">Saved</span>
-        )}
         {saveStatus === 'error' && <span className="text-sm text-red-400">Failed: {saveError}</span>}
 
         <button
           onClick={handleRestart}
           disabled={restartStatus === 'restarting'}
-          className="px-4 py-2 rounded-lg text-sm font-semibold bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:opacity-60"
+          className={`px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60 ${
+            needsRestart
+              ? 'bg-amber-500 text-black hover:bg-amber-400 ring-2 ring-amber-300/60'
+              : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+          }`}
         >
           {restartStatus === 'restarting' ? 'Restarting…' : 'Restart App'}
         </button>
-        {restartStatus === 'back' && <span className="text-sm text-green-400">Back up</span>}
+        {needsRestart && restartStatus !== 'restarting' && (
+          <span className="text-sm text-amber-400">Saved. Restart to apply.</span>
+        )}
+        {restartStatus === 'back' && !needsRestart && <span className="text-sm text-green-400">Restarted, changes are live</span>}
         {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s - check on the Pi</span>}
       </div>
     </div>
