@@ -8,9 +8,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const title = req.nextUrl.searchParams.get('title');
   const imdbId = req.nextUrl.searchParams.get('imdbId');
+  const tmdbRaw = Number(req.nextUrl.searchParams.get('tmdbId'));
+  const tmdbId = Number.isInteger(tmdbRaw) && tmdbRaw > 0 ? tmdbRaw : null;
   if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 });
   try {
-    return NextResponse.json({ seasons: await getSonarrLookupSeasonPreview(imdbId || null, title) });
+    return NextResponse.json({ seasons: await getSonarrLookupSeasonPreview(imdbId || null, title, tmdbId) });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

@@ -117,11 +117,11 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const [lookupSeasons, setLookupSeasons] = useState<LookupSeason[] | null>(null);
   useEffect(() => {
     if (!open || statePending || owned || lookupSeasons !== null) return;
-    fetch(`/api/sonarr/season-preview?title=${encodeURIComponent(title)}${imdbId ? `&imdbId=${encodeURIComponent(imdbId)}` : ''}`, { cache: 'no-store' })
+    fetch(`/api/sonarr/season-preview?title=${encodeURIComponent(title)}${imdbId ? `&imdbId=${encodeURIComponent(imdbId)}` : ''}${tmdbId ? `&tmdbId=${tmdbId}` : ''}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => setLookupSeasons(Array.isArray(data.seasons) ? data.seasons : []))
       .catch(() => setLookupSeasons([]));
-  }, [open, statePending, owned, lookupSeasons, title, imdbId]);
+  }, [open, statePending, owned, lookupSeasons, title, imdbId, tmdbId]);
   const lookupBySeason = new Map<number, LookupSeason>();
   for (const ls of lookupSeasons ?? []) lookupBySeason.set(ls.seasonNumber, ls);
 
@@ -336,6 +336,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               imdbId,
+              tmdbId,
               title,
               seasonNumbers: Array.from(fullSeasons).sort((a, b) => a - b),
               episodePicks: picks,

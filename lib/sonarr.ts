@@ -3,7 +3,7 @@ import { pickQualityProfile } from './qualityProfile';
 import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
-import { findTvIdByTvdbId, findTvIdByImdbId } from './tmdb';
+import { findTvIdByTvdbId, findTvIdByImdbId, getTvExternalIds } from './tmdb';
 import { recordRequest } from './requestLedger';
 import { readableApiError } from './httpError';
 
@@ -43,9 +43,12 @@ export async function addSeriesToSonarr({
   highestQuality = false,
   profileOverride,
   source = 'app',
+  tmdbId,
 }: {
   imdbId: string | null;
   title: string;
+  /** TMDB id when the caller has one - resolved to TVDB/IMDB ids so the lookup targets the exact series, not a title guess. */
+  tmdbId?: number | null;
   monitor?: string;
   seasonNumber?: number;
   /** Multiple hand-picked seasons (request modal). Wins over seasonNumber and the monitor preset. */
@@ -62,7 +65,7 @@ export async function addSeriesToSonarr({
 }) {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  const series = await lookupSonarrSeriesForAdd(imdbId ?? null, title);
+  const series = await lookupSonarrSeriesForAdd(imdbId ?? null, title, tmdbId ?? null);
   if (!series) throw new Error('No matching series found in Sonarr');
 
   if (series.id) return { alreadyAdded: true };
@@ -923,15 +926,27 @@ async function sonarrLookup(term: string) {
 }
 
 /**
- * The exact series record the add flow would target. Sonarr's imdb: lookup
- * uses a separate, less complete index than its title search and can come
- * back empty even for a show it knows by title (confirmed live: it has no
- * imdb: entry for its own reported imdbId on some shows) - fall back to a
- * plain title search when that happens.
+ * The exact series record the add flow would target, most specific key
+ * first: TVDB id (Sonarr's own identity for a show), then IMDB id, then a
+ * plain title search as the last resort. Browse and search cards only know
+ * the TMDB id, so when one is given its TVDB/IMDB ids are resolved from
+ * TMDB first - without that, "Big Brother" fell through to the title search
+ * and Sonarr's first hit was the Czech edition (live, 2026-09-12).
+ *
+ * Sonarr's imdb: lookup uses a separate, less complete index than its
+ * title search and can come back empty even for a show it knows by title
+ * (confirmed live) - hence the chain rather than a single lookup.
  */
-export async function lookupSonarrSeriesForAdd(imdbId: string | null, title: string): Promise<Record<string, unknown> | null> {
+export async function lookupSonarrSeriesForAdd(imdbId: string | null, title: string, tmdbId?: number | null): Promise<Record<string, unknown> | null> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  let results = imdbId ? await sonarrLookup(`imdb:${imdbId}`) : [];
+  let tvdbId: number | null = null;
+  if (tmdbId) {
+    const ext = await getTvExternalIds(tmdbId);
+    tvdbId = ext.tvdbId;
+    imdbId = imdbId ?? ext.imdbId;
+  }
+  let results = tvdbId ? await sonarrLookup(`tvdb:${tvdbId}`) : [];
+  if (results.length === 0 && imdbId) results = await sonarrLookup(`imdb:${imdbId}`);
   if (results.length === 0) results = await sonarrLookup(title);
   return results[0] ?? null;
 }
@@ -953,8 +968,8 @@ export interface LookupSeasonPreview {
  * un-added shows. Skyhook being unreachable degrades to bare season
  * numbers, never an error - the picker still lists the seasons.
  */
-export async function getSonarrLookupSeasonPreview(imdbId: string | null, title: string): Promise<LookupSeasonPreview[]> {
-  const series = await lookupSonarrSeriesForAdd(imdbId, title);
+export async function getSonarrLookupSeasonPreview(imdbId: string | null, title: string, tmdbId?: number | null): Promise<LookupSeasonPreview[]> {
+  const series = await lookupSonarrSeriesForAdd(imdbId, title, tmdbId);
   if (!series) return [];
   const bare: LookupSeasonPreview[] = ((series.seasons ?? []) as { seasonNumber?: number }[])
     .map((s) => s.seasonNumber)
