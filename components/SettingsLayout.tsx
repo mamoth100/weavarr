@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SettingsPanel, { CONNECTION_SECTIONS } from '@/components/SettingsPanel';
 import MenuSettingsPanel from '@/components/MenuSettingsPanel';
 import BackupPanel from '@/components/BackupPanel';
@@ -21,6 +21,14 @@ type SectionId = (typeof SECTIONS)[number]['id'];
 
 export default function SettingsLayout() {
   const [section, setSection] = useState<SectionId>('connections');
+
+  // /settings?tab=status opens straight on that tab - the sidebar's
+  // "Update available" link uses it. Read once from the URL rather than via
+  // useSearchParams so this page keeps rendering on the server as before.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab && SECTIONS.some((s) => s.id === tab)) setSection(tab as SectionId);
+  }, []);
 
   return (
     <div className="flex flex-col sm:flex-row gap-6">
