@@ -121,9 +121,15 @@ async function getSeriesEpisodes(seriesId: string): Promise<JellyfinItem[]> {
   return (data.Items as JellyfinItem[] | undefined) ?? [];
 }
 
-async function markPlayed(itemId: string): Promise<void> {
+/**
+ * datePlayed: when the watch actually happened. Without it Jellyfin stamps
+ * "now", so a months-old Plex watch relayed by the sync showed up as watched
+ * today and sat at the top of Recently Watched (and the Chopping Block).
+ */
+async function markPlayed(itemId: string, datePlayed?: string): Promise<void> {
   const userId = await resolveUserId();
-  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users/${userId}/PlayedItems/${itemId}`, {
+  const query = datePlayed ? `?datePlayed=${encodeURIComponent(datePlayed)}` : '';
+  const res = await fetchWithTimeout(`${JELLYFIN_URL}/Users/${userId}/PlayedItems/${itemId}${query}`, {
     method: 'POST',
     headers: headers(),
   });
@@ -131,9 +137,9 @@ async function markPlayed(itemId: string): Promise<void> {
 }
 
 /** Marks an already-resolved Jellyfin item watched - for callers (watchedSync) that matched it by provider id instead of title search. */
-export async function markJellyfinItemWatched(itemId: string): Promise<void> {
+export async function markJellyfinItemWatched(itemId: string, datePlayed?: string): Promise<void> {
   requireConfig();
-  await markPlayed(itemId);
+  await markPlayed(itemId, datePlayed);
 }
 
 /** Resolves a movie title to its Jellyfin item id and marks it watched. */
@@ -164,7 +170,8 @@ export async function markJellyfinEpisodesWatched(
 export async function markJellyfinSeriesEpisodesWatchedById(
   seriesId: string,
   episodes: { seasonNumber: number; episodeNumber: number }[],
-  showTitle = 'show'
+  showTitle = 'show',
+  datePlayed?: string
 ): Promise<void> {
   requireConfig();
   const allEpisodes = await getSeriesEpisodes(seriesId);
@@ -173,7 +180,7 @@ export async function markJellyfinSeriesEpisodesWatchedById(
     .map((e) => e.Id as string);
 
   if (ids.length === 0) throw new Error(`Could not find those episodes of "${showTitle}" in Jellyfin`);
-  await Promise.all(Array.from(new Set(ids)).map((id) => markPlayed(id)));
+  await Promise.all(Array.from(new Set(ids)).map((id) => markPlayed(id, datePlayed)));
 }
 
 /** Tells Jellyfin to rescan its libraries (e.g. after deleting a movie elsewhere). Jellyfin has no clean per-library-type refresh like Plex's per-section refresh, so this triggers a full library scan for both movie and TV refresh calls. */
