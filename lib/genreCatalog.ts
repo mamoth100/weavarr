@@ -45,7 +45,10 @@ export const GENRE_CATALOG: GenreDef[] = [
   { id: 'tv-movie', label: 'TV Movie', movieGenreId: 10770 },
 ];
 
-export const DEFAULT_GENRE_IDS = ['documentary', 'reality'];
+// Discover first so a fresh install lands on the trending/popular home rather
+// than on Documentaries (Weavarr's original niche). The first entry is the
+// dashboard's default landing; Menu settings can reorder it.
+export const DEFAULT_GENRE_IDS = ['discover', 'documentary', 'reality'];
 
 export const ALL_GENRE: GenreDef = GENRE_CATALOG.find((g) => g.id === ALL_GENRES_ID)!;
 
