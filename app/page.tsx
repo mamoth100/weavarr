@@ -53,17 +53,28 @@ export default async function Home({ searchParams }: PageProps) {
   const mediaType = specialView === 'popular-tv' ? 'tv' : activeGenre.movieGenreId ? 'movie' : 'tv';
 
   const pageTitle = isGlobalSearch
-    ? 'Search anything - movies, TV, any genre'
+    ? 'Search'
     : specialView
     ? SPECIAL_VIEW_TITLES[specialView]
     : isUpcoming
     ? upcomingGenre.id === ALL_GENRES_ID
-      ? 'Coming soon - every genre'
+      ? 'Coming soon'
       : `${upcomingGenre.label} coming soon`
     : activeGenre.label;
+  const pageSubtitle = isGlobalSearch
+    ? 'Movies and TV across every genre'
+    : isUpcoming && upcomingGenre.id === ALL_GENRES_ID
+    ? 'Every genre'
+    : undefined;
+
+  // A genre page's search box only searches that genre. When it finds
+  // nothing, the likeliest reason is that the title exists but is not in
+  // this genre, so offer the same words to the global search.
+  const globalSearchHref = query ? `/?genre=search&q=${encodeURIComponent(query)}` : null;
+  const genreSearchMiss = !isGlobalSearch && !specialView && !isUpcoming && Boolean(query) && globalSearchHref;
 
   return (
-    <AppShell title={pageTitle}>
+    <AppShell title={pageTitle} subtitle={pageSubtitle}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Special views show the filter bar too - untouched they serve
             TMDB's curated lists, and any set filter transparently switches
@@ -83,7 +94,19 @@ export default async function Home({ searchParams }: PageProps) {
 
         {isGlobalSearch && !query ? (
           <div className="text-center text-zinc-500 py-24">
-            Type something above to search everything - movies, TV, any genre.
+            Type something above to search movies and TV across every genre.
+          </div>
+        ) : data.results.length === 0 && genreSearchMiss ? (
+          <div className="text-center text-zinc-500 py-24 space-y-3">
+            <p>
+              Nothing in {activeGenre.id === ALL_GENRES_ID ? 'this view' : activeGenre.label.toLowerCase()} for &ldquo;{query}&rdquo;.
+            </p>
+            <a
+              href={globalSearchHref}
+              className="inline-block px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400"
+            >
+              Search everything for &ldquo;{query}&rdquo;
+            </a>
           </div>
         ) : data.results.length === 0 ? (
           <div className="text-center text-zinc-500 py-24">

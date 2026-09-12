@@ -4,7 +4,7 @@ import AppShell from '@/components/AppShell';
 
 export default function SonarrLibraryPage() {
   return (
-    <AppShell title="Sonarr library - delete any show, any time" headerActions={<BackLink />}>
+    <AppShell title="Sonarr library" subtitle="Delete any show, any time" headerActions={<BackLink />}>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <SonarrLibraryPanel />
       </div>

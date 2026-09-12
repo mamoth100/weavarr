@@ -4,14 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
-import BackLink from '@/components/BackLink';
 import AppShell from '@/components/AppShell';
 
 export default function SucksPage() {
   const { sucksItems, removeSucks } = useWatchlist();
 
   return (
-    <AppShell title="Not interested" headerActions={<BackLink />}>
+    <AppShell title="Not interested">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {sucksItems.length === 0 ? (
           <div className="text-center py-24">
