@@ -11,7 +11,9 @@ import { fetchWithTimeout } from './fetchTimeout';
 const REPO = 'mamoth100/weavarr';
 
 export function localCommit(): string {
-  return process.env.GIT_SHA || 'unknown';
+  // Images built by GitHub Actions carry the full 40-character commit id;
+  // the Pi's local build passes the short one. Show the short form either way.
+  return (process.env.GIT_SHA || 'unknown').slice(0, 7);
 }
 
 export interface UpdateStatus {
