@@ -212,7 +212,16 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
                         {item.type === 'movie' ? (item.year ? ` (${item.year})` : '') : ` ${formatEpisode(item)}`}
                       </p>
                       )}
-                      <span className="text-xs font-medium text-amber-400 whitespace-nowrap">{item.reason}</span>
+                      <span
+                        className={`text-xs font-medium text-amber-400 whitespace-nowrap ${item.reason === 'Marked watched manually' ? 'underline decoration-dotted cursor-help' : ''}`}
+                        title={
+                          item.reason === 'Marked watched manually'
+                            ? 'Plex or Jellyfin has this as watched, but neither logged anyone playing it. Usually it was marked watched by hand, or the mark was copied over from the other server.'
+                            : undefined
+                        }
+                      >
+                        {item.reason}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-1">
                       <p className="text-xs text-zinc-500">

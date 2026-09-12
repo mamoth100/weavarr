@@ -6,6 +6,7 @@ import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
 import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
+import { useDownloadProgress } from '@/hooks/useDownloadProgress';
 
 const PAGE_SIZE = 50;
 
@@ -70,6 +71,9 @@ function DeleteButton({ seriesId }: { seriesId: number }) {
 
 export default function SonarrLibraryPanel() {
   const [series, setSeries] = useState<SonarrSeries[] | null>(null);
+  // Live queue state per show, so a show mid-download reads as downloading
+  // instead of the same "No files" as one Sonarr never found anything for.
+  const progressMap = useDownloadProgress();
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -143,9 +147,22 @@ export default function SonarrLibraryPanel() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{show.title} {show.year ? `(${show.year})` : ''}</p>
                   <p className="text-xs text-zinc-500">
-                    {show.episodeFileCount > 0
-                      ? `${show.episodeFileCount}/${show.episodeCount} episodes · ${formatBytes(show.sizeOnDisk)}`
-                      : 'No files'}
+                    {(() => {
+                      const progress = show.tmdbId ? progressMap?.shows[show.tmdbId] : undefined;
+                      const onDisk = show.episodeFileCount > 0
+                        ? `${show.episodeFileCount} of ${show.episodeCount} episodes · ${formatBytes(show.sizeOnDisk)}`
+                        : `0 of ${show.episodeCount} episodes`;
+                      if (!progress) return show.episodeFileCount > 0 ? onDisk : 'No files yet';
+                      const live =
+                        progress.state === 'importing' ? 'Importing…' :
+                        progress.state === 'queued' ? 'Queued to download' :
+                        `Downloading ${progress.percent}%`;
+                      return (
+                        <>
+                          {onDisk} · <span className="text-sky-400">{live}</span>
+                        </>
+                      );
+                    })()}
                   </p>
                 </div>
               </button>

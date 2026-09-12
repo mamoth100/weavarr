@@ -65,12 +65,15 @@ export default function ConfirmButton({
   }
 
   const size = compact ? 'px-2 py-0.5 rounded' : 'px-2.5 py-1 rounded-md';
-  const idleHover = intent === 'danger' ? 'hover:bg-red-600 hover:text-white' : 'hover:bg-amber-500 hover:text-black';
+  // Danger reads as danger before it is armed: outlined red rather than the
+  // same grey pill as every harmless action beside it.
+  const idleBase = intent === 'danger' ? 'bg-transparent text-red-400 ring-1 ring-red-500/40' : 'bg-zinc-800 text-zinc-300';
+  const idleHover = intent === 'danger' ? 'hover:bg-red-600 hover:text-white hover:ring-red-600' : 'hover:bg-amber-500 hover:text-black';
 
   return (
     <div>
       {status === 'idle' ? (
-        <button onClick={arm} className={`${size} text-xs font-medium transition-colors bg-zinc-800 text-zinc-300 ${idleHover}`}>
+        <button onClick={arm} className={`${size} text-xs font-medium transition-colors ${idleBase} ${idleHover}`}>
           {label}
         </button>
       ) : status === 'armed' ? (
