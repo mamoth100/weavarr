@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/mamoth100/weavarr/main/install.sh |
 
 `install.sh` will:
 1. Check for Docker; install it via `get.docker.com` if missing.
-2. Pull the published Weavarr image (Docker Hub or GHCR - not published yet).
+2. Pull the published Weavarr image (`ghcr.io/mamoth100/weavarr:latest`, public since 2026-09-12).
 3. Create a persistent host-mounted data folder (SQLite DB, poster cache
    survive container updates/restarts).
 4. Drop a template `.env` for Radarr/Sonarr URLs + API keys (or prompt
@@ -137,11 +137,15 @@ Status as of 2026-08-08:
       arm64. `node:22-alpine` + `node:sqlite` both officially support amd64
       but this hasn't actually been verified on real x86 hardware yet.
       User is setting up Hyper-V VMs for this.
-- [ ] **Multi-arch build + publish** - `docker buildx` with a multi-node
+- [x] **Multi-arch build + publish** (done 2026-09-12 via GitHub Actions,
+      `.github/workflows/docker-image.yml`: native arm64 + amd64 runners,
+      merged manifest, pushed on every main push). Original plan was a
+      multi-node `docker buildx` with a multi-node
       builder (Pi as the arm64 node, an x86 VM as the amd64 node) so each
       platform builds natively, combined into one pushed manifest. Depends
       on the amd64 VM existing first.
-- [ ] **Pick and set up a registry** - Docker Hub or GHCR, to push the
+- [x] **Pick and set up a registry** - GHCR, public package since
+      2026-09-12. Was: Docker Hub or GHCR, to push the
       multi-arch image to. Nothing published anywhere yet.
 - [ ] **`install.sh`** - one-liner installer for end users (designed on
       paper above, not built). Depends on a published image existing.
