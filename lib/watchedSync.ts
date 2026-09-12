@@ -244,11 +244,13 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   );
 
   async function reconcileEpisode(
-    ep: { showTitle: string; seasonNumber: number; episodeNumber: number },
+    ep: { showTitle: string; seasonNumber: number; episodeNumber: number; viewedAt?: string },
     ownShowsByTitle: Map<string, LibItem>,
     targetEpSet: Set<string>,
     targetShowIdx: LibIndex,
-    markTargetEpisodes: (showServerKey: string, eps: { seasonNumber: number; episodeNumber: number }[], showTitle: string) => Promise<void>,
+    // The fourth argument is the original watch date. Jellyfin honours it;
+    // Plex has no way to set one, so its mark function simply ignores it.
+    markTargetEpisodes: (showServerKey: string, eps: { seasonNumber: number; episodeNumber: number }[], showTitle: string, viewedAt?: string) => Promise<void>,
     direction: string
   ) {
     const ownShow = ownShowsByTitle.get(norm(ep.showTitle));
@@ -267,7 +269,7 @@ export async function syncWatchedBetweenServers(): Promise<number> {
       return;
     }
     try {
-      await markTargetEpisodes(targetShow.serverKey, [{ seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber }], ep.showTitle);
+      await markTargetEpisodes(targetShow.serverKey, [{ seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber }], ep.showTitle, ep.viewedAt);
       seen.add(key);
       await markDirty();
       marks += 1;
