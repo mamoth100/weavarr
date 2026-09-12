@@ -77,16 +77,12 @@ export default function SystemStatusPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Update banner: only render when the check produced a definite
-          answer. Private repo or offline = null = say nothing. */}
+      {/* Update banner: only when there is actually something to do. Up to
+          date, offline, or unknown all say nothing - the About table below
+          already shows the running commit. */}
       {data.about.updateAvailable === true && (
         <div className="bg-amber-500/10 border border-amber-500/40 rounded-lg p-3 text-sm text-amber-300">
           Update available: this build is {data.about.commit}, the latest is {data.about.latestCommit}. To update, run <code className="text-amber-200">cd ~/weavarr &amp;&amp; docker compose pull &amp;&amp; docker compose up -d</code> (change the folder if you installed somewhere else).
-        </div>
-      )}
-      {data.about.updateAvailable === false && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-green-400">
-          Up to date with the latest release ({data.about.commit}).
         </div>
       )}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400">
