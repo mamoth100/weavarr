@@ -45,6 +45,24 @@ export default function SidebarNav({ config, mobileTitle }: { config: MenuConfig
   const current = searchParams.get('genre') ?? config.genres[0]?.id ?? 'all';
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // "Update available" sits above the utility links when the running build
+  // is behind GitHub's main. One light call per mount; the server caches the
+  // GitHub answer for six hours. Silent on any failure - a missing update
+  // hint is not worth an error in the nav.
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/update-check', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.updateAvailable === true) setUpdateAvailable(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // A route change (clicking any nav item) always means the drawer should
   // close on mobile - simplest way to catch every case, tab or link alike.
   useEffect(() => {
@@ -168,6 +186,17 @@ export default function SidebarNav({ config, mobileTitle }: { config: MenuConfig
           ))}
         </nav>
         <nav className="p-2 space-y-0.5 border-t border-zinc-800">
+          {updateAvailable && (
+            <Link
+              href="/settings?tab=status"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap text-amber-400 hover:bg-zinc-800 transition-colors"
+            >
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.75v6.75m0 0l-3-3m3 3l3-3m-8.25 6a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+              </svg>
+              Update available
+            </Link>
+          )}
           {UTILITY_LINKS.map((link) => {
             const active = pathname === link.href;
             return (
