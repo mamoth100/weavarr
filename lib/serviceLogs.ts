@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
+import { jellyfinHeaders } from './jellyfinAuth';
 /**
  * Aggregated logging (Settings > Logs): pulls recent log entries from every
  * connected service that exposes them and normalizes to one shape so the UI
@@ -140,7 +141,7 @@ const JELLYFIN_LINE = /^\[([0-9-]+ [0-9:.]+ [+-][0-9:]+)\] \[(\w+)\](?: \[\d+\])
 
 async function fetchJellyfinLog(): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.JELLYFIN_URL);
-  const headers = { 'X-Emby-Token': process.env.JELLYFIN_API_KEY as string, Accept: 'application/json' };
+  const headers = jellyfinHeaders(process.env.JELLYFIN_API_KEY as string);
   const listRes = await fetchWithTimeout(`${url}/System/Logs`, { headers, cache: 'no-store' });
   if (!listRes.ok) throw new Error(`log list failed: ${listRes.status}`);
   const files: { Name?: string; DateModified?: string }[] = await listRes.json();
