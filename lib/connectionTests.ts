@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
+import { jellyfinHeaders } from './jellyfinAuth';
 export interface QualityProfileOption {
   id: number;
   name: string;
@@ -107,7 +108,7 @@ async function testJellyfin(url?: string, apiKey?: string, username?: string): P
   if (!url || !apiKey) return { ok: false, message: 'URL and API key required' };
   try {
     const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/System/Info`, {
-      headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
+      headers: jellyfinHeaders(apiKey),
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and API key` };
@@ -115,7 +116,7 @@ async function testJellyfin(url?: string, apiKey?: string, username?: string): P
     if (!data.Version) return { ok: false, message: 'Unexpected response - check API key' };
     if (username) {
       const usersRes = await fetchWithTimeout(`${url.replace(/\/$/, '')}/Users`, {
-        headers: { 'X-Emby-Token': apiKey, Accept: 'application/json' },
+        headers: jellyfinHeaders(apiKey),
         cache: 'no-store',
       });
       if (!usersRes.ok) return { ok: false, message: `Connected to Jellyfin v${data.Version}, but couldn't list users` };

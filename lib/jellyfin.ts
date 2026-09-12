@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from './fetchTimeout';
 import { titlesMatch } from './titleMatch';
+import { jellyfinHeaders } from './jellyfinAuth';
 // Stripped of any trailing slash - a URL saved with one (e.g. "http://host:8096/")
 // would otherwise produce double-slash paths like ".../Users" -> "..//Users",
 // which Jellyfin 404s on.
@@ -11,7 +12,7 @@ const JELLYFIN_API_KEY = process.env.JELLYFIN_API_KEY;
 const JELLYFIN_USERNAME = process.env.JELLYFIN_USER_ID;
 
 function headers() {
-  return { 'X-Emby-Token': JELLYFIN_API_KEY as string, Accept: 'application/json' };
+  return jellyfinHeaders(JELLYFIN_API_KEY as string);
 }
 
 function requireConfig(): void {
