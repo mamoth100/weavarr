@@ -1,0 +1,30 @@
+# Ready-to-run compose file for anyone using the published image.
+#
+#   mkdir weavarr && cd weavarr
+#   curl -fsSLo docker-compose.yml https://raw.githubusercontent.com/mamoth100/weavarr/main/docker-compose.pull.yml
+#   docker compose up -d
+#
+# Then open http://<this machine>:6767 and fill in Settings. Everything you
+# save lands in ./config/.env.local next to this file; restart the container
+# (docker compose restart) for new settings to take effect.
+name: weavarr
+
+services:
+  weavarr:
+    image: ghcr.io/mamoth100/weavarr:latest
+    container_name: weavarr
+    restart: unless-stopped
+    # Host networking so URLs like http://localhost:7878 (Radarr on the same
+    # box) work from inside the container. The app listens on port 6767.
+    network_mode: host
+    environment:
+      - PORT=6767
+    env_file:
+      - path: ./config/.env.local
+        required: false
+    volumes:
+      - data:/app/data
+      - ./config:/app/config
+
+volumes:
+  data:

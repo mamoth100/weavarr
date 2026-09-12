@@ -7,9 +7,9 @@
 import AdmZip from 'adm-zip';
 import { readdir, stat, mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
+import { ENV_FILE } from './configDir';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
-const ENV_FILE = path.join(process.cwd(), '.env.local');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 
 // posters/ is a regenerable Radarr/Sonarr poster cache, not real state.
@@ -82,7 +82,17 @@ export async function deleteBackup(filename: string): Promise<void> {
 export async function restoreBackup(filename: string): Promise<void> {
   assertSafeFilename(filename);
   const zip = new AdmZip(path.join(BACKUP_DIR, filename));
-  zip.extractAllTo(process.cwd(), true);
+  // The zip stores .env.local at its root, but the live file lives in
+  // CONFIG_DIR (a separate mount in Docker). Route that one entry there and
+  // extract everything else (data/...) relative to the app root as before.
+  for (const entry of zip.getEntries()) {
+    if (entry.entryName === '.env.local') {
+      await mkdir(path.dirname(ENV_FILE), { recursive: true });
+      await writeFile(ENV_FILE, entry.getData());
+    } else {
+      zip.extractEntryTo(entry, process.cwd(), true, true);
+    }
+  }
 }
 
 /**

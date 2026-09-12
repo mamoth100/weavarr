@@ -1,6 +1,6 @@
 # Explicit project name - without this, Compose defaults to the directory
 # name, which would prefix every resource (volumes, network, labels) with
-# "docuview" if this checkout still lives in a folder called that.
+# whatever the checkout folder happens to be called.
 name: weavarr
 
 services:
@@ -14,7 +14,7 @@ services:
     image: weavarr:local
     container_name: weavarr
     restart: unless-stopped
-    # Radarr/Sonarr/Plex/etc URLs in .env.local commonly point at
+    # Radarr/Sonarr/Plex/etc URLs in the settings commonly point at
     # "localhost" (the same box). Host networking makes that resolve
     # correctly from inside the container too - default bridge networking
     # would isolate the container onto its own loopback, unable to reach
@@ -23,18 +23,20 @@ services:
     network_mode: host
     environment:
       - PORT=6767
+    # The settings file, injected as environment variables at container
+    # start. Optional on purpose: a fresh install has no file yet, and the
+    # app writes it on the first save from the Settings page. Restart the
+    # container after saving for the new values to take effect.
     env_file:
-      - .env.local
+      - path: ./config/.env.local
+        required: false
     volumes:
       - data:/app/data
-      # env_file above only injects the VALUES as environment variables at
-      # container start - it never copies the actual file in. The Settings
-      # page reads/writes .env.local as a real file (lib/settings.ts), so
-      # without this bind mount it'd read an empty file (showing everything
-      # as "not configured" despite env vars working fine) and any save
-      # from the UI would write to a path that doesn't survive a rebuild.
-      # This makes it the literal same file the host has.
-      - ./.env.local:/app/.env.local
+      # Settings live in ./config/.env.local on the host. A folder is
+      # mounted (not the file itself) so that a missing file on first run
+      # doesn't make Docker create a *directory* named .env.local in its
+      # place. The container fixes the folder's ownership at start.
+      - ./config:/app/config
 
 volumes:
   data:
