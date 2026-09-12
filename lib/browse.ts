@@ -244,9 +244,16 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
         ? discoverUpcomingTv({ page, genre: upcomingGenre.tvGenreId, language, keywordIds })
         : Promise.resolve(EMPTY_PAGE),
     ]);
-    const merged = [...movieData.results, ...tvData.results].sort(
-      (a, b) => (a.release_date ?? '').localeCompare(b.release_date ?? '')
-    );
+    // Sorted by date alone, the top of the page was whatever obscure titles
+    // release today, half of them without a poster. Anything TMDB has no
+    // poster for is dropped, and within a date the better-known title comes
+    // first, so the first screen is things people have heard of.
+    const merged = [...movieData.results, ...tvData.results]
+      .filter((r) => Boolean(r.poster_path))
+      .sort((a, b) => {
+        const byDate = (a.release_date ?? '').localeCompare(b.release_date ?? '');
+        return byDate !== 0 ? byDate : (b.popularity ?? 0) - (a.popularity ?? 0);
+      });
     return {
       results: merged,
       totalPages: Math.max(movieData.total_pages, tvData.total_pages),
