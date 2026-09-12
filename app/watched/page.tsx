@@ -4,14 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
-import BackLink from '@/components/BackLink';
 import AppShell from '@/components/AppShell';
 
 export default function WatchedPage() {
   const { watchedItems, toggleWatched } = useWatchlist();
 
   return (
-    <AppShell title="Everything you've watched" headerActions={<BackLink />}>
+    <AppShell title="Watched" subtitle="Everything you have marked watched">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {watchedItems.length === 0 ? (
           <div className="text-center py-24">
