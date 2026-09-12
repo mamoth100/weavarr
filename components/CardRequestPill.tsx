@@ -79,7 +79,7 @@ export default function CardRequestPill({ id, mediaType, title, poster_path, rel
 
   const armedStyle = state === 'armed' || state === 'error'
     ? 'bg-amber-400 text-zinc-950 opacity-100'
-    : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100';
+    : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:pointer-events-none touch:group-data-[menu-open]:opacity-100 touch:group-data-[menu-open]:pointer-events-auto';
 
   return (
     <>

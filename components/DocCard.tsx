@@ -67,6 +67,9 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
   // Requested from THIS card this session - flips the state instantly while
   // the library-status cache (one fetch per page load) still says unknown.
   const [justRequested, setJustRequested] = useState(false);
+  // Touch only: the action pills hide behind a "…" button so the poster is
+  // actually visible while browsing. Desktop keeps hover reveal.
+  const [menuOpen, setMenuOpen] = useState(false);
   // The hover synopsis is bottom-anchored while the action pills hang from the
   // top - a fixed 7-line clamp overlapped the Request pill on smaller cards
   // (More Like This grids). Clamp to however many lines fit below the pills.
@@ -104,11 +107,39 @@ export default function DocCard({ doc, mediaType = 'movie', variant = 'default' 
   const href = mediaType === 'tv' ? `/tv/${doc.id}` : `/documentary/${doc.id}`;
 
   return (
-    <div className="group">
+    <div className="group" data-menu-open={menuOpen ? '' : undefined}>
       {/* This wrapper is the positioning context for CardActions - it spans
           ONLY the poster. Anchoring to the whole card put bottom-2 below the
           poster, rendering the Watched pill over the title text. */}
       <div className="relative">
+        {/* Touch-only menu toggle. Hidden on fine pointers, where hover
+            reveals the pills directly. */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setMenuOpen((o) => !o);
+          }}
+          aria-label={menuOpen ? 'Close actions' : `Actions for "${doc.title}"`}
+          aria-expanded={menuOpen}
+          className="hidden touch:flex absolute top-2 right-2 z-20 w-9 h-9 items-center justify-center rounded-full bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm text-lg leading-none"
+        >
+          {menuOpen ? '✕' : '⋯'}
+        </button>
+        {/* Dim the poster and swallow the tap while the menu is open, so a
+            tap outside a pill closes the menu instead of opening the page. */}
+        {menuOpen && (
+          <div
+            className="hidden touch:block absolute inset-0 z-[5] rounded-lg bg-black/50"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuOpen(false);
+            }}
+            aria-hidden
+          />
+        )}
         {/* CardActions is OUTSIDE the Link so clicks don't trigger navigation */}
         <CardActions
           id={doc.id}

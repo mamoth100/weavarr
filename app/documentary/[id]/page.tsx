@@ -70,7 +70,7 @@ export default async function DocumentaryPage({ params }: Props) {
     <AppShell>
       {/* Backdrop hero */}
       {backdropUrl && (
-        <div className="relative h-56 md:h-80 overflow-hidden">
+        <div className="relative h-40 md:h-80 overflow-hidden">
           <Image
             src={backdropUrl}
             alt={detail.title}
@@ -83,15 +83,15 @@ export default async function DocumentaryPage({ params }: Props) {
       )}
 
       <div
-        className={`max-w-5xl mx-auto px-4 py-8 ${backdropUrl ? '-mt-28 relative z-10' : ''}`}
+        className={`max-w-5xl mx-auto px-4 py-8 ${backdropUrl ? '-mt-16 md:-mt-28 relative z-10' : ''}`}
       >
         <BackLink />
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-row gap-4 md:gap-8">
           {/* Poster */}
           {posterUrl && (
             <div className="flex-shrink-0">
-              <div className="relative w-44 md:w-52 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                <Image src={posterUrl} alt={detail.title} fill className="object-cover" />
+              <div className="relative w-28 sm:w-36 md:w-52 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                <Image src={posterUrl} alt={detail.title} fill className="object-cover" sizes="(max-width: 640px) 112px, (max-width: 768px) 144px, 208px" />
               </div>
             </div>
           )}

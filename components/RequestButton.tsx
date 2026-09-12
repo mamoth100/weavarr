@@ -191,7 +191,7 @@ function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
       <button
         onClick={() => setMode('choose')}
         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-          mode === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
+          mode === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-transparent text-red-400 ring-1 ring-red-500/40 hover:bg-red-600 hover:text-white hover:ring-red-600'
         }`}
       >
         {mode === 'error' ? 'Failed - retry' : 'Delete from Sonarr'}

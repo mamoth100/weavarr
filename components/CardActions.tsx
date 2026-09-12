@@ -53,15 +53,17 @@ export default function CardActions({
     <>
       {/* One uniform action column, top-left: two identical icon+text
           pills (Not interested / Mark watched). Hover/focus-revealed on
-          desktop; always visible with bigger tap targets on touch, where
-          hover doesn't exist. */}
+          desktop. On touch there is no hover, and always-visible pills
+          covered most of the poster, so they only appear while the card's
+          "…" menu is open (DocCard sets data-menu-open on the group).
+          A pill in its marked state stays visible either way. */}
       <button
         onClick={handleSucks}
         className={`absolute top-2 left-2 z-10 flex items-center gap-1 px-2 py-1 touch:px-2.5 touch:py-2 rounded-md text-xs font-semibold transition-all duration-200
           ${
             sucks
               ? 'bg-red-600/90 text-white opacity-100'
-              : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
+              : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:pointer-events-none touch:group-data-[menu-open]:opacity-100 touch:group-data-[menu-open]:pointer-events-auto'
           }`}
         aria-label={sucks ? 'Remove from not interested' : 'Not interested'}
       >
@@ -78,7 +80,7 @@ export default function CardActions({
             ${
               watched
                 ? 'bg-green-600/90 text-white opacity-100'
-                : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:opacity-100'
+                : 'bg-black/70 text-white ring-1 ring-white/30 shadow-lg backdrop-blur-sm opacity-0 group-hover:opacity-100 focus-visible:opacity-100 touch:pointer-events-none touch:group-data-[menu-open]:opacity-100 touch:group-data-[menu-open]:pointer-events-auto'
             }`}
           aria-label={watched ? 'Mark as unwatched' : 'Mark as watched'}
         >
