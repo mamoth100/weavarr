@@ -179,7 +179,23 @@ async function testPushover(userKey?: string, apiToken?: string): Promise<TestRe
     const res = await fetchWithTimeout('https://api.pushover.net/1/users/validate.json', { method: 'POST', body, cache: 'no-store' });
     const data = await res.json();
     if (data.status !== 1) return { ok: false, message: (data.errors ?? []).join(', ') || 'Invalid credentials' };
-    return { ok: true, message: `Valid - ${(data.devices ?? []).length} device(s)` };
+
+    // Valid keys are not the same as a delivered message (a muted app, a
+    // device that never registered, a quota that ran out), so actually send
+    // one, the same way Discord's test does. Uses the values from the form,
+    // not the saved env, so an unsaved key can be tested before saving.
+    const sendRes = await fetchWithTimeout('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: apiToken, user: userKey, title: 'Weavarr test', message: 'Pushover is working. Notifications from Weavarr will arrive like this.' }),
+      cache: 'no-store',
+    });
+    const sendData = await sendRes.json().catch(() => ({}));
+    if (!sendRes.ok || sendData.status !== 1) {
+      return { ok: false, message: `Keys are valid but sending failed: ${(sendData.errors ?? []).join(', ') || `HTTP ${sendRes.status}`}` };
+    }
+    const devices = (data.devices ?? []).length;
+    return { ok: true, message: `Test notification sent to ${devices} device${devices === 1 ? '' : 's'} - check your phone` };
   } catch (err) {
     return fail(err);
   }
