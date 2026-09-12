@@ -8,7 +8,7 @@ import { fetchWithTimeout } from './fetchTimeout';
  * and the whole check degrades to "unavailable" rather than an error.
  */
 
-const REPO = 'mamoth100/DocuView';
+const REPO = 'mamoth100/weavarr';
 
 export function localCommit(): string {
   return process.env.GIT_SHA || 'unknown';

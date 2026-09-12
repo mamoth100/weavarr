@@ -58,7 +58,7 @@ One-liner install script, same pattern as Docker's own installer / Portainer
 / Uptime Kuma / Tailscale:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mamoth100/DocuView/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/mamoth100/weavarr/main/install.sh | sh
 ```
 
 `install.sh` will:
