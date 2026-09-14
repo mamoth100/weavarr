@@ -64,10 +64,12 @@ function seasonsLabel(seasons: string | null): string | null {
     const arr = JSON.parse(seasons);
     if (Array.isArray(arr)) {
       const hasUnaired = arr.includes('unaired');
-      const rest = arr.filter((x) => x !== 'unaired');
+      const pending = arr.includes('picks-pending');
+      const rest = arr.filter((x) => x !== 'unaired' && x !== 'picks-pending');
       const parts: string[] = [];
       if (rest.length > 0) parts.push(`Season${rest.length === 1 ? '' : 's'} ${rest.join(', ')}`);
       if (hasUnaired) parts.push('unaired episodes');
+      if (pending) parts.push('picked episodes not applied, use Get more');
       return parts.length > 0 ? parts.join(' + ') : 'Picked episodes';
     }
   } catch {

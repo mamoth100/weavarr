@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { syncWatchedBetweenServers } from '@/lib/watchedSync';
 import { plexEnabled, jellyfinEnabled, refreshMovieLibrary, refreshTvLibrary } from '@/lib/mediaServer';
+import { runExclusive } from '@/lib/runExclusive';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function POST() {
     const refreshed = refreshResults.some((r) => r.status === 'fulfilled');
     let marks: number | null = null;
     if (plexEnabled() && jellyfinEnabled()) {
-      marks = await syncWatchedBetweenServers();
+      marks = await runExclusive('watchedSync', syncWatchedBetweenServers);
     }
     return NextResponse.json({ refreshed, marks });
   } catch (err) {

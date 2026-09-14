@@ -22,8 +22,14 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * other non-menu setting.
  */
 export function middleware(req: NextRequest) {
-  if (SAFE_METHODS.has(req.method)) return NextResponse.next();
   if (process.env.ENABLE_CSRF_PROTECTION === 'false') return NextResponse.next();
+  // Host check first, on every state-changing call and on the GETs that hand
+  // out secrets: a DNS-rebinding page names ITS domain in both Host and
+  // Origin, so the Origin comparison below cannot catch it.
+  if (!SAFE_METHODS.has(req.method) || SENSITIVE_GET_PREFIXES.some((p) => req.nextUrl.pathname.startsWith(p))) {
+    if (!hostAllowed(req)) return misdirected(req);
+  }
+  if (SAFE_METHODS.has(req.method)) return NextResponse.next();
 
   const origin = req.headers.get('origin');
   if (origin === null) {
@@ -63,6 +69,41 @@ export function middleware(req: NextRequest) {
 
   if (originHost && allowedHosts.has(originHost)) return NextResponse.next();
   return blocked(req, `origin ${origin} does not match ${Array.from(allowedHosts).join('/') || 'any allowed host'}`);
+}
+
+// GET routes that return configuration or logs. Everything else GET is
+// library data a rebinding page could read but not do much with.
+const SENSITIVE_GET_PREFIXES = ['/api/backup', '/api/logs', '/api/service-logs'];
+
+/**
+ * A Host header this install could plausibly be reached by from inside a
+ * home network: an IP address, a bare hostname (no dot, so no public DNS),
+ * a local-only suffix, or the address configured as Application URL. A
+ * public domain that is none of those is what a DNS-rebinding attacker
+ * sends, and the app answers 421 to it.
+ */
+function hostAllowed(req: NextRequest): boolean {
+  const host = (req.headers.get('host') ?? '').trim().toLowerCase();
+  if (!host) return true;
+  const name = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  if (!name.includes('.')) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(name) || name.includes(':')) return true;
+  if (/\.(local|lan|internal|home|home\.arpa|localdomain)$/.test(name)) return true;
+  const appUrl = process.env.APP_URL?.trim();
+  if (appUrl) {
+    try {
+      if (new URL(appUrl).host.toLowerCase() === host) return true;
+    } catch {}
+  }
+  return false;
+}
+
+function misdirected(req: NextRequest) {
+  console.warn(`[csrf] refused host "${req.headers.get('host')}" for ${req.method} ${req.nextUrl.pathname} from ${clientIp(req)}`);
+  return NextResponse.json(
+    { error: 'This address is not one the app recognises. If you reach Weavarr through a domain name, set Application URL in Settings to that address (or set ENABLE_CSRF_PROTECTION=false).' },
+    { status: 421 }
+  );
 }
 
 function blocked(req: NextRequest, reason: string) {

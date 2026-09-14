@@ -15,11 +15,26 @@ export async function POST(request: Request) {
     // what's actually saved on disk, so testing works without retyping keys.
     const fieldsInGroup = SETTINGS_SCHEMA.filter((f) => f.group === group);
     const effective: Record<string, string> = { ...values };
+
+    // A saved secret is only sent to the saved URL. Filling blanks from disk
+    // is what makes "Test" work without retyping keys, but with a different
+    // URL in the request it would hand the real key to whatever address the
+    // caller typed, and anyone on the LAN can call this route.
+    const urlField = fieldsInGroup.find((f) => /_URL$/.test(f.key) && !f.secret);
+    let urlChanged = false;
+    if (urlField) {
+      const typed = (effective[urlField.key] ?? '').trim().replace(/\/$/, '');
+      const saved = ((await getRawEnvValue(urlField.key)) ?? '').trim().replace(/\/$/, '');
+      urlChanged = typed !== '' && saved !== '' && typed !== saved;
+    }
     for (const field of fieldsInGroup) {
-      if (!effective[field.key]) {
-        const raw = await getRawEnvValue(field.key);
-        if (raw) effective[field.key] = raw;
-      }
+      if (effective[field.key]) continue;
+      if (field.secret && urlChanged) continue;
+      const raw = await getRawEnvValue(field.key);
+      if (raw) effective[field.key] = raw;
+    }
+    if (urlChanged && fieldsInGroup.some((f) => f.secret && !effective[f.key])) {
+      return NextResponse.json({ ok: false, message: 'The URL changed. Enter the key or token again to test it against the new address.' });
     }
     const result = await testGroup(group, effective);
     return NextResponse.json(result);
