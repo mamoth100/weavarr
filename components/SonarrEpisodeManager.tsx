@@ -431,7 +431,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
           </div>
         );
       })}
-      <LastEpisodeModal aftermath={aftermath} onClose={() => setAftermath(null)} />
+      <LastEpisodeModal key={aftermath?.seriesId ?? 'none'} aftermath={aftermath} onClose={() => setAftermath(null)} />
     </div>
   );
 }

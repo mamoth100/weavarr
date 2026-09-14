@@ -19,6 +19,14 @@ export async function POST(request: Request) {
   if (!updates || typeof updates !== 'object') {
     return NextResponse.json({ error: 'updates object required' }, { status: 400 });
   }
+  for (const [key, value] of Object.entries(updates as Record<string, unknown>)) {
+    if (typeof value !== 'string') {
+      return NextResponse.json({ error: `${key} must be text` }, { status: 400 });
+    }
+    if (/[\r\n]/.test(value)) {
+      return NextResponse.json({ error: `${key} cannot contain a line break` }, { status: 400 });
+    }
+  }
 
   // Turning the warning off is what the toggle is for; a zero or negative
   // threshold is always a mistake, so refuse to save one.

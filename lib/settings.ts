@@ -134,13 +134,44 @@ async function readEnvLines(): Promise<string[]> {
   }
 }
 
+/**
+ * Reads a value the way the runtime readers do. The file is parsed at boot by
+ * Next's dotenv loader (outside Docker) and by Compose's env_file (inside),
+ * and both understand quotes: single quotes are literal, double quotes allow
+ * backslash escapes. Values written by formatEnvValue come back through here,
+ * and so do hand-edited unquoted ones.
+ */
+function decodeEnvValue(raw: string): string {
+  const v = raw.trim();
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1);
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1).replace(/\\(["\\])/g, '$1');
+  return v;
+}
+
+/**
+ * Writes a value so every reader gets it back intact. Unquoted, dotenv and
+ * Compose both truncate at "#", expand "$WORD", and (for Compose) trim, so a
+ * password like "abc#123" silently became "abc" after the restart while the
+ * connection test, which reads the raw line, had passed. Anything beyond a
+ * plain token is single-quoted (literal in both readers); a value with an
+ * apostrophe is double-quoted with backslash escapes instead.
+ */
+function formatEnvValue(value: string): string {
+  if (/^[A-Za-z0-9_.:\/@+=,%-]*$/.test(value)) return value;
+  if (!value.includes("'")) return `'${value}'`;
+  if (value.includes('$')) {
+    throw new Error('A value cannot contain both an apostrophe and a dollar sign; the settings file format cannot represent that safely.');
+  }
+  return `"${value.replace(/[\\"]/g, (c) => `\\${c}`)}"`;
+}
+
 function parseEnvValue(lines: string[], key: string): string | null {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('#') || !trimmed) continue;
     const eq = trimmed.indexOf('=');
     if (eq === -1) continue;
-    if (trimmed.slice(0, eq) === key) return trimmed.slice(eq + 1);
+    if (trimmed.slice(0, eq) === key) return decodeEnvValue(trimmed.slice(eq + 1));
   }
   return null;
 }
@@ -224,6 +255,11 @@ async function applyUpdates(updates: Record<string, string>): Promise<void> {
   const validKeys = new Set(SETTINGS_SCHEMA.map((f) => f.key));
   const entries = Object.entries(updates).filter(([k]) => validKeys.has(k) && k.length > 0);
   if (entries.length === 0) return;
+  for (const [k, v] of entries) {
+    // A newline would start a new line, and with it a key outside the
+    // whitelist; the route rejects these first, this is the backstop.
+    if (typeof v !== 'string' || /[\r\n]/.test(v)) throw new Error(`Invalid value for ${k}`);
+  }
 
   await backupEnvFile();
 
@@ -239,13 +275,13 @@ async function applyUpdates(updates: Record<string, string>): Promise<void> {
     const match = entries.find(([uk]) => uk === k);
     if (match) {
       updatedKeys.add(k);
-      return `${k}=${match[1]}`;
+      return `${k}=${formatEnvValue(match[1])}`;
     }
     return line;
   });
 
   for (const [k, v] of entries) {
-    if (!updatedKeys.has(k)) newLines.push(`${k}=${v}`);
+    if (!updatedKeys.has(k)) newLines.push(`${k}=${formatEnvValue(v)}`);
   }
 
   // Direct write, deliberately NOT write-then-rename. This file used to be a

@@ -70,20 +70,20 @@ web page the user happens to visit (the CSRF middleware exists for that).
       seasons differently (Kitchen Nightmares: Sonarr S6 is Plex S7). Watching
       Plex S07E01 can delete Sonarr S07E01, never watched. Fix: only accept a
       candidate when the air dates agree.
-- [ ] **Settings writer emits raw values that every reader parses as dotenv.**
+- [x] **Settings writer emits raw values that every reader parses as dotenv.**
       `lib/settings.ts:242,248` writes `KEY=value` unquoted; `@next/env` and
       Compose both truncate at `#`, expand `$WORD`, and split on newlines. A
       password with `#` silently breaks after restart while the test passed,
       and a value with `\n` bypasses the key whitelist and can set arbitrary
       environment. Fix: reject non-strings and newlines with a 400; write
       single-quoted values with `'` escaped; strip matching quotes on read.
-- [ ] **`network_mode: host` does nothing on Docker Desktop.** Windows and
+- [x] **`network_mode: host` does nothing on Docker Desktop.** Windows and
       Mac users of `docker-compose.pull.yml` get a container that starts
       cleanly and is unreachable. Fix: default to bridge with
       `ports: ["6767:6767"]` and `extra_hosts: host.docker.internal:host-gateway`,
       document `http://host.docker.internal:7878` style URLs, keep host mode
       as a commented Linux option.
-- [ ] **Library, Requests and Watch lists stop at 50 rows.**
+- [x] **Library, Requests and Watch lists stop at 50 rows.**
       `hooks/useInfiniteReveal.ts:28-56` attaches its observer once, before
       the sentinel exists (every caller returns a loading state first), and
       never retries. A 300-movie library shows 50 forever. Fix: attach from a
@@ -93,7 +93,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
       write themselves back over the restored files within minutes, and the
       SQLite file is overwritten under open handles. Fix: after a restore,
       respond and then exit the process exactly as the restart route does.
-- [ ] **Last-episode modal carries state between shows.**
+- [x] **Last-episode modal carries state between shows.**
       `components/LastEpisodeModal.tsx:22-29`. Untick "grab future episodes"
       for show A, and the next show's prompt opens unticked and saves
       `monitorFuture: false` for B without the user choosing it. Fix: key the
