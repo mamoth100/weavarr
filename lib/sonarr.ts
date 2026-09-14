@@ -44,11 +44,14 @@ export async function addSeriesToSonarr({
   profileOverride,
   source = 'app',
   tmdbId,
+  unaired = false,
 }: {
   imdbId: string | null;
   title: string;
   /** TMDB id when the caller has one - resolved to TVDB/IMDB ids so the lookup targets the exact series, not a title guess. */
   tmdbId?: number | null;
+  /** Monitor every episode on the schedule that hasn't aired yet, in any season - no season pick needed. Combines with picks. */
+  unaired?: boolean;
   monitor?: string;
   seasonNumber?: number;
   /** Multiple hand-picked seasons (request modal). Wins over seasonNumber and the monitor preset. */
@@ -95,8 +98,9 @@ export async function addSeriesToSonarr({
   // supersedes the older single seasonNumber, kept for existing callers.
   const picked = seasonNumbers ?? (seasonNumber !== undefined ? [seasonNumber] : null);
   const hasEpisodePicks = Boolean(episodePicks && episodePicks.length > 0);
-  // Episode picks force the hand-picked path even with zero full seasons.
-  const pickedSet = picked ? new Set(picked) : hasEpisodePicks ? new Set<number>() : null;
+  // Episode picks (or an unaired-only request) force the hand-picked path
+  // even with zero full seasons - the preset path would monitor everything.
+  const pickedSet = picked ? new Set(picked) : hasEpisodePicks || unaired ? new Set<number>() : null;
   const seasons = pickedSet
     ? (series.seasons as { seasonNumber: number }[]).map((s) => ({ ...s, monitored: pickedSet.has(s.seasonNumber) }))
     : series.seasons;
@@ -125,8 +129,8 @@ export async function addSeriesToSonarr({
   // Hand-picked episodes: Sonarr populates a new series' episode records
   // asynchronously after the add, so poll briefly, then monitor + search
   // exactly those episodes.
-  if (hasEpisodePicks && added?.id) {
-    const wanted = new Set(episodePicks!.map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
+  if ((hasEpisodePicks || unaired) && added?.id) {
+    const wanted = new Set((episodePicks ?? []).map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
     for (let attempt = 0; attempt < 8; attempt++) {
       await new Promise((r) => setTimeout(r, 2000));
       const episodes = await getSonarrSeriesEpisodes(added.id).catch(() => []);
@@ -135,6 +139,12 @@ export async function addSeriesToSonarr({
       if (ids.length > 0) {
         await monitorSonarrEpisodes(ids, true);
         await triggerSonarrEpisodeSearch(ids);
+      }
+      // Unaired episodes only get monitored - there is nothing to search for
+      // until they air, and Sonarr's own feed picks them up then.
+      if (unaired) {
+        const unairedIds = episodes.filter(isSonarrEpisodeUnaired).map((e) => e.id);
+        if (unairedIds.length > 0) await monitorSonarrEpisodes(unairedIds, true);
       }
       break;
     }
@@ -154,7 +164,7 @@ export async function addSeriesToSonarr({
       title: typeof series.title === 'string' ? series.title : title,
       posterUrl,
       source,
-      seasons: picked || hasEpisodePicks ? JSON.stringify([...(picked ?? []), ...episodeSummary]) : monitor,
+      seasons: picked || hasEpisodePicks || unaired ? JSON.stringify([...(picked ?? []), ...episodeSummary, ...(unaired ? ['unaired'] : [])]) : monitor,
     });
   } catch (err) {
     console.error('[requestLedger] failed to record show request:', err instanceof Error ? err.message : err);
@@ -535,6 +545,11 @@ export interface SonarrEpisode {
 /** True if this episode is missing and its air date has already passed - the set "download season" actually searches for. */
 export function isSonarrEpisodeDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
   return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() <= Date.now();
+}
+
+/** On the schedule but not aired yet - the "Get unaired episodes" set. Episodes with no date at all are left out; nothing can grab those. */
+export function isSonarrEpisodeUnaired(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
+  return !e.hasFile && !!e.airDateUtc && new Date(e.airDateUtc).getTime() > Date.now();
 }
 
 /** Every episode of a series, with file status - used for the per-episode management view (as opposed to getSonarrEpisodeFileSet's bare id set, used only for cleanup matching). */
@@ -1015,17 +1030,21 @@ export async function expandSonarrSeries({
   seasonNumbers = [],
   episodePicks = [],
   monitorFuture,
+  unaired = false,
 }: {
   seriesId: number;
   seasonNumbers?: number[];
   episodePicks?: { seasonNumber: number; episodeNumber: number }[];
   /** undefined = leave the setting as-is. */
   monitorFuture?: boolean;
+  /** Monitor every not-yet-aired episode in any season. */
+  unaired?: boolean;
 }): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
 
-  // 1. Series-level update: season monitored flags + monitorNewItems.
-  if (seasonNumbers.length > 0 || monitorFuture !== undefined) {
+  // 1. Series-level update: season monitored flags + monitorNewItems. An
+  //    unaired-only request still needs the series itself monitored.
+  if (seasonNumbers.length > 0 || monitorFuture !== undefined || unaired) {
     const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
     if (!res.ok) throw new Error(`Sonarr series fetch failed: ${res.status}`);
     const series = await res.json();
@@ -1058,6 +1077,14 @@ export async function expandSonarrSeries({
     }
   }
 
+  // 2b. Unaired episodes: monitor only. They have nothing to search for yet;
+  //     Sonarr's feed grabs them the moment they air.
+  if (unaired) {
+    const episodes = await getSonarrSeriesEpisodes(seriesId);
+    const ids = episodes.filter(isSonarrEpisodeUnaired).map((e) => e.id);
+    if (ids.length > 0) await monitorSonarrEpisodes(ids, true);
+  }
+
   // 3. Full-season searches (missing episodes only, by design of searchSonarrSeason).
   for (const seasonNumber of seasonNumbers) {
     await searchSonarrSeason(seriesId, seasonNumber).catch(() => {
@@ -1067,10 +1094,11 @@ export async function expandSonarrSeries({
 
   // A "Get more" that asked for actual content is a request - the ledger
   // records it like the add path does. A bare future-toggle change isn't.
-  if (seasonNumbers.length > 0 || episodePicks.length > 0) {
+  if (seasonNumbers.length > 0 || episodePicks.length > 0 || unaired) {
     const summary = JSON.stringify([
       ...seasonNumbers,
       ...episodePicks.map((p) => `S${p.seasonNumber}E${p.episodeNumber}`),
+      ...(unaired ? ['unaired'] : []),
     ]);
     await recordExistingSeriesRequest(seriesId, summary);
   }

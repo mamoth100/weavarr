@@ -22,13 +22,14 @@ export async function POST(request: Request) {
         .filter((p: { seasonNumber: number; episodeNumber: number }) => Number.isInteger(p.seasonNumber) && p.seasonNumber >= 0 && Number.isInteger(p.episodeNumber) && p.episodeNumber > 0)
     : [];
   const monitorFuture = typeof body.monitorFuture === 'boolean' ? body.monitorFuture : undefined;
+  const unaired = body.unaired === true;
 
-  if (seasonNumbers.length === 0 && episodePicks.length === 0 && monitorFuture === undefined) {
+  if (seasonNumbers.length === 0 && episodePicks.length === 0 && monitorFuture === undefined && !unaired) {
     return NextResponse.json({ error: 'nothing to change' }, { status: 400 });
   }
 
   try {
-    await expandSonarrSeries({ seriesId, seasonNumbers, episodePicks, monitorFuture });
+    await expandSonarrSeries({ seriesId, seasonNumbers, episodePicks, monitorFuture, unaired });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
