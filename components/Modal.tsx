@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 interface ModalProps {
   open: boolean;
@@ -13,20 +13,63 @@ interface ModalProps {
   wide?: boolean;
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
  * The one modal shell for the whole app - overlay, centered card, Escape and
  * outside-click close, scrollable body with a sticky footer. Feature modals
  * (request flow, Plex logs explainer, whatever comes next) provide only
  * their content, so every dialog opens/closes/looks the same.
+ *
+ * Keyboard: focus moves into the card on open, Tab cycles inside it, and
+ * focus returns to whatever opened it on close. Without that a keyboard
+ * user tabbed through the whole page behind the overlay before reaching
+ * the season checkboxes.
  */
 export default function Modal({ open, onClose, title, children, footer, wide = false }: ModalProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<Element | null>(null);
+
   useEffect(() => {
     if (!open) return;
+    openerRef.current = document.activeElement;
+    const card = cardRef.current;
+    // Defer one frame so the children have rendered and can take focus.
+    const raf = requestAnimationFrame(() => {
+      const first = card?.querySelector<HTMLElement>(FOCUSABLE);
+      (first ?? card)?.focus();
+    });
+
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !card) return;
+      const focusables = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        card.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !card.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !card.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', handleKey);
+      const opener = openerRef.current;
+      if (opener instanceof HTMLElement && document.contains(opener)) opener.focus();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -42,7 +85,9 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
       aria-label={title}
     >
       <div
-        className={`bg-zinc-900 border border-zinc-700 rounded-t-xl sm:rounded-xl shadow-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-md'} w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col`}
+        ref={cardRef}
+        tabIndex={-1}
+        className={`bg-zinc-900 border border-zinc-700 rounded-t-xl sm:rounded-xl shadow-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-md'} w-full max-h-[92vh] sm:max-h-[85vh] flex flex-col outline-none`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3">

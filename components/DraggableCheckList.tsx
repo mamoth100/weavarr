@@ -6,7 +6,7 @@ export interface DraggableItem {
   id: string;
   label: string;
   checked: boolean;
-  /** Greys out the checkbox and blocks toggling — used when unchecking it isn't a valid state. */
+  /** Greys out the checkbox and blocks toggling, used when unchecking it isn't a valid state. */
   disabled?: boolean;
 }
 
@@ -81,20 +81,43 @@ export default function DraggableCheckList({
     window.addEventListener('pointerup', handlePointerUp);
   }
 
+  /** Keyboard path for reordering: the grip is a button, arrow keys move the row. Dragging is pointer-only by nature, so without this the order could not be changed from a keyboard at all. */
+  function moveBy(id: string, delta: -1 | 1) {
+    const ids = itemsRef.current.map((it) => it.id);
+    const from = ids.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    onReorder(ids);
+  }
+
+  function handleGripKey(id: string, e: React.KeyboardEvent) {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveBy(id, -1);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveBy(id, 1);
+    }
+  }
+
   return (
     <div ref={containerRef} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800 select-none">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <div
           key={item.id}
           className={`p-3 flex items-center gap-3 transition-opacity ${draggingId === item.id ? 'opacity-40' : ''}`}
         >
-          <span
+          <button
+            type="button"
             onPointerDown={(e) => handlePointerDown(item.id, e)}
-            className="cursor-grab active:cursor-grabbing touch-none text-zinc-500 hover:text-zinc-300 px-1"
-            aria-label="Drag to reorder"
+            onKeyDown={(e) => handleGripKey(item.id, e)}
+            className="cursor-grab active:cursor-grabbing touch-none text-zinc-500 hover:text-zinc-300 px-1 rounded focus-visible:ring-2 focus-visible:ring-amber-400"
+            aria-label={`Reorder ${item.label}: drag, or use the arrow keys`}
           >
             <GripIcon />
-          </span>
+          </button>
           {orderOnly ? (
             <span className="text-sm font-medium flex-1">{item.label}</span>
           ) : onRemove ? (
@@ -121,6 +144,27 @@ export default function DraggableCheckList({
               <span className="text-sm font-medium">{item.label}</span>
             </label>
           )}
+          {/* Visible up/down controls for touch and mouse users who would rather tap than drag; the same moves the arrow keys make. */}
+          <span className="flex items-center gap-0.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => moveBy(item.id, -1)}
+              disabled={index === 0}
+              aria-label={`Move ${item.label} up`}
+              className="w-6 h-6 touch:w-8 touch:h-8 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-700 disabled:opacity-25 disabled:hover:bg-transparent"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              onClick={() => moveBy(item.id, 1)}
+              disabled={index === items.length - 1}
+              aria-label={`Move ${item.label} down`}
+              className="w-6 h-6 touch:w-8 touch:h-8 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-700 disabled:opacity-25 disabled:hover:bg-transparent"
+            >
+              ▼
+            </button>
+          </span>
         </div>
       ))}
     </div>

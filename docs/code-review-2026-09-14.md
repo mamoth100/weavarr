@@ -164,24 +164,24 @@ web page the user happens to visit (the CSRF middleware exists for that).
       `PUID`/`PGID` before chown.
 - [x] **No HEALTHCHECK.** `docker ps` shows Up for a crashed server. Add a
       `/api/health` route and a Dockerfile HEALTHCHECK using busybox wget.
-- [ ] **Request modal keeps state between opens.** `components/RequestShowModal.tsx:89-99`.
+- [x] **Request modal keeps state between opens.** `components/RequestShowModal.tsx:89-99`.
       Reopen Get more after an update: the old season is still ticked and
       unlocked with stale owned counts. Fix: reset selection and null the
       Sonarr state in the `!open` branch.
-- [ ] **Queue rows share a key per season pack.** `components/StatusPanel.tsx:268`
+- [x] **Queue rows share a key per season pack.** `components/StatusPanel.tsx:268`
       keys on `downloadId`, which every episode of a pack shares. Key on
       download id plus episode.
-- [ ] **Download progress polling multiplies.** `hooks/useDownloadProgress.ts:75-82`.
+- [x] **Download progress polling multiplies.** `hooks/useDownloadProgress.ts:75-82`.
       Each `refreshDownloadProgressSoon` starts a second untracked chain.
       Fix: track the burst timer and guard with a generation counter.
-- [ ] **Library-status cache is never invalidated.** `hooks/useLibraryStatus.ts:16-34`.
+- [x] **Library-status cache is never invalidated.** `hooks/useLibraryStatus.ts:16-34`.
       After a request or delete, other pages show the old pill until a hard
       reload. Fix: export an invalidate function and call it from add and
       delete success paths.
-- [ ] **Modal has no focus management.** `components/Modal.tsx`. Keyboard users
+- [x] **Modal has no focus management.** `components/Modal.tsx`. Keyboard users
       tab through the page behind the overlay. Fix: focus in on open, trap
       Tab, restore on close.
-- [ ] **Drag-to-reorder has no keyboard path.** `components/DraggableCheckList.tsx`.
+- [x] **Drag-to-reorder has no keyboard path.** `components/DraggableCheckList.tsx`.
       Add move up and move down buttons.
 - [ ] **Stalled-shows check fetches every series with files on every mount.**
       `lib/stalledShows.ts:43`. Filter by watch history first and memoize.

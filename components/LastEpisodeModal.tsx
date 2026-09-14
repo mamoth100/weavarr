@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Modal from '@/components/Modal';
+import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
 
 export interface DeleteAftermath {
   seriesId: number;
@@ -39,6 +40,7 @@ export default function LastEpisodeModal({ aftermath, onClose }: { aftermath: De
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      invalidateLibraryStatus();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

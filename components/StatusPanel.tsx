@@ -265,7 +265,7 @@ export default function StatusPanel() {
         ) : (
           <div className="space-y-2">
             {data.sonarr.map((item, i) => (
-              <div key={item.downloadId ?? `${item.title}-${item.episode}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+              <div key={`${item.downloadId ?? item.title}-${item.episode ?? ''}-${i}`} className="bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
                 <p className="text-sm font-medium truncate">{item.title}{item.episode ? ` - ${item.episode}` : ''}</p>
                 <div className="flex items-center justify-between text-xs text-zinc-500 mt-1">
                   <span className="text-amber-400">{item.trackedDownloadState ?? item.status}</span>
