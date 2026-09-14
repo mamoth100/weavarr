@@ -11,7 +11,7 @@ export async function GET() {
     const series = await getAllSonarrSeries();
     // Protected = on the Cleanup Excluded Shows list: the Library renders a
     // badge instead of a Delete button, and the delete APIs refuse anyway.
-    const excluded = getExcludedShows();
+    const excluded = await getExcludedShows();
     return NextResponse.json({
       series: series.map((s) => ({ ...s, protected: excluded.has(s.title.trim().toLowerCase()) })),
     });

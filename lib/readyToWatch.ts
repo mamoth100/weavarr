@@ -60,7 +60,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
     .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie' as const, id: m.id, tmdbId: m.tmdbId ?? null, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
 
-  const excludedShows = getExcludedShows();
+  const excludedShows = await getExcludedShows();
   const showItems: ReadyToWatchShow[] = [];
   showsWithFiles.forEach((s, i) => {
     const fileMap = fileSets[i];

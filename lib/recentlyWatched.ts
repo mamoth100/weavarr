@@ -3,7 +3,7 @@ import path from 'path';
 import { getCleanupCandidates, getWatchedPercentThreshold } from './cleanupCandidates';
 import { getAllRadarrMovies } from './radarr';
 import { getWatchedMovies, getInProgressMovies } from './mediaServer';
-import { titleFuzzyMatch } from './readyToWatch';
+import { findUniqueByTitle } from './titleMatch';
 
 export interface RecentlyWatchedMovie {
   type: 'movie';
@@ -101,8 +101,11 @@ async function getRecentlyWatchedMovies(limit: number): Promise<RecentlyWatchedM
   const seenMovieIds = new Set<number>();
   const results: RecentlyWatchedMovie[] = [];
   for (const s of signals) {
-    const matched = movies.find((m) => m.hasFile && titleFuzzyMatch(m.title, s.title));
-    if (!matched) continue; // no file - already gone, or never had one
+    // Exactly one Radarr movie may match, or the row carries the wrong
+    // delete id: "Halloween" (1978) and "Halloween" (2018) both pass a
+    // stripped-title comparison.
+    const matched = findUniqueByTitle(movies.filter((m) => m.hasFile), s.title, (m) => m.title);
+    if (!matched) continue; // no file, already gone, or ambiguous
     if (seenMovieIds.has(matched.id)) continue;
     seenMovieIds.add(matched.id);
 

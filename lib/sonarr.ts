@@ -331,7 +331,7 @@ export async function assertSeriesDeletable(seriesId: number): Promise<void> {
 export async function getProtectedTitle(seriesId: number): Promise<string | null> {
   if (!SONARR_URL || !SONARR_KEY) return null;
   const { getExcludedShows } = await import('./cleanupCandidates');
-  const excluded = getExcludedShows();
+  const excluded = await getExcludedShows();
   if (excluded.size === 0) return null;
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
   // 404 is the one answer that means "nothing to protect". Any other failure
@@ -589,6 +589,10 @@ export async function getSonarrSeriesEpisodes(seriesId: number): Promise<SonarrE
 export interface SonarrEpisodeFileInfo {
   episodeId: number;
   episodeFileId: number;
+  /** When Sonarr imported this file. A watch recorded before this belongs to an earlier copy of the episode. */
+  fileDateAdded: string | null;
+  /** yyyy-mm-dd per Sonarr (TVDB numbering). Lets the cleanup check that a media server's season/episode really is the same episode. */
+  airDate: string | null;
 }
 
 /** Finds the episode + file IDs for a specific season/episode of an already-added series - null if not found or no file on disk. */
@@ -603,9 +607,14 @@ export async function getSonarrEpisodeFileInfoMap(seriesId: number): Promise<Map
   const episodes: Record<string, unknown>[] = await res.json();
   const map = new Map<string, SonarrEpisodeFileInfo>();
   for (const e of episodes) {
-    const file = e.episodeFile as { id?: number } | undefined;
+    const file = e.episodeFile as { id?: number; dateAdded?: string } | undefined;
     if (e.hasFile && file?.id) {
-      map.set(`${e.seasonNumber}:${e.episodeNumber}`, { episodeId: e.id as number, episodeFileId: file.id });
+      map.set(`${e.seasonNumber}:${e.episodeNumber}`, {
+        episodeId: e.id as number,
+        episodeFileId: file.id,
+        fileDateAdded: typeof file.dateAdded === 'string' ? file.dateAdded : null,
+        airDate: typeof e.airDateUtc === 'string' ? e.airDateUtc.slice(0, 10) : null,
+      });
     }
   }
   return map;
@@ -616,20 +625,9 @@ export async function findSonarrEpisodeFile(
   seasonNumber: number,
   episodeNumber: number
 ): Promise<SonarrEpisodeFileInfo | null> {
-  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
-  const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episode?seriesId=${seriesId}&includeEpisodeFile=true`, {
-    headers: headers(),
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Sonarr episode lookup failed: ${res.status}`);
-  const episodes: Record<string, unknown>[] = await res.json();
-  const match = episodes.find(
-    (e) => e.seasonNumber === seasonNumber && e.episodeNumber === episodeNumber && e.hasFile
-  );
-  if (!match) return null;
-  const episodeFile = match.episodeFile as { id?: number } | undefined;
-  if (!episodeFile?.id) return null;
-  return { episodeId: match.id as number, episodeFileId: episodeFile.id };
+  // Same fetch and shape as the map; one implementation instead of two.
+  const map = await getSonarrEpisodeFileInfoMap(seriesId);
+  return map.get(`${seasonNumber}:${episodeNumber}`) ?? null;
 }
 
 /** Monitors and triggers one indexer search covering every given episode - same command Sonarr's own UI uses for a single episode or a whole season. Returns the command id so a caller can wait for it to finish. */
@@ -914,10 +912,11 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
   const detail = await detailRes.json();
 
   const { getExcludedShows } = await import('./cleanupCandidates');
+  const excluded = await getExcludedShows();
   return {
     seriesId: match.id,
     monitorFuture: detail.monitorNewItems === 'all',
-    protected: getExcludedShows().has(match.title.trim().toLowerCase()),
+    protected: excluded.has(match.title.trim().toLowerCase()),
     // Season 0 (specials) stays in on purpose - the request modal offers
     // specials now, so their owned/locked state has to be visible too.
     // Titles ride along so the modal can list episodes of seasons TMDB

@@ -44,13 +44,13 @@ web page the user happens to visit (the CSRF middleware exists for that).
 
 ## High
 
-- [ ] **Excluded-shows list is read from boot-time env.** `lib/cleanupCandidates.ts:58`
+- [x] **Excluded-shows list is read from boot-time env.** `lib/cleanupCandidates.ts:58`
       reads `process.env`, while the auto-delete toggle and grace days are read
       live from disk. Add "Roseanne" to the list and turn auto-delete on in
       one save: the toggle applies within the hour, the protection only after
       a restart. Fix: read `CLEANUP_EXCLUDED_SHOWS` through `getRawEnvValue`
       like the other live keys.
-- [ ] **Title matching strips the disambiguator from both sides.**
+- [x] **Title matching strips the disambiguator from both sides.**
       `lib/titleMatch.ts:20` makes "The Office (US)" equal "The Office (UK)"
       and "Battlestar Galactica" equal "Battlestar Galactica (2003)", and every
       consumer takes the first hit. With both Offices in Sonarr, a US watch
@@ -59,12 +59,12 @@ web page the user happens to visit (the CSRF middleware exists for that).
       than one matching series as ambiguous and skip; prefer id matching
       (Sonarr tvdbId vs Plex Guid and Jellyfin ProviderIds, which the sync
       already fetches).
-- [ ] **Re-downloaded episodes are instantly deletable.** Plex and Jellyfin
+- [x] **Re-downloaded episodes are instantly deletable.** Plex and Jellyfin
       keep watched state across delete and re-add, so a rewatch request
       shows up as "Watched" with a grace period that expired weeks ago
       (`lib/cleanupCandidates.ts:127-143`). Fix: carry the episode file's
       `dateAdded` and require the watched date to be later than the import.
-- [ ] **Season renumbering reaches the delete.** `lib/cleanupCandidates.ts:178-194`
+- [x] **Season renumbering reaches the delete.** `lib/cleanupCandidates.ts:178-194`
       maps media-server season and episode numbers straight onto Sonarr's,
       while `plex.ts` and `jellyfin.ts` already document that servers number
       seasons differently (Kitchen Nightmares: Sonarr S6 is Plex S7). Watching

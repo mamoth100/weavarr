@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { getEpisodeWatchHistory, getInProgressEpisodes, getPlayedSessionKeys } from './mediaServer';
-import { getSonarrSeriesList, getSonarrEpisodeFileInfoMap } from './sonarr';
-import { titlesMatch } from './titleMatch';
+import { getSonarrSeriesList, getSonarrEpisodeFileInfoMap, type SonarrEpisodeFileInfo } from './sonarr';
+import { titlesMatch, findUniqueByTitle } from './titleMatch';
+import { getRawEnvValue } from './settings';
 
 export interface CleanupCandidate {
   showTitle: string;
@@ -55,9 +56,21 @@ export function getWatchedPercentThreshold(): number {
   return (Number.isFinite(raw) && raw > 0 ? raw : 90) / 100;
 }
 
-export function getExcludedShows(): Set<string> {
-  const raw = process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
+/**
+ * Read live from the settings file on every call, never from boot-time env:
+ * the auto-delete toggle and grace period are read live too, so a save that
+ * adds a show here and turns auto-delete on in the same breath must protect
+ * the show from the very next run, not from the next restart.
+ */
+export async function getExcludedShows(): Promise<Set<string>> {
+  const raw = (await getRawEnvValue('CLEANUP_EXCLUDED_SHOWS')) ?? process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
   return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+
+/** Two dates on different sides of a timezone can differ by one calendar day and still be the same episode. */
+function sameAirDate(a: string, b: string): boolean {
+  const diff = Math.abs(new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime());
+  return diff <= 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -84,10 +97,12 @@ interface WatchSignal {
   viewedAt: string;
   reason: string;
   thresholdFirstSeen: string | null;
+  /** The media server's air date for this episode, when it has one. */
+  airDate: string | null;
 }
 
 export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate[]> {
-  const excluded = getExcludedShows();
+  const excluded = await getExcludedShows();
   const threshold = getWatchedPercentThreshold();
   // Fetch history MUCH deeper than the display limit: the filter below
   // discards rewatches and rows whose files are already gone, and a window
@@ -139,6 +154,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       viewedAt: w.viewedAt,
       reason: played ? 'Watched' : firstSeen ? 'Watched to cleanup threshold' : 'Marked watched manually',
       thresholdFirstSeen: firstSeen,
+      airDate: w.airDate ?? null,
     };
   });
   const almostDoneSignals: WatchSignal[] = overThreshold.map((e) => {
@@ -150,6 +166,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
       viewedAt: new Date().toISOString(),
       reason: `${Math.round((e.viewOffset / e.duration) * 100)}% watched`,
       thresholdFirstSeen: (seenKey ? thresholdSeen[seenKey] : null) ?? nowIso,
+      airDate: null,
     };
   });
 
@@ -164,10 +181,10 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   for (const watched of [...watchedSignals, ...almostDoneSignals]) {
     if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
 
-    // Strict equality-after-normalization - the old bidirectional substring
-    // match here could resolve "Doctor Who" to "Doctor Who Confidential" and
-    // hand the wrong seriesId to the episode-file delete downstream.
-    const matchedSeries = series.find((s) => titlesMatch(s.title, watched.showTitle));
+    // Strict equality-after-normalization, and exactly one hit. Two Sonarr
+    // entries matching the same signal (a show and its remake) is ambiguous,
+    // and an ambiguous match must never reach a delete: skip it.
+    const matchedSeries = findUniqueByTitle(series, watched.showTitle, (s) => s.title);
     if (!matchedSeries) continue;
 
     // Dedupe by the resolved Sonarr series, not the raw signal title - the
@@ -182,7 +199,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
     resolved.push({ watched, seriesId: matchedSeries.id, tmdbId: matchedSeries.tmdbId ?? null, posterPath: matchedSeries.posterPath });
   }
 
-  const fileMaps = new Map<number, Map<string, { episodeId: number; episodeFileId: number }>>();
+  const fileMaps = new Map<number, Map<string, SonarrEpisodeFileInfo>>();
   await Promise.all(
     Array.from(new Set(resolved.map((r) => r.seriesId))).map(async (id) => {
       fileMaps.set(id, await getSonarrEpisodeFileInfoMap(id).catch(() => new Map()));
@@ -193,6 +210,20 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   for (const { watched, seriesId, tmdbId, posterPath } of resolved) {
     const episodeFile = fileMaps.get(seriesId)?.get(`${watched.seasonNumber}:${watched.episodeNumber}`);
     if (!episodeFile) continue; // no file on disk - already cleaned up, or never had one
+
+    // Same numbers, different episode: Plex and Jellyfin can number seasons
+    // differently from TVDB (Kitchen Nightmares: Sonarr's S6 is Plex's S7).
+    // When both sides know the air date and they disagree, this file is not
+    // the episode that was watched. A server with no air date (an unmatched
+    // local season) cannot be checked and is let through as before.
+    if (watched.airDate && episodeFile.airDate && !sameAirDate(watched.airDate, episodeFile.airDate)) continue;
+
+    // Watched before this file existed: the mark belongs to an earlier copy
+    // (both servers keep watched state across a delete and re-download), so
+    // a fresh rewatch download would otherwise be deletable on arrival.
+    if (episodeFile.fileDateAdded && watched.reason !== 'Watched to cleanup threshold' && !watched.reason.endsWith('% watched')) {
+      if (new Date(watched.viewedAt).getTime() < new Date(episodeFile.fileDateAdded).getTime()) continue;
+    }
 
     candidates.push({
       showTitle: watched.showTitle,

@@ -28,6 +28,8 @@ export interface WatchedEpisode {
   seasonNumber: number;
   episodeNumber: number;
   viewedAt: string;
+  /** yyyy-mm-dd from the media server, when known. */
+  airDate: string | null;
 }
 
 export interface InProgressMovie {

@@ -153,6 +153,8 @@ export interface WatchedEpisode {
   seasonNumber: number;
   episodeNumber: number;
   viewedAt: string;
+  /** yyyy-mm-dd when Plex's agent knows it; null for unmatched local items. */
+  airDate: string | null;
 }
 
 const sectionKeyCache = new Map<string, string | null>();
@@ -336,6 +338,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
       seasonNumber: i.parentIndex as number,
       episodeNumber: i.index as number,
       viewedAt: new Date((i.lastViewedAt as number) * 1000).toISOString(),
+      airDate: typeof i.originallyAvailableAt === 'string' ? i.originallyAvailableAt.slice(0, 10) : null,
     }));
 }
 
