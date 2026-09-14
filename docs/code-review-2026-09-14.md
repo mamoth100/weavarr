@@ -19,7 +19,9 @@ web page the user happens to visit (the CSRF middleware exists for that).
       NZBGet, update it in Weavarr Settings, delete all three scripts under
       `scripts/` (the Supabase migration is dead too: it ignores `CONFIG_DIR`
       and recreates a table the app drops on boot). Rewriting history is
-      optional once the password is rotated.
+      optional once the password is rotated. (Scripts deleted and history
+      rewritten 2026-09-14; the old commit is still fetchable by direct SHA
+      until GitHub garbage-collects it. Password rotation is the real fix.)
 - [ ] **Backup restore is remote code execution.** `lib/backup.ts:88-95`
       extracts every zip entry other than `.env.local` anywhere under the app
       root. Anyone on the LAN can upload a zip containing `server.js`, restore
