@@ -161,6 +161,11 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [seasonEpisodes, setSeasonEpisodes] = useState<Map<number, TmdbSeasonEpisode[] | 'loading'>>(new Map());
   const [monitorFuture, setMonitorFuture] = useState(false);
+  // "Get unaired episodes": monitor every episode already on the schedule
+  // that hasn't aired yet, across all seasons, with no season pick needed.
+  // Separate from monitorFuture, which is about seasons that don't exist
+  // yet. Combines freely with season and episode picks.
+  const [unaired, setUnaired] = useState(false);
   const [touched, setTouched] = useState(false);
 
   // Default for NEW shows: latest season preselected (existing behavior).
@@ -301,7 +306,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   }
 
   const futureChanged = owned && sonarrState !== null && monitorFuture !== sonarrState.monitorFuture;
-  const nothingSelected = fullSeasons.size === 0 && episodePicks.size === 0 && !(owned ? futureChanged : monitorFuture);
+  const nothingSelected = fullSeasons.size === 0 && episodePicks.size === 0 && !unaired && !(owned ? futureChanged : monitorFuture);
 
   function handleSubmitClick() {
     if (warnThreshold && totalSelected >= warnThreshold && !acknowledged) {
@@ -328,6 +333,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
               seriesId: sonarrState!.seriesId,
               seasonNumbers: Array.from(fullSeasons).sort((a, b) => a - b),
               episodePicks: picks,
+              unaired,
               ...(futureChanged ? { monitorFuture } : {}),
             }),
           })
@@ -340,6 +346,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
               title,
               seasonNumbers: Array.from(fullSeasons).sort((a, b) => a - b),
               episodePicks: picks,
+              unaired,
               monitorFuture,
               highestQuality: highestQuality && highestConfigured,
               profileOverride: profileOverride || undefined,
@@ -382,7 +389,7 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
           <button
             onClick={handleSubmitClick}
             disabled={submitting || nothingSelected || pending}
-            title={nothingSelected ? 'Pick seasons or episodes (or change the future-seasons setting)' : undefined}
+            title={nothingSelected ? 'Pick seasons or episodes, tick unaired episodes, or change the future-seasons setting' : undefined}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40"
           >
             {submitting ? 'Working…' : owned ? 'Update Show' : 'Add Show'}
@@ -430,6 +437,24 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
                 className="accent-amber-400 touch:w-5 touch:h-5"
               />
               Also grab future episodes as they air
+            </label>
+            <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer select-none touch:py-1">
+              <input
+                type="checkbox"
+                checked={unaired}
+                onChange={(e) => {
+                  setTouched(true);
+                  setUnaired(e.target.checked);
+                }}
+                className="accent-amber-400 touch:w-5 touch:h-5 mt-0.5"
+              />
+              <span>
+                Get unaired episodes
+                <span className="block text-xs text-zinc-500">
+                  Every episode already on the schedule that hasn&apos;t aired yet, in any season. No season pick needed.
+                  {airInfo?.nextEpisodeAirDate ? ` Next one airs ${formatAirDate(airInfo.nextEpisodeAirDate)}.` : ''}
+                </span>
+              </span>
             </label>
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Seasons</h4>

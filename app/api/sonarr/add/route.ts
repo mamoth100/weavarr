@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: Request) {
-  const { imdbId, tmdbId, title, monitor, seasonNumber, seasonNumbers, episodePicks, monitorFuture, highestQuality, profileOverride } = await request.json();
+  const { imdbId, tmdbId, title, monitor, seasonNumber, seasonNumbers, episodePicks, monitorFuture, highestQuality, profileOverride, unaired } = await request.json();
   if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 });
   const tmdb = Number.isInteger(Number(tmdbId)) && Number(tmdbId) > 0 ? Number(tmdbId) : null;
   // Season 0 = specials, requestable like any other season.
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     : undefined;
 
   try {
-    const result = await addSeriesToSonarr({ imdbId: imdbId ?? null, tmdbId: tmdb, title, monitor, seasonNumber, seasonNumbers: seasonList, episodePicks: episodeList, monitorFuture: Boolean(monitorFuture), highestQuality, profileOverride });
+    const result = await addSeriesToSonarr({ imdbId: imdbId ?? null, tmdbId: tmdb, title, monitor, seasonNumber, seasonNumbers: seasonList, episodePicks: episodeList, monitorFuture: Boolean(monitorFuture), highestQuality, profileOverride, unaired: unaired === true });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

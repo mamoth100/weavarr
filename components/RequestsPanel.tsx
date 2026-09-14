@@ -63,8 +63,12 @@ function seasonsLabel(seasons: string | null): string | null {
   try {
     const arr = JSON.parse(seasons);
     if (Array.isArray(arr)) {
-      if (arr.length === 0) return 'Picked episodes';
-      return `Season${arr.length === 1 ? '' : 's'} ${arr.join(', ')}`;
+      const hasUnaired = arr.includes('unaired');
+      const rest = arr.filter((x) => x !== 'unaired');
+      const parts: string[] = [];
+      if (rest.length > 0) parts.push(`Season${rest.length === 1 ? '' : 's'} ${rest.join(', ')}`);
+      if (hasUnaired) parts.push('unaired episodes');
+      return parts.length > 0 ? parts.join(' + ') : 'Picked episodes';
     }
   } catch {
     // not JSON - it's a preset string like "all"
