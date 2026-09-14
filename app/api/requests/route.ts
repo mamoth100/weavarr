@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getRequestRows } from '@/lib/requestLedger';
 import { getAllRadarrMovies, radarrMovieWasImported } from '@/lib/radarr';
-import { getAllSonarrSeries, getSonarrSeriesEpisodes, sonarrEpisodeWasImported } from '@/lib/sonarr';
+import { getAllSonarrSeries, getSonarrSeriesEpisodes, getSonarrImportedEpisodeIds } from '@/lib/sonarr';
 import { getDownloadProgress } from '@/lib/downloadProgress';
 
 export const dynamic = 'force-dynamic';
@@ -55,13 +55,22 @@ export async function GET() {
     }
     return cached;
   }
-  const importCache = new Map<string, Promise<boolean>>();
-  function wasImported(kind: 'episode' | 'movie', id: number) {
-    const key = `${kind}:${id}`;
-    let cached = importCache.get(key);
+  const movieImportCache = new Map<number, Promise<boolean>>();
+  function movieWasImported(movieId: number) {
+    let cached = movieImportCache.get(movieId);
     if (!cached) {
-      cached = (kind === 'episode' ? sonarrEpisodeWasImported(id) : radarrMovieWasImported(id)).catch(() => false);
-      importCache.set(key, cached);
+      cached = radarrMovieWasImported(movieId).catch(() => false);
+      movieImportCache.set(movieId, cached);
+    }
+    return cached;
+  }
+  // One import-history call per series, shared by every row and episode.
+  const importedCache = new Map<number, Promise<Set<number>>>();
+  function importedEpisodeIds(seriesId: number) {
+    let cached = importedCache.get(seriesId);
+    if (!cached) {
+      cached = getSonarrImportedEpisodeIds(seriesId).catch(() => new Set<number>());
+      importedCache.set(seriesId, cached);
     }
     return cached;
   }
@@ -84,7 +93,7 @@ export async function GET() {
           const m = row.tmdbId ? movieByTmdb.get(row.tmdbId) : undefined;
           if (!m) status = 'removed';
           else if (m.hasFile) status = 'available';
-          else status = (await wasImported('movie', m.id)) ? 'fulfilled' : 'searching';
+          else status = (await movieWasImported(m.id)) ? 'fulfilled' : 'searching';
         }
       } else {
         if (!sonarrOk) status = 'unknown';
@@ -102,7 +111,8 @@ export async function GET() {
               if (withFiles >= picks.length && picks.length > 0) status = 'available';
               else {
                 const missing = wanted.filter((e) => !e.hasFile);
-                const imported = await Promise.all(missing.map((e) => wasImported('episode', e.id)));
+                const importedIds = await importedEpisodeIds(s.id);
+                const imported = missing.map((e) => importedIds.has(e.id));
                 if (missing.length > 0 && imported.every(Boolean)) status = withFiles > 0 ? 'partial' : 'fulfilled';
                 else status = withFiles > 0 ? 'partial' : 'searching';
               }

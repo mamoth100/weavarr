@@ -48,6 +48,25 @@ export interface InProgressEpisode {
   duration: number;
 }
 
+/**
+ * Every movie in every enabled library, once: tmdb ids plus titles. For
+ * checking many titles at a time (Ready to watch walks the whole Radarr
+ * library) this replaces one Plex search plus two Jellyfin searches PER
+ * movie with two listing calls in total. A listing that fails contributes
+ * nothing rather than failing the whole answer.
+ */
+export async function getLibraryMovieIndex(): Promise<{ tmdbIds: Set<number>; titles: string[] }> {
+  const [p, j] = await Promise.allSettled([
+    plexEnabled() ? plex.getAllPlexMoviesWithIds() : Promise.resolve([]),
+    jellyfinEnabled() ? jellyfin.getAllJellyfinMoviesWithIds() : Promise.resolve([]),
+  ]);
+  const items = [...(p.status === 'fulfilled' ? p.value : []), ...(j.status === 'fulfilled' ? j.value : [])];
+  return {
+    tmdbIds: new Set(items.map((i) => i.tmdbId).filter((id): id is number => typeof id === 'number' && id > 0)),
+    titles: items.map((i) => i.title),
+  };
+}
+
 /** True if a title matching the given name exists in any enabled backend's library. */
 export async function hasTitle(title: string): Promise<boolean> {
   const checks: Promise<boolean>[] = [];

@@ -34,12 +34,33 @@ export function stalledDaysThreshold(): number {
   return parsed;
 }
 
+// The Watch page mounts this on every visit. It used to fetch one Sonarr
+// episode list per show that has files, so a 300-show library fired 300
+// requests each time. Now only shows with any watch history are fetched
+// (most of a library has none), and the answer is kept for a few minutes.
+const CACHE_MS = 5 * 60 * 1000;
+let cached: { at: number; value: StalledShow[] } | null = null;
+let inflight: Promise<StalledShow[]> | null = null;
+
 export async function getStalledShows(): Promise<StalledShow[]> {
   const thresholdDays = stalledDaysThreshold();
   if (thresholdDays === 0) return [];
+  if (cached && Date.now() - cached.at < CACHE_MS) return cached.value;
+  if (inflight) return inflight;
+  inflight = computeStalledShows(thresholdDays)
+    .then((value) => {
+      cached = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
 
+async function computeStalledShows(thresholdDays: number): Promise<StalledShow[]> {
   const [series, history] = await Promise.all([getAllSonarrSeries(), getEpisodeWatchHistory(1000)]);
-  const withFiles = series.filter((s) => s.episodeFileCount > 0);
+  const withFiles = series.filter((s) => s.episodeFileCount > 0 && history.some((w) => titlesMatch(w.showTitle, s.title)));
   const fileSets = await Promise.all(withFiles.map((s) => getSonarrEpisodeFileSet(s.id).catch(() => new Set<string>())));
 
   // A show deliberately closed out (marked watched) or written off (not

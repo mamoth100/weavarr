@@ -1,7 +1,7 @@
 import { getAllRadarrMovies } from './radarr';
 import { getAllSonarrSeries, getSonarrEpisodeFileMap } from './sonarr';
 import { getExcludedShows, isExcludedTitle } from './cleanupCandidates';
-import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServer';
+import { getWatchedMovies, getEpisodeWatchHistory, getLibraryMovieIndex } from './mediaServer';
 
 export interface ReadyToWatchMovie {
   type: 'movie';
@@ -47,17 +47,18 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   const downloadedMovies = movies.filter((m) => m.hasFile);
   const showsWithFiles = series.filter((s) => s.episodeFileCount > 0);
 
-  // The movie in-library checks (Plex/Jellyfin) and the per-series episode
-  // file fetches (Sonarr) hit different services and don't depend on each
-  // other - running them as one batch instead of two sequential awaits cuts
-  // end-to-end latency to whichever side is slower rather than their sum.
-  const [inLibraryFlags, fileSets] = await Promise.all([
-    Promise.all(downloadedMovies.map((m) => hasTitle(m.title).catch(() => false))),
+  // The movie in-library index (Plex/Jellyfin, two listings total) and the
+  // per-series episode file fetches (Sonarr) hit different services and
+  // don't depend on each other - one batch instead of two sequential awaits.
+  const [libraryIndex, fileSets] = await Promise.all([
+    getLibraryMovieIndex(),
     Promise.all(showsWithFiles.map((s) => getSonarrEpisodeFileMap(s.id).catch(() => new Map<string, string>()))),
   ]);
+  const inLibrary = (m: { tmdbId?: number | null; title: string }) =>
+    (typeof m.tmdbId === 'number' && libraryIndex.tmdbIds.has(m.tmdbId)) || libraryIndex.titles.some((t) => titlesMatch(t, m.title));
 
   const movieItems: ReadyToWatchMovie[] = downloadedMovies
-    .filter((m, i) => inLibraryFlags[i] && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
+    .filter((m) => inLibrary(m) && !watchedMovies.some((w) => titlesMatch(w.title, m.title)))
     .map((m) => ({ type: 'movie' as const, id: m.id, tmdbId: m.tmdbId ?? null, title: m.title, year: m.year, sizeOnDisk: m.sizeOnDisk, posterPath: m.posterPath }));
 
   const excludedShows = await getExcludedShows();

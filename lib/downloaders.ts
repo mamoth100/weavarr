@@ -22,6 +22,8 @@ export interface DownloaderQueue {
   noofslots: number;
   paused: boolean;
   slots: DownloadSlot[];
+  /** Per-client failures when at least one other client answered; with both enabled and NZBGet down, the queue is SAB's and this says why NZBGet is missing. */
+  errors: Partial<Record<DownloaderSource, string>>;
 }
 
 export function downloadersEnabled(): boolean {
@@ -45,6 +47,12 @@ export async function getDownloaderQueue(): Promise<DownloaderQueue> {
     throw reason instanceof Error ? reason : new Error(String(reason ?? 'All downloaders failed'));
   }
 
+  const errors: Partial<Record<DownloaderSource, string>> = {};
+  sources.forEach((s, i) => {
+    const r = settled[i];
+    if (r.status === 'rejected') errors[s.name] = r.reason instanceof Error ? r.reason.message : String(r.reason);
+  });
+
   let speedBps = 0;
   let mbleft = 0;
   let noofslots = 0;
@@ -62,5 +70,5 @@ export async function getDownloaderQueue(): Promise<DownloaderQueue> {
     slots.push(...q.slots.map((s) => ({ ...s, source: name })));
   }
 
-  return { speedBps, mbleft, noofslots, paused, slots };
+  return { speedBps, mbleft, noofslots, paused, slots, errors };
 }

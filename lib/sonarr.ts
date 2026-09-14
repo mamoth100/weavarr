@@ -412,6 +412,22 @@ export async function deleteSonarrSeriesFiles(seriesId: number): Promise<number>
   return fileIds.length;
 }
 
+/**
+ * Every episode id of a series that has ever imported, in one call. The
+ * Requests page used to ask per missing episode, so one 22-episode season
+ * request cost 22 history calls on every page load.
+ */
+export async function getSonarrImportedEpisodeIds(seriesId: number): Promise<Set<number>> {
+  if (!SONARR_URL || !SONARR_KEY) return new Set();
+  const res = await fetchWithTimeout(
+    `${SONARR_URL}/api/v3/history/series?seriesId=${seriesId}&eventType=downloadFolderImported`,
+    { headers: headers(), cache: 'no-store' }
+  );
+  if (!res.ok) return new Set();
+  const records = (await res.json()) as { episodeId?: number }[];
+  return new Set(records.map((r) => r.episodeId).filter((id): id is number => typeof id === 'number'));
+}
+
 /** Did this episode EVER successfully import? Distinguishes "downloaded then deleted" from "never found" for the requests ledger - deletion is not still-searching. */
 export async function sonarrEpisodeWasImported(episodeId: number): Promise<boolean> {
   if (!SONARR_URL || !SONARR_KEY) return false;
@@ -1071,10 +1087,12 @@ export async function expandSonarrSeries({
 
   // 1. Series-level update: season monitored flags + monitorNewItems. An
   //    unaired-only request still needs the series itself monitored.
+  let seriesDetail: Record<string, unknown> | undefined;
   if (seasonNumbers.length > 0 || monitorFuture !== undefined || unaired) {
     const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
     if (!res.ok) throw new Error(`Sonarr series fetch failed: ${res.status}`);
     const series = await res.json();
+    seriesDetail = series;
     if (seasonNumbers.length > 0) {
       const chosen = new Set(seasonNumbers);
       series.seasons = (series.seasons as { seasonNumber: number; monitored: boolean }[]).map((s) =>
@@ -1091,37 +1109,37 @@ export async function expandSonarrSeries({
     if (!putRes.ok) throw new Error(await readableApiError(putRes, 'Sonarr series update failed'));
   }
 
-  // 2. Hand-picked episodes: monitor + one batched episode search.
-  if (episodePicks.length > 0) {
+  // 2. Everything episode-level from ONE episode-list fetch: hand-picked
+  //    episodes (monitor + search), unaired episodes (monitor only, Sonarr's
+  //    feed grabs them when they air), and the missing aired episodes of
+  //    each chosen season (search). One monitor call, one search command.
+  //    The old shape fetched the list up to three times plus once per
+  //    season and issued a monitor and a search per season.
+  const wantsEpisodes = episodePicks.length > 0 || unaired || seasonNumbers.length > 0;
+  let searchFailure: string | null = null;
+  if (wantsEpisodes) {
     const episodes = await getSonarrSeriesEpisodes(seriesId);
     const wanted = new Set(episodePicks.map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
-    const ids = episodes
-      .filter((e) => wanted.has(`${e.seasonNumber}:${e.episodeNumber}`) && !e.hasFile)
-      .map((e) => e.id);
-    if (ids.length > 0) {
-      await monitorSonarrEpisodes(ids, true);
-      await triggerSonarrEpisodeSearch(ids);
+    const chosenSeasons = new Set(seasonNumbers);
+    const toMonitor = new Set<number>();
+    const toSearch = new Set<number>();
+    for (const e of episodes) {
+      if (wanted.has(`${e.seasonNumber}:${e.episodeNumber}`) && !e.hasFile) {
+        toMonitor.add(e.id);
+        toSearch.add(e.id);
+      }
+      if (unaired && isSonarrEpisodeUnaired(e)) toMonitor.add(e.id);
+      // Season flags were set in step 1, which monitors those episodes on
+      // Sonarr's side; the search still has to be asked for explicitly.
+      if (chosenSeasons.has(e.seasonNumber) && isSonarrEpisodeDownloadable(e)) toSearch.add(e.id);
     }
-  }
-
-  // 2b. Unaired episodes: monitor only. They have nothing to search for yet;
-  //     Sonarr's feed grabs them the moment they air.
-  if (unaired) {
-    const episodes = await getSonarrSeriesEpisodes(seriesId);
-    const ids = episodes.filter(isSonarrEpisodeUnaired).map((e) => e.id);
-    if (ids.length > 0) await monitorSonarrEpisodes(ids, true);
-  }
-
-  // 3. Full-season searches (missing episodes only, by design of
-  //    searchSonarrSeason, which returns quietly when there is nothing to
-  //    search). A real failure is collected and thrown after the ledger
-  //    write below, so the user sees it instead of "ok" with no search.
-  const searchFailures: string[] = [];
-  for (const seasonNumber of seasonNumbers) {
-    try {
-      await searchSonarrSeason(seriesId, seasonNumber);
-    } catch (err) {
-      searchFailures.push(`season ${seasonNumber}: ${err instanceof Error ? err.message : String(err)}`);
+    if (toMonitor.size > 0) await monitorSonarrEpisodes(Array.from(toMonitor), true);
+    if (toSearch.size > 0) {
+      try {
+        await triggerSonarrEpisodeSearch(Array.from(toSearch));
+      } catch (err) {
+        searchFailure = err instanceof Error ? err.message : String(err);
+      }
     }
   }
 
@@ -1133,11 +1151,11 @@ export async function expandSonarrSeries({
       ...episodePicks.map((p) => `S${p.seasonNumber}E${p.episodeNumber}`),
       ...(unaired ? ['unaired'] : []),
     ]);
-    await recordExistingSeriesRequest(seriesId, summary);
+    await recordExistingSeriesRequest(seriesId, summary, seriesDetail);
   }
 
-  if (searchFailures.length > 0) {
-    throw new Error(`Monitoring was updated, but the search failed for ${searchFailures.join('; ')}`);
+  if (searchFailure) {
+    throw new Error(`Monitoring was updated, but the search failed: ${searchFailure}`);
   }
 }
 
@@ -1149,12 +1167,15 @@ export async function expandSonarrSeries({
  * search for something you don't have IS a request. Never throws -
  * bookkeeping must not break the action itself.
  */
-async function recordExistingSeriesRequest(seriesId: number, seasons: string | null): Promise<void> {
+async function recordExistingSeriesRequest(seriesId: number, seasons: string | null, known?: Record<string, unknown>): Promise<void> {
   try {
     if (!SONARR_URL || !SONARR_KEY) return;
-    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
-    if (!res.ok) return;
-    const series = await res.json();
+    let series = known;
+    if (!series) {
+      const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
+      if (!res.ok) return;
+      series = (await res.json()) as Record<string, unknown>;
+    }
     const posterUrl =
       (series.images as { coverType?: string; remoteUrl?: string }[] | undefined)?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
     let tmdbId: number | null = typeof series.tmdbId === 'number' && series.tmdbId > 0 ? series.tmdbId : null;

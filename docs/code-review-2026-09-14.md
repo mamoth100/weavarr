@@ -183,18 +183,18 @@ web page the user happens to visit (the CSRF middleware exists for that).
       Tab, restore on close.
 - [x] **Drag-to-reorder has no keyboard path.** `components/DraggableCheckList.tsx`.
       Add move up and move down buttons.
-- [ ] **Stalled-shows check fetches every series with files on every mount.**
+- [x] **Stalled-shows check fetches every series with files on every mount.**
       `lib/stalledShows.ts:43`. Filter by watch history first and memoize.
-- [ ] **Requests page checks import history one call per missing episode.**
+- [x] **Requests page checks import history one call per missing episode.**
       `app/api/requests/route.ts:58-67`. Use one history-by-series call per
       series, cached.
-- [ ] **Ready-to-watch calls `hasTitle` once per downloaded movie.**
+- [x] **Ready-to-watch calls `hasTitle` once per downloaded movie.**
       `lib/readyToWatch.ts:55`. Fetch both libraries once and match by tmdbId.
-- [ ] **Get more issues N+1 calls.** `lib/sonarr.ts:1068-1104` fetches the
+- [x] **Get more issues N+1 calls.** `lib/sonarr.ts:1068-1104` fetches the
       episode list up to three times plus once per season, with a monitor PUT
       and a search per season. Fetch once, build one id set, one PUT, one
       search.
-- [ ] **One downloader failing hides silently when the other succeeds.**
+- [x] **One downloader failing hides silently when the other succeeds.**
       `lib/downloaders.ts:37-46`. Return per-client errors and show them.
 
 ## Low
