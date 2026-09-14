@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { existsSync } from 'fs';
 import { restoreBackup } from '@/lib/backup';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +16,9 @@ export async function POST(request: Request) {
     // just replaced under open handles. Exit and let the container's
     // restart policy bring the app back on the restored data, exactly as
     // /api/settings/restart does.
-    setTimeout(() => process.exit(0), 500);
-    return NextResponse.json({ restored: true, restarting: true });
+    const inDocker = existsSync('/.dockerenv');
+    if (inDocker) setTimeout(() => process.exit(0), 500);
+    return NextResponse.json({ restored: true, restarting: inDocker });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

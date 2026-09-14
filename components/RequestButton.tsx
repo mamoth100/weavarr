@@ -6,24 +6,13 @@ import ConfirmButton from '@/components/ConfirmButton';
 import RequestShowModal from '@/components/RequestShowModal';
 import { useDownloadProgress, refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
 import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
+import { useSeriesState, invalidateSeriesState } from '@/hooks/useSeriesState';
 
 /** "Is this show watching for new episodes?" chip - answers the monitoring question right on the page instead of requiring a trip into the Get more modal. */
-function MonitoringChip({ tmdbId, refreshKey }: { tmdbId: number; refreshKey: number }) {
-  const [monitorFuture, setMonitorFuture] = useState<boolean | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/sonarr/series-state?tmdbId=${tmdbId}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && !data.error) setMonitorFuture(Boolean(data.monitorFuture));
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [tmdbId, refreshKey]);
-
-  if (monitorFuture === null) return null;
+function MonitoringChip({ tmdbId }: { tmdbId: number }) {
+  const state = useSeriesState(tmdbId);
+  if (state === null || state.seriesId === null) return null;
+  const monitorFuture = state.monitorFuture;
   return (
     <span
       className={`px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ${
@@ -236,8 +225,6 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   // TV requests go through the modal (season checkboxes, quality) - the old
   // inline <select> could only pick a single season or preset.
   const [modalOpen, setModalOpen] = useState(false);
-  // Bumped after a modal save so the monitoring chip refetches its state.
-  const [monitoringRefresh, setMonitoringRefresh] = useState(0);
 
   const [highestQuality, setHighestQuality] = useState(false);
   // Assume configured until told otherwise, so the common (already-set-up) case never flickers.
@@ -256,19 +243,17 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   const [profileOverride, setProfileOverride] = useState('');
 
   function toggleAdvanced() {
-    setShowAdvanced((prev) => {
-      const next = !prev;
-      if (next && profiles === null) {
-        fetch(mediaType === 'movie' ? '/api/radarr/profiles' : '/api/sonarr/profiles', { cache: 'no-store' })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.error) setProfilesError(data.error);
-            else setProfiles(data.profiles);
-          })
-          .catch((err) => setProfilesError(err instanceof Error ? err.message : String(err)));
-      }
-      return next;
-    });
+    const next = !showAdvanced;
+    setShowAdvanced(next);
+    if (next && profiles === null) {
+      fetch(mediaType === 'movie' ? '/api/radarr/profiles' : '/api/sonarr/profiles', { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) setProfilesError(data.error);
+          else setProfiles(data.profiles);
+        })
+        .catch((err) => setProfilesError(err instanceof Error ? err.message : String(err)));
+    }
   }
 
   const locked = status === 'loading' || status === 'added' || status === 'already';
@@ -328,7 +313,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
             Get more
           </button>
           <DeleteSeriesButton seriesId={sonarrSeriesId} />
-          <MonitoringChip tmdbId={id} refreshKey={monitoringRefresh} />
+          <MonitoringChip tmdbId={id} />
         </div>
         <DetailDownloadProgress id={id} mediaType="tv" />
         <RequestShowModal
@@ -341,7 +326,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           highestConfigured={highestConfigured}
           onSuccess={() => {
             refreshDownloadProgressSoon();
-            setMonitoringRefresh((k) => k + 1);
+            invalidateSeriesState(id);
           }}
         />
       </div>
@@ -379,6 +364,7 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
           onSuccess={(alreadyAdded) => {
             setStatus(alreadyAdded ? 'already' : 'added');
             refreshDownloadProgressSoon();
+            invalidateSeriesState(id);
           }}
         />
       </>

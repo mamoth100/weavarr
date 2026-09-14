@@ -92,14 +92,16 @@ interface LibItem {
   imdbId: string | null;
   tvdbId: number | null;
   watched: boolean;
+  /** When it was watched on its own server; relayed so the other server records the real date, not the sync time. */
+  viewedAt: string | null;
 }
 
 function fromPlex(i: PlexLibraryItem): LibItem {
-  return { serverKey: i.ratingKey, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched };
+  return { serverKey: i.ratingKey, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched, viewedAt: i.lastViewedAt };
 }
 
 function fromJellyfin(i: JellyfinLibraryItem): LibItem {
-  return { serverKey: i.id, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched };
+  return { serverKey: i.id, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched, viewedAt: i.lastViewedAt };
 }
 
 function hasIds(i: LibItem): boolean {
@@ -263,7 +265,7 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   async function reconcileMovie(
     movie: LibItem,
     targetIdx: LibIndex,
-    markTarget: (serverKey: string) => Promise<void>,
+    markTarget: (serverKey: string, viewedAt: string | null) => Promise<void>,
     direction: string
   ) {
     const key = `movie:${canonical(movie)}`;
@@ -283,7 +285,7 @@ export async function syncWatchedBetweenServers(): Promise<number> {
       return;
     }
     try {
-      await markTarget(match.serverKey);
+      await markTarget(match.serverKey, movie.viewedAt);
       seen.add(key);
       seen.add(targetKey);
       await markDirty();
@@ -386,12 +388,13 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   await Promise.all([
     jellyfinMoviesOk
       ? mapWithConcurrency(plexMovies.filter((m) => m.watched), (m) =>
-          reconcileMovie(m, jellyfinMovieIdx, markJellyfinItemWatched, '(Plex → Jellyfin)')
+          reconcileMovie(m, jellyfinMovieIdx, (id, at) => markJellyfinItemWatched(id, at ?? undefined), '(Plex → Jellyfin)')
         )
       : Promise.resolve(),
     plexMoviesOk
       ? mapWithConcurrency(jellyfinMovies.filter((m) => m.watched), (m) =>
-          reconcileMovie(m, plexMovieIdx, markPlexRatingKeyWatched, '(Jellyfin → Plex)')
+          // Plex's scrobble call takes no date; it records the sync time.
+          reconcileMovie(m, plexMovieIdx, (key) => markPlexRatingKeyWatched(key), '(Jellyfin → Plex)')
         )
       : Promise.resolve(),
     jellyfinShowsOk

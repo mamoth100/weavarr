@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
+import { useDismissable } from '@/hooks/useDismissable';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
@@ -35,12 +36,8 @@ function EpisodeList({ episodes }: { episodes: { seasonNumber: number; episodeNu
       {shown.map(formatEpisode).join(', ')}
       {remaining > 0 && (
         <button
-          onClick={(e) => {
-            // Lives inside the row's detail-page link now - expanding must not navigate.
-            e.preventDefault();
-            e.stopPropagation();
-            setExpanded((v) => !v);
-          }}
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
           className="ml-1 text-amber-400 hover:text-amber-300 font-medium"
         >
           {expanded ? 'show less' : `+${remaining} more`}
@@ -85,24 +82,10 @@ function ShowDeleteDropdown({
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleOutsideClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setConfirming(null);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setOpen(false); setConfirming(null); }
-    }
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => {
+    setOpen(false);
+    setConfirming(null);
+  });
 
   async function confirmDelete(seasonNumber: number, episodeNumber: number) {
     setStatus('loading');
@@ -238,23 +221,7 @@ function ShowWatchedDropdown({
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleOutsideClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setOpen(false); }
-    }
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   async function markEpisode(seasonNumber: number, episodeNumber: number) {
     setStatus('loading');
@@ -447,6 +414,10 @@ function MissingAiredSection({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [searchingIds, setSearchingIds] = useState<Set<number>>(new Set());
+  // Mirror for the refresh below, which compares against the current set
+  // without doing work inside a state updater.
+  const searchingRef = useRef(searchingIds);
+  searchingRef.current = searchingIds;
   // Sonarr's queue keyed by episodeId - a searched episode that actually got
   // grabbed shows its real state (queued / percent / importing) instead of
   // sitting on "Searching…" until it vanishes from the list.
@@ -463,11 +434,10 @@ function MissingAiredSection({
         const next: MissingAiredEpisode[] = data.episodes;
         const nextIds = new Set(next.map((e) => e.episodeId));
 
-        setSearchingIds((prev) => {
-          const stillMissing = new Set(Array.from(prev).filter((id) => nextIds.has(id)));
-          if (stillMissing.size !== prev.size) onEpisodeAvailable(); // something we were tracking dropped off the missing list - it landed
-          return stillMissing;
-        });
+        const tracked = searchingRef.current;
+        const stillMissing = new Set(Array.from(tracked).filter((id) => nextIds.has(id)));
+        if (stillMissing.size !== tracked.size) onEpisodeAvailable(); // something we were tracking dropped off the missing list: it landed
+        setSearchingIds(stillMissing);
         setEpisodes(next);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
@@ -942,42 +912,52 @@ function ReadyToWatchRow({
   // this: deleting a specific episode already removes it from both dropdowns at once.
   const [movieDeleted, setMovieDeleted] = useState(false);
 
-  // Poster and title link to the detail page when the TMDB id is known;
-  // the episode "+N more" toggle inside stays a plain span-level button.
+  // Poster and title link to the detail page when the TMDB id is known. The
+  // episode line with its "+N more" toggle sits beside the link rather than
+  // inside it: a button inside an anchor is invalid markup.
   const detailHref = item.tmdbId ? (item.type === 'tv' ? `/tv/${item.tmdbId}` : `/documentary/${item.tmdbId}`) : null;
-  const identity = (
+  const poster = <Poster id={item.id} hasPoster={Boolean(item.posterPath)} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />;
+  const heading = (
     <>
-      <Poster id={item.id} hasPoster={Boolean(item.posterPath)} title={item.title} service={item.type === 'movie' ? 'radarr' : 'sonarr'} />
-      <div className="min-w-0">
-        <p className="text-sm font-medium truncate">
-          {item.title}{' '}
-          {item.type === 'movie' && item.year
-            ? `(${item.year})`
-            : item.type === 'tv' && item.unwatchedEpisodes
-            ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
-            : ''}
-        </p>
-        <p className="text-xs text-zinc-500">
-          {item.type === 'tv' && item.unwatchedEpisodes && (
-            <>
-              <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
-            </>
-          )}
-          {formatBytes(item.sizeOnDisk)}
-        </p>
-      </div>
+      {item.title}{' '}
+      {item.type === 'movie' && item.year
+        ? `(${item.year})`
+        : item.type === 'tv' && item.unwatchedEpisodes
+        ? `(${item.unwatchedEpisodes.length} Episode${item.unwatchedEpisodes.length === 1 ? '' : 's'})`
+        : ''}
     </>
   );
 
   return (
     <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
-      {detailHref ? (
-        <Link href={detailHref} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
-          {identity}
-        </Link>
-      ) : (
-        <div className="flex items-center gap-3 min-w-0">{identity}</div>
-      )}
+      <div className="flex items-center gap-3 min-w-0">
+        {detailHref ? (
+          <Link href={detailHref} className="flex-shrink-0 hover:opacity-80 transition-opacity">
+            {poster}
+          </Link>
+        ) : (
+          poster
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">
+            {detailHref ? (
+              <Link href={detailHref} className="hover:text-amber-400 transition-colors">
+                {heading}
+              </Link>
+            ) : (
+              heading
+            )}
+          </p>
+          <p className="text-xs text-zinc-500">
+            {item.type === 'tv' && item.unwatchedEpisodes && (
+              <>
+                <EpisodeList episodes={item.unwatchedEpisodes} /> unwatched ·{' '}
+              </>
+            )}
+            {formatBytes(item.sizeOnDisk)}
+          </p>
+        </div>
+      </div>
       <div className="flex items-center gap-2">
         {item.type === 'movie' ? (
           <>

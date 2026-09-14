@@ -5,6 +5,7 @@ import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 import { recordRequest } from './requestLedger';
 import { readableApiError } from './httpError';
+import type { ImportHistoryItem } from './importHistory';
 
 // Enable defaults on (unset !== 'false') - Radarr is core to this app and
 // was configurable long before this toggle existed, so an unset env var
@@ -21,6 +22,11 @@ const RADARR_HIGHEST_PROFILE = process.env.RADARR_HIGHEST_PROFILE || null;
 
 function headers() {
   return { 'X-Api-Key': RADARR_KEY as string, 'Content-Type': 'application/json' };
+}
+
+/** Base URL and key when Radarr is enabled and configured, else null. The one place other modules should read Radarr's connection from. */
+export function radarrConfig(): { url: string; key: string } | null {
+  return RADARR_URL && RADARR_KEY ? { url: RADARR_URL, key: RADARR_KEY } : null;
 }
 
 /**
@@ -67,6 +73,8 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
     fetchWithTimeout(`${RADARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
     fetchWithTimeout(`${RADARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
   ]);
+  if (!profilesRes.ok) throw new Error(await readableApiError(profilesRes, 'Radarr quality profile list failed'));
+  if (!foldersRes.ok) throw new Error(await readableApiError(foldersRes, 'Radarr root folder list failed'));
   const profiles = await profilesRes.json();
   const folders = await foldersRes.json();
   if (!profiles?.length) throw new Error('Radarr has no quality profile configured');
@@ -301,19 +309,7 @@ export async function deleteRadarrMovie(movieId: number): Promise<void> {
   await deleteCachedPoster('radarr', movieId);
 }
 
-export interface ImportHistoryItem {
-  /** History record id from Radarr/Sonarr - unique per event, used as the stable React key downstream. */
-  historyId: number;
-  title: string;
-  date: string;
-  episode?: string | null;
-  seasonNumber?: number;
-  episodeNumber?: number;
-  movieId?: number;
-  seriesId?: number;
-  /** The episode's air date (yyyy-mm-dd), Sonarr items only - lets library checks match by date when a media server numbers seasons differently than TVDB. */
-  airDate?: string | null;
-}
+export type { ImportHistoryItem };
 
 export async function getRadarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
   if (!RADARR_URL || !RADARR_KEY) throw new Error('Radarr is not configured');

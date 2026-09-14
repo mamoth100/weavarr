@@ -8,9 +8,19 @@ import { getRawEnvValue } from './settings';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'notified-imports.json');
 
-// Keyed by "title:importDate" - a redownload gets a new import date, so it's
-// treated as a distinct, notification-worthy event rather than a duplicate.
+// Keyed by "<arr>:<history id>", one per import event, so a redownload (a
+// new history row) notifies again while the same row never does twice.
+// Older entries in the file use "title:importDate"; both are honoured so an
+// upgrade does not re-announce anything.
 let notified: Set<string> | null = null;
+
+// History is read fifty rows deep so a season pack, which lands as one row
+// per episode, is seen in full; with ten rows most of a pack was missed.
+const HISTORY_WINDOW = 50;
+// An import older than this is remembered silently rather than announced:
+// it is stale news, and the first run after widening the window would
+// otherwise ping for weeks of old imports.
+const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 async function loadNotified(): Promise<Set<string>> {
   if (notified) return notified;
@@ -47,19 +57,25 @@ export async function checkForNewPlexImports(): Promise<void> {
   }
 
   const [radarrHistory, sonarrHistory] = await Promise.allSettled([
-    getRadarrRecentImports(10),
-    getSonarrRecentImports(10),
+    getRadarrRecentImports(HISTORY_WINDOW),
+    getSonarrRecentImports(HISTORY_WINDOW),
   ]);
 
   const items = [
-    ...(radarrHistory.status === 'fulfilled' ? radarrHistory.value : []),
-    ...(sonarrHistory.status === 'fulfilled' ? sonarrHistory.value : []),
+    ...(radarrHistory.status === 'fulfilled' ? radarrHistory.value : []).map((i) => ({ ...i, key: `radarr:${i.historyId}` })),
+    ...(sonarrHistory.status === 'fulfilled' ? sonarrHistory.value : []).map((i) => ({ ...i, key: `sonarr:${i.historyId}` })),
   ];
 
   let changed = false;
   for (const item of items) {
-    const key = `${item.title}:${item.date}`;
-    if (seen.has(key)) continue;
+    const key = item.key;
+    if (seen.has(key) || seen.has(`${item.title}:${item.date}`)) continue;
+    const ageMs = Date.now() - new Date(item.date).getTime();
+    if (Number.isFinite(ageMs) && ageMs > MAX_AGE_MS) {
+      seen.add(key);
+      changed = true;
+      continue;
+    }
 
     const label = item.episode ? `${item.title} ${item.episode}` : item.title;
     try {

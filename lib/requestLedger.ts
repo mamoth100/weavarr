@@ -6,33 +6,7 @@
  * current status (searching/downloading/available/removed) is derived live
  * by the /api/requests join - stored status would just drift.
  */
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'fs';
-import path from 'path';
-
-const DB_PATH = path.join(process.cwd(), 'data', 'weavarr.db');
-
-let db: DatabaseSync | null = null;
-
-function getDb(): DatabaseSync {
-  if (db) return db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new DatabaseSync(DB_PATH);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tmdb_id INTEGER,
-      tvdb_id INTEGER,
-      media_type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      poster_url TEXT,
-      source TEXT NOT NULL,
-      seasons TEXT,
-      requested_at TEXT NOT NULL
-    );
-  `);
-  return db;
-}
+import { getDb } from './db';
 
 export interface RequestRecordInput {
   tmdbId: number | null;

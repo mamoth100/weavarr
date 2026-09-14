@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSonarrCalendar } from '@/lib/sonarr';
 import { getRadarrCalendar } from '@/lib/radarr';
 import { getWatchedMovies, getEpisodeWatchHistory } from '@/lib/mediaServer';
-import { titleFuzzyMatch } from '@/lib/readyToWatch';
+import { titlesMatch } from '@/lib/titleMatch';
 
 // Never statically cache - this always reflects live external/local state, and Docker builds (no secrets at build time) can otherwise cause Next.js to wrongly freeze an early error response as a permanent static page.
 export const dynamic = 'force-dynamic';
@@ -28,6 +28,10 @@ export async function GET(request: Request) {
   const start = searchParams.get('start');
   const end = searchParams.get('end');
   if (!start || !end) return NextResponse.json({ error: 'start and end required' }, { status: 400 });
+  // Dates go straight into the arr calendar URLs; only the yyyy-mm-dd form is accepted.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return NextResponse.json({ error: 'start and end must be yyyy-mm-dd' }, { status: 400 });
+  }
 
   const [sonarrResult, radarrResult, watchedMovies, watchedEpisodes] = await Promise.allSettled([
     getSonarrCalendar(start, end),
@@ -44,7 +48,7 @@ export async function GET(request: Request) {
   if (sonarrResult.status === 'fulfilled') {
     for (const e of sonarrResult.value) {
       const watched = episodesWatched.some(
-        (w) => w.seasonNumber === e.seasonNumber && w.episodeNumber === e.episodeNumber && titleFuzzyMatch(w.showTitle, e.seriesTitle)
+        (w) => w.seasonNumber === e.seasonNumber && w.episodeNumber === e.episodeNumber && titlesMatch(w.showTitle, e.seriesTitle)
       );
       items.push({
         type: 'tv',
@@ -63,7 +67,7 @@ export async function GET(request: Request) {
 
   if (radarrResult.status === 'fulfilled') {
     for (const m of radarrResult.value) {
-      const watched = movieTitlesWatched.some((w) => titleFuzzyMatch(w.title, m.title));
+      const watched = movieTitlesWatched.some((w) => titlesMatch(w.title, m.title));
       items.push({
         type: 'movie',
         id: m.movieId,

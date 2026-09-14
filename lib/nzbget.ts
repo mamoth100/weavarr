@@ -9,6 +9,11 @@ export function nzbgetEnabled(): boolean {
   return process.env.ENABLE_NZBGET === 'true' && Boolean(NZBGET_URL && NZBGET_USERNAME && NZBGET_PASSWORD);
 }
 
+/** Base URL and credentials when NZBGet is enabled and configured, else null. */
+export function nzbgetConfig(): { url: string; username: string; password: string } | null {
+  return nzbgetEnabled() ? { url: NZBGET_URL as string, username: NZBGET_USERNAME as string, password: NZBGET_PASSWORD as string } : null;
+}
+
 function authHeader(): string {
   return `Basic ${Buffer.from(`${NZBGET_USERNAME}:${NZBGET_PASSWORD}`).toString('base64')}`;
 }

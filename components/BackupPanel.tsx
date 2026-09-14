@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useRestartApp } from '@/hooks/useRestartApp';
 import Toggle from '@/components/Toggle';
 import ConfirmButton from '@/components/ConfirmButton';
 
@@ -149,7 +150,7 @@ function ScheduleSettings() {
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
+  const { restartStatus, restartError, restart: handleRestart } = useRestartApp();
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -180,29 +181,6 @@ function ScheduleSettings() {
       setSaveStatus('error');
       setSaveError(err instanceof Error ? err.message : String(err));
     }
-  }
-
-  async function handleRestart() {
-    setRestartStatus('restarting');
-    try {
-      await fetch('/api/settings/restart', { method: 'POST' });
-    } catch {
-      // Expected - the request can fail right as the process dies mid-response.
-    }
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-      try {
-        const res = await fetch('/api/settings', { cache: 'no-store' });
-        if (res.ok) {
-          setRestartStatus('back');
-          return;
-        }
-      } catch {
-        // still down, keep polling
-      }
-    }
-    setRestartStatus('error');
   }
 
   if (!loaded) return null;
@@ -258,7 +236,7 @@ function ScheduleSettings() {
           {restartStatus === 'restarting' ? 'Restarting…' : 'Restart App'}
         </button>
         {restartStatus === 'back' && <span className="text-sm text-green-400">Back up</span>}
-        {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s - check on the Pi</span>}
+        {restartStatus === 'error' && <span className="text-sm text-red-400">{restartError}</span>}
       </div>
     </div>
   );

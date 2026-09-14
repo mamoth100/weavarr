@@ -4,6 +4,7 @@ import { trackedStatePriority } from './queuePriority';
 import { deleteCachedPoster } from './posterCache';
 import { notifyAllChannels } from './notificationChannels';
 import { findTvIdByTvdbId, findTvIdByImdbId, getTvExternalIds } from './tmdb';
+import type { ImportHistoryItem } from './importHistory';
 import { recordRequest } from './requestLedger';
 import { readableApiError } from './httpError';
 
@@ -22,6 +23,11 @@ const SONARR_HIGHEST_PROFILE = process.env.SONARR_HIGHEST_PROFILE || null;
 
 function headers() {
   return { 'X-Api-Key': SONARR_KEY as string, 'Content-Type': 'application/json' };
+}
+
+/** Base URL and key when Sonarr is enabled and configured, else null. The one place other modules should read Sonarr's connection from. */
+export function sonarrConfig(): { url: string; key: string } | null {
+  return SONARR_URL && SONARR_KEY ? { url: SONARR_URL, key: SONARR_KEY } : null;
 }
 
 /** The Sonarr quality profiles available to pick from - used by the advanced per-request override in RequestButton. */
@@ -77,6 +83,8 @@ export async function addSeriesToSonarr({
     fetchWithTimeout(`${SONARR_URL}/api/v3/qualityprofile`, { headers: headers(), cache: 'no-store' }),
     fetchWithTimeout(`${SONARR_URL}/api/v3/rootfolder`, { headers: headers(), cache: 'no-store' }),
   ]);
+  if (!profilesRes.ok) throw new Error(await readableApiError(profilesRes, 'Sonarr quality profile list failed'));
+  if (!foldersRes.ok) throw new Error(await readableApiError(foldersRes, 'Sonarr root folder list failed'));
   const profiles = await profilesRes.json();
   const folders = await foldersRes.json();
   if (!profiles?.length) throw new Error('Sonarr has no quality profile configured');
@@ -124,6 +132,7 @@ export async function addSeriesToSonarr({
     }),
   });
   if (!addRes.ok) throw new Error(await readableApiError(addRes, 'Sonarr add failed'));
+  invalidateSonarrSeriesMemo();
   const added = await addRes.json();
 
   // Hand-picked episodes: Sonarr populates a new series' episode records
@@ -261,19 +270,7 @@ export async function forceImportSonarr(downloadId: string) {
   return { triggered: true };
 }
 
-export interface ImportHistoryItem {
-  /** History record id from Sonarr - unique per event, used as the stable React key downstream. */
-  historyId: number;
-  title: string;
-  date: string;
-  episode?: string | null;
-  seasonNumber?: number;
-  episodeNumber?: number;
-  seriesId?: number;
-  movieId?: number;
-  /** The episode's air date (yyyy-mm-dd) - lets library checks match by date when a media server numbers seasons differently than TVDB. */
-  airDate?: string | null;
-}
+export type { ImportHistoryItem };
 
 export async function getSonarrRecentImports(limit = 10): Promise<ImportHistoryItem[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
@@ -399,7 +396,11 @@ export async function deleteSonarrSeriesFiles(seriesId: number): Promise<number>
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   await assertSeriesDeletable(seriesId);
   const info = await getSonarrEpisodeFileInfoMap(seriesId);
-  const entries = Array.from(info.values());
+  return deleteEpisodeFilesBulk(Array.from(info.values()));
+}
+
+/** One bulk delete plus one unmonitor call for any set of episode files. A double episode shares one file between two entries; the id set dedupes it so it is not deleted twice. */
+async function deleteEpisodeFilesBulk(entries: SonarrEpisodeFileInfo[]): Promise<number> {
   const fileIds = Array.from(new Set(entries.map((v) => v.episodeFileId).filter((id) => id > 0)));
   if (fileIds.length === 0) return 0;
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/episodefile/bulk`, {
@@ -501,28 +502,38 @@ interface SonarrImage {
   url?: string;
 }
 
+// The Library page alone fires five routes that each list the whole series
+// table. A ten-second memo turns that into one Sonarr call per burst
+// without letting the Library go stale in any way a person would notice.
+const SERIES_MEMO_MS = 10_000;
+let seriesMemo: { at: number; value: SonarrSeries[] } | null = null;
+let seriesInflight: Promise<SonarrSeries[]> | null = null;
+
 export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
+  if (seriesMemo && Date.now() - seriesMemo.at < SERIES_MEMO_MS) return seriesMemo.value;
+  if (seriesInflight) return seriesInflight;
+  seriesInflight = fetchAllSonarrSeries()
+    .then((value) => {
+      seriesMemo = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      seriesInflight = null;
+    });
+  return seriesInflight;
+}
+
+/** Drop the series memo after anything that changes the library (add, delete), so the next read is fresh. */
+export function invalidateSonarrSeriesMemo(): void {
+  seriesMemo = null;
+}
+
+async function fetchAllSonarrSeries(): Promise<SonarrSeries[]> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Sonarr series list failed: ${res.status}`);
   const data: Record<string, unknown>[] = await res.json();
-  const series = data.map((s) => {
-    const stats = s.statistics as Record<string, unknown> | undefined;
-    const images = (s.images as SonarrImage[] | undefined) ?? [];
-    return {
-      id: s.id as number,
-      title: s.title as string,
-      year: s.year as number,
-      imdbId: (s.imdbId as string) ?? null,
-      tmdbId: typeof s.tmdbId === 'number' && s.tmdbId > 0 ? s.tmdbId : null,
-      tvdbId: typeof s.tvdbId === 'number' && s.tvdbId > 0 ? (s.tvdbId as number) : null,
-      episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
-      episodeCount: (stats?.episodeCount as number) ?? 0,
-      sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
-      status: (s.status as string) ?? 'continuing',
-      posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
-    };
-  });
+  const series = data.map(mapSonarrSeries);
 
   // Sonarr's own metadata lacks tmdbId for some shows - resolve those via
   // TMDB's external-id lookup (week-long cache in lib/tmdb, so this costs
@@ -539,6 +550,24 @@ export async function getAllSonarrSeries(): Promise<SonarrSeries[]> {
   );
 
   return series;
+}
+
+function mapSonarrSeries(s: Record<string, unknown>): SonarrSeries {
+  const stats = s.statistics as Record<string, unknown> | undefined;
+  const images = (s.images as SonarrImage[] | undefined) ?? [];
+  return {
+    id: s.id as number,
+    title: s.title as string,
+    year: s.year as number,
+    imdbId: (s.imdbId as string) ?? null,
+    tmdbId: typeof s.tmdbId === 'number' && s.tmdbId > 0 ? s.tmdbId : null,
+    tvdbId: typeof s.tvdbId === 'number' && s.tvdbId > 0 ? (s.tvdbId as number) : null,
+    episodeFileCount: (stats?.episodeFileCount as number) ?? 0,
+    episodeCount: (stats?.episodeCount as number) ?? 0,
+    sizeOnDisk: (stats?.sizeOnDisk as number) ?? 0,
+    status: (s.status as string) ?? 'continuing',
+    posterPath: images.find((img) => img.coverType === 'poster')?.url ?? null,
+  };
 }
 
 /**
@@ -565,6 +594,7 @@ export async function deleteSonarrSeries(seriesId: number): Promise<void> {
     });
     // 404 = already gone - the goal state, not an error worth surfacing.
     if (!res.ok && res.status !== 404) throw new Error(await readableApiError(res, 'Sonarr series delete failed'));
+    invalidateSonarrSeriesMemo();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     notifyAllChannels('Delete failed', `Sonarr series ${seriesId}: ${message}`, 'alert').catch(() => {});
@@ -812,10 +842,13 @@ export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
 
 /** Deletes the file for every episode in this season that has one - leaves the series and every other season untouched. */
 export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: number): Promise<void> {
+  if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
   await assertSeriesDeletable(seriesId);
-  const episodes = await getSonarrSeriesEpisodes(seriesId);
-  const withFiles = episodes.filter((e) => e.seasonNumber === seasonNumber && e.hasFile && e.episodeFileId);
-  await Promise.all(withFiles.map((e) => deleteSonarrEpisodeFile(e.id, e.episodeFileId as number)));
+  const info = await getSonarrEpisodeFileInfoMap(seriesId);
+  const entries = Array.from(info.entries())
+    .filter(([key]) => Number(key.split(':')[0]) === seasonNumber)
+    .map(([, v]) => v);
+  await deleteEpisodeFilesBulk(entries);
 }
 
 export interface MissingAiredEpisode {
@@ -935,8 +968,21 @@ export interface SonarrSeriesState {
  * the show isn't added, which is what tells the modal to run in add mode.
  */
 export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<SonarrSeriesState | null> {
-  const all = await getAllSonarrSeries();
-  const match = all.find((s) => s.tmdbId === tmdbId);
+  // Sonarr can filter its series table by tvdbId itself; resolving the TMDB
+  // id to one first avoids pulling the whole library for a single show.
+  const { tvdbId } = await getTvExternalIds(tmdbId);
+  let match: SonarrSeries | undefined;
+  if (tvdbId && SONARR_URL && SONARR_KEY) {
+    const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series?tvdbId=${tvdbId}`, { headers: headers(), cache: 'no-store' });
+    if (res.ok) {
+      const rows = (await res.json()) as Record<string, unknown>[];
+      const hit = rows.find((r) => typeof r.id === 'number');
+      if (hit) match = mapSonarrSeries(hit);
+    }
+  }
+  // Shows Sonarr files without a tvdbId link, or a TMDB lookup miss, still
+  // resolve through the (memoized) full list.
+  if (!match) match = (await getAllSonarrSeries()).find((s) => s.tmdbId === tmdbId);
   if (!match) return null;
 
   const [detailRes, episodes] = await Promise.all([

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRestartApp } from '@/hooks/useRestartApp';
+import { useDismissable } from '@/hooks/useDismissable';
 import Modal from '@/components/Modal';
 import Toggle from '@/components/Toggle';
 import PlexSignIn from '@/components/PlexSignIn';
@@ -61,23 +63,7 @@ function InfoTooltip({ ariaLabel, text, linkLabel, linkHref }: { ariaLabel: stri
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleOutsideClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { setOpen(false); }
-    }
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
+  useDismissable(open, containerRef, () => setOpen(false));
 
   return (
     <div className="relative ml-auto flex-shrink-0" ref={containerRef}>
@@ -629,11 +615,11 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   const [clearedKeys, setClearedKeys] = useState<Set<string>>(new Set());
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [restartStatus, setRestartStatus] = useState<'idle' | 'restarting' | 'back' | 'error'>('idle');
   // Set on a successful save, cleared when the app comes back from a
   // restart. Every key on these tabs is read at boot, so a save is not live
   // until then - this is what makes that visible.
   const [needsRestart, setNeedsRestart] = useState(false);
+  const { restartStatus, restartError, restart: handleRestart, reset: resetRestart } = useRestartApp(() => setNeedsRestart(false));
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(SECTION_ORDER));
   const autoTestedRef = useRef(false);
@@ -749,31 +735,6 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   }
   const watchedSyncEligible = resolveBoolean('ENABLE_PLEX') && resolveBoolean('ENABLE_JELLYFIN');
 
-  async function handleRestart() {
-    setRestartStatus('restarting');
-    try {
-      await fetch('/api/settings/restart', { method: 'POST' });
-    } catch {
-      // Expected - the request can fail right as the process dies mid-response.
-    }
-    // Poll until the app answers again, then confirm.
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500));
-      try {
-        const res = await fetch('/api/settings', { cache: 'no-store' });
-        if (res.ok) {
-          setRestartStatus('back');
-          setNeedsRestart(false);
-          return;
-        }
-      } catch {
-        // still down, keep polling
-      }
-    }
-    setRestartStatus('error');
-  }
-
   async function handleTest(group: string) {
     setTestStates((prev) => ({ ...prev, [group]: { status: 'testing' } }));
 
@@ -852,7 +813,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
       setSaveStatus('saved');
       setNeedsRestart(true);
-      setRestartStatus('idle');
+      resetRestart();
       setEdits({});
       setClearedKeys(new Set());
       // Reload so non-secret fields reflect the saved values
@@ -1182,7 +1143,7 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
           <span className="text-sm text-amber-400">Saved. Restart to apply.</span>
         )}
         {restartStatus === 'back' && !needsRestart && <span className="text-sm text-green-400">Restarted, changes are live</span>}
-        {restartStatus === 'error' && <span className="text-sm text-red-400">Didn&apos;t come back within 30s - check on the Pi</span>}
+        {restartStatus === 'error' && <span className="text-sm text-red-400">{restartError}</span>}
       </div>
     </div>
   );

@@ -136,15 +136,7 @@ export async function searchTv(
   });
   if (!res.ok) throw new Error(`TMDb TV search failed: ${res.status}`);
   const data = await res.json();
-  return {
-    ...data,
-    results: data.results.map((show: Record<string, unknown>) => ({
-      ...show,
-      title: (show.name as string) ?? show.title,
-      release_date: (show.first_air_date as string) ?? show.release_date ?? '',
-      mediaType: 'tv' as const,
-    })),
-  };
+  return { ...data, results: data.results.map(normalizeTvResult) };
 }
 
 /** Normalize a raw TMDB TV result to the movie shape the cards render. */
@@ -283,15 +275,7 @@ export async function discoverUpcomingTv({
   });
   if (!res.ok) throw new Error(`TMDb upcoming TV failed: ${res.status}`);
   const data = await res.json();
-  return {
-    ...data,
-    results: data.results.map((show: Record<string, unknown>) => ({
-      ...show,
-      title: (show.name as string) ?? show.title,
-      release_date: (show.first_air_date as string) ?? show.release_date ?? '',
-      mediaType: 'tv' as const,
-    })),
-  };
+  return { ...data, results: data.results.map(normalizeTvResult) };
 }
 
 export async function discoverTv({
@@ -337,16 +321,7 @@ export async function discoverTv({
   });
   if (!res.ok) throw new Error(`TMDb TV discover failed: ${res.status}`);
   const data = await res.json();
-  // Normalize TV fields to match TmdbMovie interface
-  return {
-    ...data,
-    results: data.results.map((show: Record<string, unknown>) => ({
-      ...show,
-      title: (show.name as string) ?? show.title,
-      release_date: (show.first_air_date as string) ?? show.release_date ?? '',
-      mediaType: 'tv' as const,
-    })),
-  };
+  return { ...data, results: data.results.map(normalizeTvResult) };
 }
 
 export interface TvSeasonsResult {
@@ -394,12 +369,7 @@ export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
     // TV recommendations come back TV-shaped - normalize like searchTv does
     // so DocCard can render them (and link them to /tv/, not /documentary/).
     recommendations: {
-      results: (data.recommendations?.results ?? []).map((show: Record<string, unknown>) => ({
-        ...show,
-        title: (show.name as string) ?? show.title,
-        release_date: (show.first_air_date as string) ?? show.release_date ?? '',
-        mediaType: 'tv' as const,
-      })),
+      results: (data.recommendations?.results ?? []).map(normalizeTvResult),
     },
   };
 }

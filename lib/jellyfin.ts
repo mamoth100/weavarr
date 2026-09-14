@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
-import { titlesMatch } from './titleMatch';
+import { titlesMatch, stripDisambiguator } from './titleMatch';
 import { jellyfinHeaders } from './jellyfinAuth';
 // Stripped of any trailing slash - a URL saved with one (e.g. "http://host:8096/")
 // would otherwise produce double-slash paths like ".../Users" -> "..//Users",
@@ -32,12 +32,6 @@ async function resolveUserId(): Promise<string> {
   if (!match?.Id) throw new Error(`No Jellyfin user named "${JELLYFIN_USERNAME}" - check the username in Settings`);
   cachedUserId = match.Id;
   return cachedUserId;
-}
-
-// Mirrors Plex's stripDisambiguator - Sonarr/Radarr title suffixes like
-// "(US)" or "(2020)" don't help Jellyfin's search either.
-function stripDisambiguator(title: string): string {
-  return title.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
 // Matching is strict equality-after-normalization (see lib/titleMatch.ts) -
@@ -99,9 +93,17 @@ export async function jellyfinHasEpisode(showTitle: string, seasonNumber: number
 
   const episodes = await getSeriesEpisodes(matchedShow.Id);
   if (episodes.some((ep) => episodeCovers(ep, seasonNumber, episodeNumber))) return true;
-  // Jellyfin's agent can number seasons differently than TVDB/Sonarr - an
-  // episode with the same air date counts, since air dates survive renumbering.
-  return Boolean(airDate) && episodes.some((ep) => typeof ep.PremiereDate === 'string' && ep.PremiereDate.slice(0, 10) === airDate);
+  // Jellyfin's agent can number seasons differently than TVDB/Sonarr; air
+  // dates survive renumbering. The fallback only counts an episode filed
+  // under some OTHER season, and only when exactly one aired that day: with
+  // the same numbering a two-episode night would otherwise report E02 ready
+  // when only E01 scanned.
+  if (!airDate) return false;
+  return (
+    episodes.filter(
+      (ep) => typeof ep.PremiereDate === 'string' && ep.PremiereDate.slice(0, 10) === airDate && ep.ParentIndexNumber !== seasonNumber
+    ).length === 1
+  );
 }
 
 /** Whether this Jellyfin episode item covers the given season/episode number, including double episodes spanning IndexNumber..IndexNumberEnd. */
@@ -203,6 +205,8 @@ export interface JellyfinLibraryItem {
   imdbId: string | null;
   tvdbId: number | null;
   watched: boolean;
+  /** ISO time of the last play, null when never watched. Carried across to the other server as the played date. */
+  lastViewedAt: string | null;
 }
 
 async function getAllJellyfinItemsWithIds(itemType: 'Movie' | 'Series'): Promise<JellyfinLibraryItem[]> {
@@ -226,6 +230,7 @@ async function getAllJellyfinItemsWithIds(itemType: 'Movie' | 'Series'): Promise
       imdbId: i.ProviderIds?.Imdb || null,
       tvdbId: Number(i.ProviderIds?.Tvdb) || null,
       watched: i.UserData?.Played === true,
+      lastViewedAt: typeof i.UserData?.LastPlayedDate === 'string' ? i.UserData.LastPlayedDate : null,
     }));
 }
 

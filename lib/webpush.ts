@@ -2,7 +2,7 @@ import webpush from 'web-push';
 import { readFileSync, mkdirSync } from 'fs';
 import { writeJsonAtomicSync } from './jsonState';
 import path from 'path';
-import { DatabaseSync } from 'node:sqlite';
+import { getDb } from './db';
 import type { NotificationLink } from './notificationChannels';
 
 /**
@@ -13,23 +13,6 @@ import type { NotificationLink } from './notificationChannels';
  */
 
 const KEYS_PATH = path.join(process.cwd(), 'data', 'webpush-keys.json');
-const DB_PATH = path.join(process.cwd(), 'data', 'weavarr.db');
-
-let db: DatabaseSync | null = null;
-function getDb(): DatabaseSync {
-  if (db) return db;
-  mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new DatabaseSync(DB_PATH);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS push_subscriptions (
-      endpoint TEXT PRIMARY KEY,
-      p256dh TEXT NOT NULL,
-      auth TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-  `);
-  return db;
-}
 
 interface VapidKeys {
   publicKey: string;
@@ -54,7 +37,15 @@ export interface PushSubscriptionInput {
   keys: { p256dh: string; auth: string };
 }
 
+const MAX_SUBSCRIPTIONS = 200;
+
 export function saveSubscription(sub: PushSubscriptionInput): void {
+  // Unbounded rows would let the table grow forever; a household has a
+  // handful of devices, and dead ones are pruned as the push service 404s them.
+  const existing = getDb().prepare(`SELECT 1 FROM push_subscriptions WHERE endpoint = ?`).get(sub.endpoint);
+  if (!existing && subscriptionCount() >= MAX_SUBSCRIPTIONS) {
+    throw new Error(`Too many push subscriptions (limit ${MAX_SUBSCRIPTIONS}); remove old devices first`);
+  }
   getDb()
     .prepare(
       `INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?)

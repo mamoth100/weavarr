@@ -5,10 +5,11 @@
  * own backup feature: a single downloadable/restorable zip.
  */
 import AdmZip from 'adm-zip';
-import { readdir, stat, mkdir, unlink, writeFile } from 'fs/promises';
+import { readdir, stat, mkdir, unlink, writeFile, readFile } from 'fs/promises';
 import path from 'path';
 import { ENV_FILE } from './configDir';
 import { SETTINGS_SCHEMA } from './settings';
+import { getDb, closeDb } from './db';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -43,11 +44,22 @@ export async function createBackup(): Promise<BackupInfo> {
   }
 
   const entries = await readdir(DATA_DIR, { withFileTypes: true }).catch(() => []);
+  let dbSnapshot: string | null = null;
   for (const entry of entries) {
     if (EXCLUDED_DATA_ENTRIES.has(entry.name)) continue;
+    // SQLite's journal side files belong to the live database, not a copy.
+    if (/\.db-(wal|shm|journal)$/.test(entry.name)) continue;
     const fullPath = path.join(DATA_DIR, entry.name);
     if (entry.isDirectory()) {
       zip.addLocalFolder(fullPath, `data/${entry.name}`);
+    } else if (entry.name.endsWith('.db')) {
+      // The database is open in this process. A byte-for-byte read while a
+      // write is in flight can produce a copy that will not open on restore;
+      // VACUUM INTO writes a consistent snapshot through SQLite itself.
+      dbSnapshot = path.join(BACKUP_DIR, `.snapshot-${process.pid}-${entry.name}`);
+      await unlink(dbSnapshot).catch(() => {});
+      getDb().exec(`VACUUM INTO '${dbSnapshot.replace(/'/g, "''")}'`);
+      zip.addLocalFile(dbSnapshot, 'data', entry.name);
     } else {
       zip.addLocalFile(fullPath, 'data');
     }
@@ -57,6 +69,7 @@ export async function createBackup(): Promise<BackupInfo> {
   const filename = `weavarr-backup-${timestamp}.zip`;
   const fullPath = path.join(BACKUP_DIR, filename);
   zip.writeZip(fullPath);
+  if (dbSnapshot) await unlink(dbSnapshot).catch(() => {});
 
   const s = await stat(fullPath);
   return { filename, sizeBytes: s.size, createdAt: s.mtime.toISOString() };
@@ -79,6 +92,12 @@ export async function deleteBackup(filename: string): Promise<void> {
   await unlink(path.join(BACKUP_DIR, filename));
 }
 
+/** The zip bytes for download. Same filename rule as delete and restore. */
+export async function readBackupFile(filename: string): Promise<Buffer> {
+  assertSafeFilename(filename);
+  return readFile(path.join(BACKUP_DIR, filename));
+}
+
 /** Extracts a backup over the live config/data - the app needs a restart afterward to actually pick up the restored .env.local and reopen the SQLite file, same as any other settings change. */
 export async function restoreBackup(filename: string): Promise<void> {
   assertSafeFilename(filename);
@@ -99,6 +118,14 @@ export async function restoreBackup(filename: string): Promise<void> {
     const escapes = parts.some((p) => p === '..' || p === '') || path.isAbsolute(name);
     const underData = parts[0] === 'data' && parts.length > 1 && !EXCLUDED_DATA_ENTRIES.has(parts[1]);
     if (escapes || !underData) throw new Error(`Backup refused: it contains "${entry.entryName}", which is not a settings or data file`);
+  }
+
+  // The live database handle is closed (and its write-ahead log folded in)
+  // before the file is overwritten; otherwise SQLite would replay the old
+  // log over the restored copy on the next open.
+  closeDb();
+  for (const side of ['-wal', '-shm']) {
+    await unlink(path.join(DATA_DIR, `weavarr.db${side}`)).catch(() => {});
   }
 
   for (const entry of entries) {

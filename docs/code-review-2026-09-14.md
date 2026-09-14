@@ -199,68 +199,78 @@ web page the user happens to visit (the CSRF middleware exists for that).
 
 ## Low
 
-- [ ] **Backup upload has no size cap** and is buffered in memory
+- [x] **Backup upload has no size cap** and is buffered in memory
       (`app/api/backup/upload/route.ts`). Reject over a fixed size before
       reading the body.
-- [ ] **Backup zips copy the SQLite file while it is open** (`lib/backup.ts:44-53`).
+- [x] **Backup zips copy the SQLite file while it is open** (`lib/backup.ts:44-53`).
       Use `VACUUM INTO` a temp file and add that.
-- [ ] **Backup download hands out every key** to anyone on the port. By design
+- [x] **Backup download hands out every key** to anyone on the port. By design
       under the no-login model; say so plainly in the README.
 - [x] **Negative retention count deletes every backup daily.**
       `instrumentation.ts:159` uses `Number(x) || 10`; reuse
       `backupRetentionCount()` and validate on save.
-- [ ] **Restart route kills the process outright** outside Docker
+- [x] **Restart route kills the process outright** outside Docker
       (`app/api/settings/restart/route.ts`). Refuse when `/.dockerenv` is
       absent.
-- [ ] **`watched` and `sucks` POST bind raw JSON into SQL.** Missing fields
+- [x] **`watched` and `sucks` POST bind raw JSON into SQL.** Missing fields
       throw a 500 instead of a 400; validate and coerce.
-- [ ] **Push subscription endpoints are unvalidated and unbounded.** Require
+- [x] **Push subscription endpoints are unvalidated and unbounded.** Require
       an `https:` URL and cap rows.
-- [ ] **Plex PIN poll is a GET with a side effect.** Make the save a POST.
-- [ ] **Queue janitor uses raw env URLs** without the trailing-slash strip and
+- [x] **Plex PIN poll is a GET with a side effect.** Make the save a POST.
+- [x] **Queue janitor uses raw env URLs** without the trailing-slash strip and
       returns silently on non-OK (`lib/queueJanitor.ts:51-54`).
-- [ ] **Profile and root-folder fetches never check `.ok`** (`lib/sonarr.ts:76-83`,
+- [x] **Profile and root-folder fetches never check `.ok`** (`lib/sonarr.ts:76-83`,
       `lib/radarr.ts:66-73`); a 401 reads as "no quality profile configured".
-- [ ] **Validation errors from Sonarr and Radarr show raw JSON**
+- [x] **Validation errors from Sonarr and Radarr show raw JSON**
       (`lib/httpError.ts:14`); join the `errorMessage` values when the body is
       an array.
-- [ ] **Season file delete is one call per episode** (`lib/sonarr.ts:773-777`)
+- [x] **Season file delete is one call per episode** (`lib/sonarr.ts:773-777`)
       and double-deletes multi-episode files; use the bulk endpoint.
-- [ ] **Routes accept untyped season and episode numbers** (`search-season`,
+- [x] **Routes accept untyped season and episode numbers** (`search-season`,
       `delete-episode`, `delete-season`, `radarr/add`, `calendar`); one
       `intParam` helper, 400 on failure.
-- [ ] **Series-by-tmdb lookups pull the whole library**, and five routes fetch
+- [x] **Series-by-tmdb lookups pull the whole library**, and five routes fetch
       `getAllSonarrSeries` independently on the Library page. Query by tvdbId
       and memoize for ten seconds.
-- [ ] **Plex library listing caps at 2000 items** with no paging
+- [x] **Plex library listing caps at 2000 items** with no paging
       (`lib/plex.ts:232`).
-- [ ] **Movie relays omit `datePlayed`** (`lib/watchedSync.ts:220`), the same
+- [x] **Movie relays omit `datePlayed`** (`lib/watchedSync.ts:220`), the same
       bug the episode path fixed.
-- [ ] **Import notifications key on title plus date**, not `historyId`, and
+- [x] **Import notifications key on title plus date**, not `historyId`, and
       only look at the ten newest imports, so a season pack never notifies
       for most of it (`lib/notifyOnPlexImport.ts:55-67`).
-- [ ] **Air-date fallback accepts any same-day episode** (`lib/plex.ts:76`,
+- [x] **Air-date fallback accepts any same-day episode** (`lib/plex.ts:76`,
       `lib/jellyfin.ts:103`), so a two-episode night reports E02 ready when
       only E01 scanned.
-- [ ] **Compose files need Compose v2.24+** (`env_file` object form, `name:`)
+- [x] **Compose files need Compose v2.24+** (`env_file` object form, `name:`)
       and fail on apt's 1.29. State the minimum in the header, or load the
       settings file in-process and drop `env_file`.
-- [ ] **Workflow has no concurrency group**, so two quick pushes can leave
+- [x] **Workflow has no concurrency group**, so two quick pushes can leave
       `latest` on the older commit.
-- [ ] **Three SQLite handles, no WAL, no busy timeout, no schema version**,
+- [x] **Three SQLite handles, no WAL, no busy timeout, no schema version**,
       and `DROP TABLE favorites` on every boot. One `lib/db.ts` with pragmas
       and numbered migrations.
-- [ ] **Netlify leftovers** (`@netlify/plugin-nextjs`, `netlify.toml`) install
+- [x] **Netlify leftovers** (`@netlify/plugin-nextjs`, `netlify.toml`) install
       on every image build; no root README for people landing from GHCR.
-- [ ] **Trakt test only reads the public key**, so filling only the server
+- [x] **Trakt test only reads the public key**, so filling only the server
       key says "Client ID required" while the dot says configured.
-- [ ] **Side effects inside `setState` updaters** in three components fire
+- [x] **Side effects inside `setState` updaters** in three components fire
       twice under StrictMode; compute, set, then act.
-- [ ] **"+N more" button nested inside the row link** on Watch; move it out.
-- [ ] **Detail page fetches series state three times** (chip, availability,
+- [x] **"+N more" button nested inside the row link** on Watch; move it out.
+- [x] **Detail page fetches series state three times** (chip, availability,
       modal); one hook with a module cache.
 
 ## Simplification (no behaviour change)
+
+Done 2026-09-14: shared episode-file fetch and series mapper in sonarr.ts,
+ImportHistoryItem in lib/importHistory.ts, config helpers (sonarrConfig,
+radarrConfig, sabnzbdConfig, nzbgetConfig) used by downloadProgress and
+queueJanitor, one stripDisambiguator, titleFuzzyMatch alias removed, one TV
+normalizer in tmdb.ts, one testArr, backup download through lib/backup.ts,
+useDismissable and useRestartApp hooks, CardGrid sets derived. Left alone:
+the file splits of ReadyToWatchPanel and SettingsPanel and the postJson /
+useAsyncAction helpers, which move code without changing behaviour and
+can wait for a quieter moment.
 
 - `lib/sonarr.ts`: six functions fetch the same episode endpoint; one raw
   fetch the rest map over. `ImportHistoryItem` is declared twice. Enabled and

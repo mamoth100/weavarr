@@ -41,16 +41,15 @@ export default function FilterBar({
   const [yearInput, setYearInput] = useState(currentYear);
   const [isPending, startTransition] = useTransition();
   const [pendingFilter, setPendingFilter] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpenState] = useState(() => persistedFiltersOpen);
+  const [filtersOpen, setFiltersOpen] = useState(() => persistedFiltersOpen);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  function setFiltersOpen(next: boolean | ((o: boolean) => boolean)) {
-    setFiltersOpenState((prev) => {
-      const value = typeof next === 'function' ? next(prev) : next;
-      persistedFiltersOpen = value;
-      return value;
-    });
-  }
+  // The module-level remember-across-navigations write is a side effect, so
+  // it lives in an effect rather than inside the state updater (which React
+  // may run twice in development).
+  useEffect(() => {
+    persistedFiltersOpen = filtersOpen;
+  }, [filtersOpen]);
 
   // Escape closes the panel, same as clicking outside or Done.
   useEffect(() => {
