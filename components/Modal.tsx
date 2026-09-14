@@ -40,11 +40,14 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
     if (!open) return;
     openerRef.current = document.activeElement;
     const card = cardRef.current;
-    // Defer one frame so the children have rendered and can take focus.
-    const raf = requestAnimationFrame(() => {
+    // Defer a tick so the children have rendered and can take focus. A
+    // timer, not requestAnimationFrame: frames do not run while the tab is
+    // in the background, and a dialog opened from a script or a background
+    // tab would then never take focus at all.
+    const raf = setTimeout(() => {
       const first = card?.querySelector<HTMLElement>(FOCUSABLE);
       (first ?? card)?.focus();
-    });
+    }, 0);
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -71,7 +74,7 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
     }
     document.addEventListener('keydown', handleKey);
     return () => {
-      cancelAnimationFrame(raf);
+      clearTimeout(raf);
       document.removeEventListener('keydown', handleKey);
       const opener = openerRef.current;
       if (opener instanceof HTMLElement && document.contains(opener)) opener.focus();
