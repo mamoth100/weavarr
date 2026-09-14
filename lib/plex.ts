@@ -155,6 +155,8 @@ export interface WatchedEpisode {
   viewedAt: string;
   /** yyyy-mm-dd when Plex's agent knows it; null for unmatched local items. */
   airDate: string | null;
+  /** The show's ratingKey, so the sync can resolve the show without a title lookup. */
+  showKey?: string;
 }
 
 const sectionKeyCache = new Map<string, string | null>();
@@ -339,6 +341,7 @@ export async function getPlexEpisodeWatchHistory(limit = 30): Promise<WatchedEpi
       episodeNumber: i.index as number,
       viewedAt: new Date((i.lastViewedAt as number) * 1000).toISOString(),
       airDate: typeof i.originallyAvailableAt === 'string' ? i.originallyAvailableAt.slice(0, 10) : null,
+      showKey: typeof i.grandparentRatingKey === 'string' ? i.grandparentRatingKey : undefined,
     }));
 }
 

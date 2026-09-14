@@ -349,7 +349,7 @@ export async function assertSeriesDeletable(seriesId: number): Promise<void> {
 /** The series' display title when it's on the protected list, else null. Shared by the delete guard and every UI surface that must hide its delete buttons. */
 export async function getProtectedTitle(seriesId: number): Promise<string | null> {
   if (!SONARR_URL || !SONARR_KEY) return null;
-  const { getExcludedShows } = await import('./cleanupCandidates');
+  const { getExcludedShows, isExcludedTitle } = await import('./cleanupCandidates');
   const excluded = await getExcludedShows();
   if (excluded.size === 0) return null;
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
@@ -360,7 +360,7 @@ export async function getProtectedTitle(seriesId: number): Promise<string | null
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Could not check the protected list (Sonarr answered ${res.status}) - delete blocked`);
   const detail = await res.json();
-  return excluded.has(((detail.title as string) ?? '').trim().toLowerCase()) ? ((detail.title as string) ?? '') : null;
+  return isExcludedTitle(excluded, (detail.title as string) ?? '') ? ((detail.title as string) ?? '') : null;
 }
 
 export interface SeriesDeleteAftermath {
@@ -930,12 +930,12 @@ export async function getSonarrSeriesStateByTmdbId(tmdbId: number): Promise<Sona
   if (!detailRes.ok) throw new Error(`Sonarr series fetch failed: ${detailRes.status}`);
   const detail = await detailRes.json();
 
-  const { getExcludedShows } = await import('./cleanupCandidates');
+  const { getExcludedShows, isExcludedTitle } = await import('./cleanupCandidates');
   const excluded = await getExcludedShows();
   return {
     seriesId: match.id,
     monitorFuture: detail.monitorNewItems === 'all',
-    protected: excluded.has(match.title.trim().toLowerCase()),
+    protected: isExcludedTitle(excluded, match.title),
     // Season 0 (specials) stays in on purpose - the request modal offers
     // specials now, so their owned/locked state has to be visible too.
     // Titles ride along so the modal can list episodes of seasons TMDB

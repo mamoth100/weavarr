@@ -1,5 +1,5 @@
-import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { readJsonState, writeJsonAtomic } from './jsonState';
 import { checkForUpdate, localCommit } from './versionCheck';
 import { notifyAllChannels } from './notificationChannels';
 
@@ -15,10 +15,7 @@ export async function checkForUpdateAndAlert(): Promise<void> {
   const { latest, updateAvailable } = await checkForUpdate();
   if (updateAvailable !== true || !latest) return;
 
-  let lastNotified: string | null = null;
-  try {
-    lastNotified = JSON.parse(await readFile(STATE_FILE, 'utf8')).lastNotified ?? null;
-  } catch {}
+  const lastNotified = (await readJsonState<{ lastNotified?: string | null }>(STATE_FILE, {})).lastNotified ?? null;
   if (lastNotified === latest) return;
 
   await notifyAllChannels(
@@ -27,7 +24,6 @@ export async function checkForUpdateAndAlert(): Promise<void> {
     'alert',
     '/settings'
   );
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify({ lastNotified: latest }), 'utf8');
+  await writeJsonAtomic(STATE_FILE, { lastNotified: latest });
   console.log(`[updateAlert] notified about ${latest}`);
 }

@@ -49,6 +49,7 @@ interface JellyfinItem {
   Name?: string;
   Type?: string;
   SeriesName?: string;
+  SeriesId?: string;
   ParentIndexNumber?: number;
   IndexNumber?: number;
   // Jellyfin stores a double-length episode file as ONE item spanning a
@@ -169,18 +170,23 @@ export async function markJellyfinEpisodesWatched(
 /** Same as markJellyfinEpisodesWatched but for a series already resolved to its item id (watchedSync matches shows by provider id, not title search). */
 export async function markJellyfinSeriesEpisodesWatchedById(
   seriesId: string,
-  episodes: { seasonNumber: number; episodeNumber: number }[],
+  episodes: { seasonNumber: number; episodeNumber: number; viewedAt?: string }[],
   showTitle = 'show',
   datePlayed?: string
 ): Promise<void> {
   requireConfig();
   const allEpisodes = await getSeriesEpisodes(seriesId);
-  const ids = allEpisodes
-    .filter((e) => e.Id && episodes.some((w) => episodeCovers(e, w.seasonNumber, w.episodeNumber)))
-    .map((e) => e.Id as string);
-
-  if (ids.length === 0) throw new Error(`Could not find those episodes of "${showTitle}" in Jellyfin`);
-  await Promise.all(Array.from(new Set(ids)).map((id) => markPlayed(id, datePlayed)));
+  // One fetch of the episode list, then one mark per matched item, each with
+  // its own original watch date when the caller has one (the sync passes a
+  // whole show's backlog at once).
+  const jobs = new Map<string, string | undefined>();
+  for (const e of allEpisodes) {
+    if (!e.Id) continue;
+    const spec = episodes.find((w) => episodeCovers(e, w.seasonNumber, w.episodeNumber));
+    if (spec) jobs.set(e.Id, spec.viewedAt ?? datePlayed);
+  }
+  if (jobs.size === 0) throw new Error(`Could not find those episodes of "${showTitle}" in Jellyfin`);
+  await Promise.all(Array.from(jobs.entries()).map(([id, date]) => markPlayed(id, date)));
 }
 
 /** Tells Jellyfin to rescan its libraries (e.g. after deleting a movie elsewhere). Jellyfin has no clean per-library-type refresh like Plex's per-section refresh, so this triggers a full library scan for both movie and TV refresh calls. */
@@ -291,6 +297,8 @@ export interface JellyfinWatchedEpisode {
   viewedAt: string;
   /** yyyy-mm-dd when Jellyfin's provider knows it; null otherwise. */
   airDate: string | null;
+  /** The series item id, so the sync can resolve the show without a title lookup. */
+  showKey?: string;
 }
 
 /** Recently watched episodes for the configured user, most recent first. */
@@ -326,6 +334,7 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
           episodeNumber: n,
           viewedAt: i.UserData!.LastPlayedDate as string,
           airDate: typeof i.PremiereDate === 'string' ? i.PremiereDate.slice(0, 10) : null,
+          showKey: i.SeriesId,
         });
       }
       return out;

@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import { readJsonState, writeJsonAtomic } from './jsonState';
 import { getCleanupCandidates, getWatchedPercentThreshold } from './cleanupCandidates';
 import { getAllRadarrMovies } from './radarr';
 import { getWatchedMovies, getInProgressMovies } from './mediaServer';
@@ -42,12 +42,7 @@ let dismissed: Set<string> | null = null;
 
 async function loadDismissed(): Promise<Set<string>> {
   if (dismissed) return dismissed;
-  try {
-    const raw = await readFile(STATE_FILE, 'utf8');
-    dismissed = new Set(JSON.parse(raw));
-  } catch {
-    dismissed = new Set();
-  }
+  dismissed = new Set(await readJsonState<string[]>(STATE_FILE, []));
   return dismissed;
 }
 
@@ -57,8 +52,7 @@ export async function getDismissedKeys(): Promise<Set<string>> {
 }
 
 async function persistDismissed(seen: Set<string>): Promise<void> {
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify(Array.from(seen)), 'utf8');
+  await writeJsonAtomic(STATE_FILE, Array.from(seen));
 }
 
 export async function dismissRecentlyWatched(key: string): Promise<void> {

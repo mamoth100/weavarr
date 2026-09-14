@@ -1,5 +1,6 @@
 import webpush from 'web-push';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
+import { writeJsonAtomicSync } from './jsonState';
 import path from 'path';
 import { DatabaseSync } from 'node:sqlite';
 import type { NotificationLink } from './notificationChannels';
@@ -40,9 +41,10 @@ export function getVapidKeys(): VapidKeys {
   try {
     return JSON.parse(readFileSync(KEYS_PATH, 'utf8')) as VapidKeys;
   } catch {
+    // Atomic write: a torn keys file on the next read would regenerate the
+    // pair and orphan every device subscription for good.
     const keys = webpush.generateVAPIDKeys();
-    mkdirSync(path.dirname(KEYS_PATH), { recursive: true });
-    writeFileSync(KEYS_PATH, JSON.stringify(keys), 'utf8');
+    writeJsonAtomicSync(KEYS_PATH, keys);
     return keys;
   }
 }

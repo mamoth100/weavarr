@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import { readJsonState, writeJsonAtomic } from './jsonState';
 import { getEpisodeWatchHistory, getInProgressEpisodes, getPlayedSessionKeys } from './mediaServer';
 import { getSonarrSeriesList, getSonarrEpisodeFileInfoMap, type SonarrEpisodeFileInfo } from './sonarr';
 import { titlesMatch, findUniqueByTitle } from './titleMatch';
@@ -30,14 +30,17 @@ export interface CleanupCandidate {
 const THRESHOLD_STATE_FILE = path.join(process.cwd(), 'data', 'threshold-watch-state.json');
 const THRESHOLD_STATE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
+// One in-memory copy shared by every caller (the Watch and Status pages, the
+// chopping-block preview and the hourly job can all run at once). Each used
+// to read, add its own keys and write the whole file back, so the second
+// writer dropped the first one's entries and reset those grace clocks.
+let thresholdSeenCache: Record<string, string> | null = null;
+
 async function loadThresholdSeen(): Promise<Record<string, string>> {
-  try {
-    const raw = await readFile(THRESHOLD_STATE_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
+  if (thresholdSeenCache) return thresholdSeenCache;
+  const parsed = await readJsonState<unknown>(THRESHOLD_STATE_FILE, {});
+  thresholdSeenCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, string>) : {};
+  return thresholdSeenCache;
 }
 
 async function saveThresholdSeen(state: Record<string, string>): Promise<void> {
@@ -46,8 +49,7 @@ async function saveThresholdSeen(state: Record<string, string>): Promise<void> {
   for (const [k, v] of Object.entries(state)) {
     if (new Date(v).getTime() < floor) delete state[k];
   }
-  await mkdir(path.dirname(THRESHOLD_STATE_FILE), { recursive: true });
-  await writeFile(THRESHOLD_STATE_FILE, JSON.stringify(state), 'utf8');
+  await writeJsonAtomic(THRESHOLD_STATE_FILE, state);
 }
 
 /** Shared with the movie side of "recently watched" so both use the same threshold. */
@@ -65,6 +67,19 @@ export function getWatchedPercentThreshold(): number {
 export async function getExcludedShows(): Promise<Set<string>> {
   const raw = (await getRawEnvValue('CLEANUP_EXCLUDED_SHOWS')) ?? process.env.CLEANUP_EXCLUDED_SHOWS ?? '';
   return new Set(raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+
+/**
+ * Whether a show title is on the excluded list. Tolerant on purpose: Sonarr
+ * can rename "Roseanne" to "Roseanne (1988)" on a metadata refresh, and an
+ * exact string comparison would silently unprotect it. Over-protecting is
+ * the safe direction for a list of irreplaceable files.
+ */
+export function isExcludedTitle(excluded: Set<string>, title: string): boolean {
+  const t = title.trim().toLowerCase();
+  if (excluded.has(t)) return true;
+  for (const x of Array.from(excluded)) if (titlesMatch(x, title)) return true;
+  return false;
 }
 
 /** Two dates on different sides of a timezone can differ by one calendar day and still be the same episode. */
@@ -179,7 +194,7 @@ export async function getCleanupCandidates(limit = 30): Promise<CleanupCandidate
   const resolved: { watched: WatchSignal; seriesId: number; tmdbId: number | null; posterPath: string | null }[] = [];
 
   for (const watched of [...watchedSignals, ...almostDoneSignals]) {
-    if (excluded.has(watched.showTitle.trim().toLowerCase())) continue;
+    if (isExcludedTitle(excluded, watched.showTitle)) continue;
 
     // Strict equality-after-normalization, and exactly one hit. Two Sonarr
     // entries matching the same signal (a show and its remake) is ambiguous,

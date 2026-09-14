@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import { readJsonState, writeJsonAtomic } from './jsonState';
 import { getRadarrRecentImports } from './radarr';
 import { getSonarrRecentImports, getSonarrUnairedCount } from './sonarr';
 import { hasTitle, hasEpisode } from './mediaServer';
@@ -14,19 +14,13 @@ let notified: Set<string> | null = null;
 
 async function loadNotified(): Promise<Set<string>> {
   if (notified) return notified;
-  try {
-    const raw = await readFile(STATE_FILE, 'utf8');
-    notified = new Set(JSON.parse(raw));
-  } catch {
-    notified = new Set();
-  }
+  notified = new Set(await readJsonState<string[]>(STATE_FILE, []));
   return notified;
 }
 
 async function persistNotified(): Promise<void> {
   if (!notified) return;
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify(Array.from(notified)), 'utf8');
+  await writeJsonAtomic(STATE_FILE, Array.from(notified));
 }
 
 export async function checkForNewPlexImports(): Promise<void> {
