@@ -13,7 +13,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
 
 ## Do now
 
-- [ ] **NZBGet password committed in plain text.** `scripts/migrate_sab_to_nzbget.py:15`
+- [x] **NZBGet password committed in plain text.** `scripts/migrate_sab_to_nzbget.py:15`
       and `scripts/test_nzbget_servers.py:10` both contain the live password,
       and the repo has been public since 2026-09-13. Rotate the password in
       NZBGet, update it in Weavarr Settings, delete all three scripts under
@@ -22,14 +22,14 @@ web page the user happens to visit (the CSRF middleware exists for that).
       optional once the password is rotated. (Scripts deleted and history
       rewritten 2026-09-14; the old commit is still fetchable by direct SHA
       until GitHub garbage-collects it. Password rotation is the real fix.)
-- [ ] **Backup restore is remote code execution.** `lib/backup.ts:88-95`
+- [x] **Backup restore is remote code execution.** `lib/backup.ts:88-95`
       extracts every zip entry other than `.env.local` anywhere under the app
       root. Anyone on the LAN can upload a zip containing `server.js`, restore
       it, hit restart, and the container comes back running their code. Fix:
       reject the whole zip unless every entry is `.env.local` or under
       `data/`, and write the restored `.env.local` through the same key
       whitelist the settings save uses.
-- [ ] **Protected-show check and the delete use different ids.**
+- [x] **Protected-show check and the delete use different ids.**
       `app/api/sonarr/delete/route.ts:15-16` (also `delete-episode`,
       `delete-season`) checks `Number(seriesId)` but passes the raw body value
       to the delete, which is interpolated unencoded into the Sonarr URL. A
@@ -37,7 +37,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
       "nothing to protect") and then deletes series 12 with files. Fix: parse
       once, reject anything that is not a positive integer, and move the
       `assertSeriesDeletable` call inside the delete helpers themselves.
-- [ ] **The protection guard fails open on any error.** `lib/sonarr.ts:337`
+- [x] **The protection guard fails open on any error.** `lib/sonarr.ts:337`
       returns "not protected" on every non-OK response, not just 404. A 503
       from Sonarr during a DB lock lets a delete of Friends through. Fix:
       null only on 404, throw on anything else so the delete is blocked.
@@ -88,7 +88,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
       the sentinel exists (every caller returns a loading state first), and
       never retries. A 300-movie library shows 50 forever. Fix: attach from a
       callback ref, or re-run when data arrives, and check once on attach.
-- [ ] **Restore runs while the process keeps stale state in memory.**
+- [x] **Restore runs while the process keeps stale state in memory.**
       Module-level caches (`notified`, `synced`, `dismissed`, health status)
       write themselves back over the restored files within minutes, and the
       SQLite file is overwritten under open handles. Fix: after a restore,

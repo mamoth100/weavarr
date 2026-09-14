@@ -41,7 +41,7 @@ function BackupRow({ backup, onDeleted }: { backup: BackupInfo; onDeleted: () =>
       </a>
 
       {restored ? (
-        <span className="text-xs font-medium text-green-400">Restored - restart to apply</span>
+        <span className="text-xs font-medium text-green-400">Restored. The app is restarting on the restored data.</span>
       ) : (
         <ConfirmButton
           label="Restore"
@@ -319,7 +319,7 @@ export default function BackupPanel() {
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-400 space-y-1">
         <p>Backs up .env.local plus everything under data/ except the poster cache (regenerable from Radarr/Sonarr).</p>
-        <p>Restoring overwrites current config/data and needs an app restart to take effect.</p>
+        <p>Restoring overwrites current config and data, then restarts the app automatically.</p>
       </div>
       <ScheduleSettings />
       <UploadBackup onUploaded={() => setListKey((k) => k + 1)} />

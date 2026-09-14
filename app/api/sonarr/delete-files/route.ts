@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parsePositiveInt } from '@/lib/params';
 import { deleteSonarrSeriesFiles } from '@/lib/sonarr';
 import { assertSeriesDeletable } from '@/lib/sonarr';
 
@@ -7,11 +8,12 @@ export const dynamic = 'force-dynamic';
 
 /** "Episodes only" delete: all files gone, Sonarr registration kept. */
 export async function POST(request: Request) {
-  const { seriesId } = await request.json();
-  if (!seriesId) return NextResponse.json({ error: 'seriesId required' }, { status: 400 });
+  const body = await request.json();
+  const seriesId = parsePositiveInt(body.seriesId);
+  if (seriesId === null) return NextResponse.json({ error: 'seriesId must be a positive integer' }, { status: 400 });
   try {
-    await assertSeriesDeletable(Number(seriesId));
-    const deleted = await deleteSonarrSeriesFiles(Number(seriesId));
+    await assertSeriesDeletable(seriesId);
+    const deleted = await deleteSonarrSeriesFiles(seriesId);
     return NextResponse.json({ deleted });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

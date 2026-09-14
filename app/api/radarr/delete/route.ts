@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parsePositiveInt } from '@/lib/params';
 import { deleteRadarrMovie } from '@/lib/radarr';
 import { refreshMovieLibrary } from '@/lib/mediaServer';
 
@@ -7,8 +8,9 @@ export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: Request) {
-  const { movieId } = await request.json();
-  if (!movieId) return NextResponse.json({ error: 'movieId required' }, { status: 400 });
+  const body = await request.json();
+  const movieId = parsePositiveInt(body.movieId);
+  if (movieId === null) return NextResponse.json({ error: 'movieId must be a positive integer' }, { status: 400 });
 
   try {
     await deleteRadarrMovie(movieId);

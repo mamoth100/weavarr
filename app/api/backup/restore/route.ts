@@ -9,7 +9,14 @@ export async function POST(request: Request) {
 
   try {
     await restoreBackup(filename);
-    return NextResponse.json({ restored: true });
+    // The running process still holds pre-restore state in memory (the
+    // dismissed set, the sync's seen set, the import log) and would write it
+    // back over the restored files within minutes, and the SQLite file was
+    // just replaced under open handles. Exit and let the container's
+    // restart policy bring the app back on the restored data, exactly as
+    // /api/settings/restart does.
+    setTimeout(() => process.exit(0), 500);
+    return NextResponse.json({ restored: true, restarting: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

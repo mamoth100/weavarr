@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parsePositiveInt, parseNonNegativeInt } from '@/lib/params';
 import { deleteSonarrSeasonFiles, getSeriesDeleteAftermath } from '@/lib/sonarr';
 import { assertSeriesDeletable } from '@/lib/sonarr';
 import { refreshTvLibrary } from '@/lib/mediaServer';
@@ -8,13 +9,15 @@ export const dynamic = 'force-dynamic';
 
 
 export async function POST(request: Request) {
-  const { seriesId, seasonNumber } = await request.json();
-  if (!seriesId || seasonNumber === undefined) {
-    return NextResponse.json({ error: 'seriesId, seasonNumber required' }, { status: 400 });
+  const body = await request.json();
+  const seriesId = parsePositiveInt(body.seriesId);
+  const seasonNumber = parseNonNegativeInt(body.seasonNumber);
+  if (seriesId === null || seasonNumber === null) {
+    return NextResponse.json({ error: 'seriesId and seasonNumber must be integers' }, { status: 400 });
   }
 
   try {
-    await assertSeriesDeletable(Number(seriesId));
+    await assertSeriesDeletable(seriesId);
     await deleteSonarrSeasonFiles(seriesId, seasonNumber);
     try {
       await refreshTvLibrary();
