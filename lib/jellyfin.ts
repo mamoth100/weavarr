@@ -289,6 +289,8 @@ export interface JellyfinWatchedEpisode {
   seasonNumber: number;
   episodeNumber: number;
   viewedAt: string;
+  /** yyyy-mm-dd when Jellyfin's provider knows it; null otherwise. */
+  airDate: string | null;
 }
 
 /** Recently watched episodes for the configured user, most recent first. */
@@ -302,7 +304,7 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
     SortBy: 'DatePlayed',
     SortOrder: 'Descending',
     Limit: String(limit),
-    Fields: 'UserData',
+    Fields: 'UserData,PremiereDate',
   });
   const res = await fetchWithTimeout(`${JELLYFIN_URL}/Items?${params}`, { headers: headers(), cache: 'no-store' });
   if (!res.ok) throw new Error(`Jellyfin watched episodes failed: ${res.status}`);
@@ -323,6 +325,7 @@ export async function getJellyfinEpisodeWatchHistory(limit = 30): Promise<Jellyf
           seasonNumber: i.ParentIndexNumber as number,
           episodeNumber: n,
           viewedAt: i.UserData!.LastPlayedDate as string,
+          airDate: typeof i.PremiereDate === 'string' ? i.PremiereDate.slice(0, 10) : null,
         });
       }
       return out;
