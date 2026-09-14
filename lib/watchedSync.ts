@@ -238,6 +238,15 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   const jellyfinMoviesOk = jellyfinMoviesR.status === 'fulfilled';
   const plexShowsOk = plexShowsR.status === 'fulfilled';
   const jellyfinShowsOk = jellyfinShowsR.status === 'fulfilled';
+  // A skipped direction is not the same as nothing to do: say which listing
+  // failed, or a broken server looks like a perfectly synced one.
+  const listings: [string, PromiseSettledResult<unknown>][] = [
+    ['Plex movies', plexMoviesR], ['Jellyfin movies', jellyfinMoviesR], ['Plex shows', plexShowsR],
+    ['Jellyfin shows', jellyfinShowsR], ['Plex watched episodes', plexEpsR], ['Jellyfin watched episodes', jellyfinEpsR],
+  ];
+  for (const [name, r] of listings) {
+    if (r.status === 'rejected') console.error(`[watchedSync] ${name} listing failed, that direction is skipped this run:`, r.reason instanceof Error ? r.reason.message : r.reason);
+  }
 
   const plexMovieIdx = buildIndex(plexMovies);
   const jellyfinMovieIdx = buildIndex(jellyfinMovies);
@@ -264,14 +273,19 @@ export async function syncWatchedBetweenServers(): Promise<number> {
       noteFailure(key, `[watchedSync] cannot sync "${movie.title}" ${direction}: not in the other library`);
       return;
     }
-    if (match.watched) {
+    // Same dual-identity rule as episodes: remember the item under the
+    // other server's id as well, so the reverse direction never re-marks it.
+    const targetKey = `movie:${canonical(match)}`;
+    if (match.watched || seen.has(targetKey)) {
       seen.add(key);
+      seen.add(targetKey);
       await markDirty();
       return;
     }
     try {
       await markTarget(match.serverKey);
       seen.add(key);
+      seen.add(targetKey);
       await markDirty();
       marks += 1;
       console.log(`[watchedSync] marked "${movie.title}" watched ${direction}`);
@@ -303,7 +317,7 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   interface Batch {
     targetKey: string;
     showTitle: string;
-    eps: { key: string; seasonNumber: number; episodeNumber: number; viewedAt: string }[];
+    eps: { key: string; targetEpKey: string; seasonNumber: number; episodeNumber: number; viewedAt: string }[];
   }
 
   /**
@@ -326,25 +340,36 @@ export async function syncWatchedBetweenServers(): Promise<number> {
       const ownShow = ownShowFor(ep, ownByKey, ownByTitle);
       const key = epKey(ownShow, ep.showTitle, ep.seasonNumber, ep.episodeNumber);
       if (seen.has(key) || shouldSkip(key)) continue;
-      if (targetEpSet.has(key)) {
+      const targetShow = ownShow ? findMatch(ownShow, targetShowIdx) : uniqueTitleMatch(targetShowIdx.all, ep.showTitle);
+      // The same show can carry different provider ids on the two servers
+      // (Kitchen Nightmares: Plex says TMDB 235884, Jellyfin says 11294), so
+      // an episode has one key per side. Both are checked and both are
+      // remembered; remembering only the source-side key let the reverse
+      // direction re-mark the episode on the next run, which on Plex resets
+      // its watched date to "now".
+      const targetKey = targetShow ? epKey(targetShow, ep.showTitle, ep.seasonNumber, ep.episodeNumber) : null;
+      if (targetEpSet.has(key) || (targetKey !== null && targetEpSet.has(targetKey))) {
         seen.add(key);
+        if (targetKey) seen.add(targetKey);
         await markDirty();
         continue;
       }
-      const targetShow = ownShow ? findMatch(ownShow, targetShowIdx) : uniqueTitleMatch(targetShowIdx.all, ep.showTitle);
       if (!targetShow) {
         noteFailure(key, `[watchedSync] cannot sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}: show not in the other library`);
         continue;
       }
       const batch = batches.get(targetShow.serverKey) ?? { targetKey: targetShow.serverKey, showTitle: ep.showTitle, eps: [] };
-      batch.eps.push({ key, seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber, viewedAt: ep.viewedAt });
+      batch.eps.push({ key, targetEpKey: targetKey as string, seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber, viewedAt: ep.viewedAt });
       batches.set(targetShow.serverKey, batch);
     }
 
     await mapWithConcurrency(Array.from(batches.values()), async (batch) => {
       try {
         await markTargetEpisodes(batch.targetKey, batch.eps, batch.showTitle);
-        for (const e of batch.eps) seen.add(e.key);
+        for (const e of batch.eps) {
+          seen.add(e.key);
+          seen.add(e.targetEpKey);
+        }
         await markDirty(batch.eps.length);
         marks += batch.eps.length;
         const list = batch.eps.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(', ');
