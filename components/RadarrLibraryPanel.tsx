@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
+import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
 
 const PAGE_SIZE = 50;
 
@@ -30,7 +31,10 @@ function DeleteButton({ movieId }: { movieId: number }) {
       label="Delete"
       confirmLabel="Really delete?"
       busyLabel="Deleting…"
-      onSuccess={() => setDone(true)}
+      onSuccess={() => {
+        invalidateLibraryStatus();
+        setDone(true);
+      }}
       action={async () => {
         const res = await fetch('/api/radarr/delete', {
           method: 'POST',

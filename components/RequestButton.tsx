@@ -5,6 +5,7 @@ import type { TmdbSeason } from '@/types';
 import ConfirmButton from '@/components/ConfirmButton';
 import RequestShowModal from '@/components/RequestShowModal';
 import { useDownloadProgress, refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
+import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
 
 /** "Is this show watching for new episodes?" chip - answers the monitoring question right on the page instead of requiring a trip into the Get more modal. */
 function MonitoringChip({ tmdbId, refreshKey }: { tmdbId: number; refreshKey: number }) {
@@ -98,7 +99,10 @@ function DeleteMovieButton({ movieId }: { movieId: number }) {
       label="Delete from Radarr"
       confirmLabel="Really delete?"
       busyLabel="Deleting…"
-      onSuccess={() => setDone(true)}
+      onSuccess={() => {
+        invalidateLibraryStatus();
+        setDone(true);
+      }}
       action={async () => {
         const res = await fetch('/api/radarr/delete', {
           method: 'POST',
@@ -149,6 +153,7 @@ function DeleteSeriesButton({ seriesId }: { seriesId: number }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Delete failed');
       setMode(kind === 'all' ? 'doneAll' : 'doneFiles');
+      invalidateLibraryStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setMode('error');

@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import type { DownloadProgressMap } from '@/lib/downloadProgress';
+import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
 
 /**
  * Shared download-progress feed for every card/detail page on screen: ONE
  * poller no matter how many components subscribe (same module-level pattern
- * as useLibraryStatus, plus adaptive polling - 12s while something is
+ * as useLibraryStatus, plus adaptive polling - 5s while something is
  * actually downloading, 60s when the queues are idle so an idle app barely
  * touches Radarr/Sonarr).
+ *
+ * Exactly one timer chain exists at any time: every place that schedules the
+ * next poll first clears the pending one. A burst used to start a second,
+ * untracked chain, so after two quick requests the endpoint was polled two
+ * or three times per interval for the rest of the session.
  */
 
 // 5s active matches the Status page's felt responsiveness (its poll is 4s) -
@@ -31,6 +37,14 @@ function hasActivity(d: DownloadProgressMap): boolean {
   return Object.keys(d.movies).length > 0 || Object.keys(d.shows).length > 0;
 }
 
+function scheduleNext(delayMs: number) {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    timer = null;
+    void poll();
+  }, delayMs);
+}
+
 async function poll() {
   if (fetching) return;
   fetching = true;
@@ -47,7 +61,7 @@ async function poll() {
     fetching = false;
     if (burstLeft > 0) burstLeft -= 1;
     if (subscribers.size > 0) {
-      timer = setTimeout(poll, burstLeft > 0 ? BURST_MS : cache && hasActivity(cache) ? ACTIVE_MS : IDLE_MS);
+      scheduleNext(burstLeft > 0 ? BURST_MS : cache && hasActivity(cache) ? ACTIVE_MS : IDLE_MS);
     }
   }
 }
@@ -55,7 +69,7 @@ async function poll() {
 function subscribe(fn: (d: DownloadProgressMap) => void): () => void {
   subscribers.add(fn);
   if (cache) fn(cache);
-  if (subscribers.size === 1 && !fetching) poll();
+  if (subscribers.size === 1 && !fetching && !timer) void poll();
   return () => {
     subscribers.delete(fn);
     if (subscribers.size === 0 && timer) {
@@ -71,12 +85,14 @@ export function useDownloadProgress(): DownloadProgressMap | null {
   return data;
 }
 
-/** Nudge the poller right after a request is submitted: fast-poll (8s) for up to ~2 minutes until the grab lands in the queue, so the card lights up as soon as the download actually starts. */
+/**
+ * Nudge the poller right after a request is submitted: fast-poll for up to
+ * about a minute until the grab lands in the queue, so the card lights up as
+ * soon as the download actually starts. A request also changes what the
+ * library-status badges should say, so that snapshot is refreshed too.
+ */
 export function refreshDownloadProgressSoon(): void {
   burstLeft = 15;
-  if (timer) {
-    clearTimeout(timer);
-    timer = null;
-  }
-  setTimeout(poll, 3000);
+  scheduleNext(3000);
+  invalidateLibraryStatus();
 }

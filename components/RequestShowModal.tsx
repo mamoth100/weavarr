@@ -232,6 +232,20 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       setWarnMode(null);
       setAcknowledged(false);
       setWarnedAt(null);
+      // Everything else resets too. Reopening "Get more" after an update
+      // used to show the previous selection still ticked, with owned counts
+      // from before the update, and would happily send the same request
+      // again. Nulling the Sonarr state makes the next open refetch it.
+      setFullSeasons(new Set());
+      setEpisodePicks(new Set());
+      setExpanded(new Set());
+      setUnaired(false);
+      setTouched(false);
+      setError(null);
+      setHighestQuality(false);
+      setProfileOverride('');
+      setSonarrState(null);
+      setLookupSeasons(null);
       return;
     }
     if (!warnThreshold || !touched) return;
