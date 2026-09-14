@@ -30,6 +30,8 @@ export interface WatchedEpisode {
   viewedAt: string;
   /** yyyy-mm-dd from the media server, when known. */
   airDate: string | null;
+  /** The show's key on its own server, when the history row carries one. */
+  showKey?: string;
 }
 
 export interface InProgressMovie {

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { readJsonState, writeJsonAtomic } from './jsonState';
 import path from 'path';
 import { testGroup } from './connectionTests';
 import { plexEnabled, jellyfinEnabled } from './mediaServer';
@@ -66,18 +66,13 @@ let lastStatus: Record<string, boolean> | null = null;
 
 async function loadStatus(): Promise<Record<string, boolean>> {
   if (lastStatus) return lastStatus;
-  try {
-    lastStatus = JSON.parse(await readFile(STATE_FILE, 'utf8'));
-  } catch {
-    lastStatus = {};
-  }
-  return lastStatus as Record<string, boolean>;
+  lastStatus = await readJsonState<Record<string, boolean>>(STATE_FILE, {});
+  return lastStatus;
 }
 
 async function persistStatus(): Promise<void> {
   if (!lastStatus) return;
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify(lastStatus), 'utf8');
+  await writeJsonAtomic(STATE_FILE, lastStatus);
 }
 
 export async function checkConnectionHealth(): Promise<void> {

@@ -129,28 +129,28 @@ web page the user happens to visit (the CSRF middleware exists for that).
       same "ready to watch" ping twice, auto-cleanup can notify twice. Fix: a
       small `runExclusive(name, fn)` used by every job, including the manual
       sync route.
-- [ ] **Unreconcilable sync items retry every five minutes forever.**
+- [x] **Unreconcilable sync items retry every five minutes forever.**
       `lib/watchedSync.ts:210-212, 267-279`. Shows on one server only produce
       an error line per poll, each with a full episode-list fetch, and flood
       the 500-line log buffer. Fix: a retry-after map, log the first failure.
-- [ ] **Watched sync fetches a full episode list per episode.**
+- [x] **Watched sync fetches a full episode list per episode.**
       `lib/watchedSync.ts:272`. A 2000-episode backlog is 2000 series fetches
       per direction. Fix: group by target show and mark once per show.
-- [ ] **Title fallback in the sync runs on id misses, not only on missing ids.**
+- [x] **Title fallback in the sync runs on id misses, not only on missing ids.**
       `lib/watchedSync.ts:128-133`. An item genuinely absent from the other
       server matches a same-named different show. Also `plexShowsByTitle`
       collapses two Plex shows with one title. Fix: fallback only when the
       source has no provider ids; key show maps by ratingKey and item id.
-- [ ] **Protection is exact match on Sonarr's mutable title.**
+- [x] **Protection is exact match on Sonarr's mutable title.**
       `lib/sonarr.ts:331-340`. A metadata refresh renaming "Roseanne" to
       "Roseanne (1988)" silently unprotects it. Fix: store the series id or
       tvdbId with each excluded entry; keep the title as a secondary match.
-- [ ] **Plain `writeFile` for six JSON state files.** A torn write on power
+- [x] **Plain `writeFile` for six JSON state files.** A torn write on power
       loss or during the restart route's `process.exit` resets the file to
       empty; the webpush keys case orphans every device subscription for
       good. Fix: one shared atomic write (tmp plus rename, as watchedSync
       already does) and log parse failures instead of swallowing them.
-- [ ] **Threshold state is read-modify-written by concurrent callers.**
+- [x] **Threshold state is read-modify-written by concurrent callers.**
       `lib/cleanupCandidates.ts:32-50, 110-124`. Two overlapping page loads
       drop each other's entries and reset grace clocks. Fix: module-level
       cache plus a serialized write chain.
@@ -158,11 +158,11 @@ web page the user happens to visit (the CSRF middleware exists for that).
       in an afternoon delete every older daily backup
       (`instrumentation.ts:157-166`). Fix: skip the boot run when the newest
       backup is younger than the interval.
-- [ ] **Entrypoint requires root and hard-codes uid 1001.** `docker-entrypoint.sh`.
+- [x] **Entrypoint requires root and hard-codes uid 1001.** `docker-entrypoint.sh`.
       `user:` in compose or rootless Docker makes `su-exec` fail and the
       container never starts. Fix: if not root, exec directly; else honour
       `PUID`/`PGID` before chown.
-- [ ] **No HEALTHCHECK.** `docker ps` shows Up for a crashed server. Add a
+- [x] **No HEALTHCHECK.** `docker ps` shows Up for a crashed server. Add a
       `/api/health` route and a Dockerfile HEALTHCHECK using busybox wget.
 - [ ] **Request modal keeps state between opens.** `components/RequestShowModal.tsx:89-99`.
       Reopen Get more after an update: the old season is still ticked and

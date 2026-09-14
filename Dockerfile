@@ -53,6 +53,11 @@ ENV HOSTNAME="0.0.0.0"
 ARG GIT_SHA=unknown
 ENV GIT_SHA=$GIT_SHA
 
+# "Up" in docker ps should mean the server answers, not just that a process
+# exists. busybox wget ships with alpine; the route touches nothing external.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1
+
 # Runs as root just long enough to chown the mounted folders, then drops to
 # the weavarr user (see docker-entrypoint.sh). No USER directive on purpose.
 ENTRYPOINT ["/docker-entrypoint.sh"]

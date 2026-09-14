@@ -41,7 +41,11 @@ export async function register() {
     const schedule = (name: string, everyMs: number, job: () => Promise<unknown>) => {
       const run = () => {
         runExclusive(name, job).catch((err) => {
-          console.error(`[${name}] run failed:`, err instanceof Error ? err.message : err);
+          const message = err instanceof Error ? err.message : String(err);
+          // "X is not configured" is the normal state of a fresh install, not
+          // a failure worth an error line every hour. Real failures still log.
+          if (/is not configured$/.test(message)) return;
+          console.error(`[${name}] run failed:`, message);
         });
       };
       run();

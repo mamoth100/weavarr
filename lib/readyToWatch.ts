@@ -1,6 +1,6 @@
 import { getAllRadarrMovies } from './radarr';
 import { getAllSonarrSeries, getSonarrEpisodeFileMap } from './sonarr';
-import { getExcludedShows } from './cleanupCandidates';
+import { getExcludedShows, isExcludedTitle } from './cleanupCandidates';
 import { getWatchedMovies, getEpisodeWatchHistory, hasTitle } from './mediaServer';
 
 export interface ReadyToWatchMovie {
@@ -81,7 +81,7 @@ export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
         type: 'tv',
         id: s.id,
         tmdbId: s.tmdbId ?? null,
-        protected: excludedShows.has(s.title.trim().toLowerCase()),
+        protected: isExcludedTitle(excludedShows, s.title),
         title: s.title,
         year: s.year,
         unwatchedEpisodes,

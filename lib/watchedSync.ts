@@ -6,11 +6,16 @@
  * a title/episode has been reconciled it's remembered so it isn't re-checked
  * (and re-written) on every poll.
  *
- * Matching is by provider id (TMDB, then IMDB, then TVDB), with normalized
- * title as a last resort - the two servers routinely display different names
- * for the same item ("The Empire Strikes Back" vs "Star Wars: Episode V -
- * The Empire Strikes Back"), so title comparison alone permanently failed
- * for those and logged an error every cycle.
+ * Matching is by provider id (TMDB, then IMDB, then TVDB). A title match is
+ * the fallback only for items that carry no ids at all: an item whose ids
+ * simply miss on the other server is absent there, and a same-named
+ * different show ("Battlestar Galactica" 1978 vs 2003) must not be marked
+ * in its place.
+ *
+ * Anything that cannot be reconciled (show only on one server, an episode
+ * the other server lacks) is remembered for a day and not retried or logged
+ * again until then. Without that, a few hundred Plex-only shows produced a
+ * few hundred error lines every five minutes and flooded the Logs tab.
  */
 import { mkdir, readFile, writeFile, rename } from 'fs/promises';
 import path from 'path';
@@ -38,8 +43,12 @@ const STATE_FILE = path.join(process.cwd(), 'data', 'watched-sync-state.json');
 // fell outside the window on every single poll). 2000 matches the limit
 // app/api/calendar/route.ts already uses against the same endpoints.
 const HISTORY_LIMIT = 2000;
+const RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 
 let synced: Set<string> | null = null;
+
+// In memory only: a restart is a fine moment to try everything once more.
+const retryAfter = new Map<string, number>();
 
 async function loadSynced(): Promise<Set<string>> {
   if (synced) return synced;
@@ -93,6 +102,10 @@ function fromJellyfin(i: JellyfinLibraryItem): LibItem {
   return { serverKey: i.id, title: i.title, tmdbId: i.tmdbId, imdbId: i.imdbId, tvdbId: i.tvdbId, watched: i.watched };
 }
 
+function hasIds(i: LibItem): boolean {
+  return Boolean(i.tmdbId || i.imdbId || i.tvdbId);
+}
+
 /**
  * Stable identity for the seen-state file, independent of which server the
  * item came from - both servers carry the same TMDB/IMDB/TVDB ids even when
@@ -124,12 +137,19 @@ function buildIndex(items: LibItem[]): LibIndex {
   return idx;
 }
 
-/** The other server's copy of this item: provider ids first, strict title match as the fallback for items missing ids on either side. */
+/** Exactly one title match, or nothing: two same-named entries are ambiguous. */
+function uniqueTitleMatch(items: LibItem[], title: string): LibItem | undefined {
+  const hits = items.filter((t) => titlesMatch(t.title, title));
+  return hits.length === 1 ? hits[0] : undefined;
+}
+
+/** The other server's copy of this item: provider ids when the source has any, a unique title match only when it has none. */
 function findMatch(source: LibItem, target: LibIndex): LibItem | undefined {
   if (source.tmdbId && target.byTmdb.has(source.tmdbId)) return target.byTmdb.get(source.tmdbId);
   if (source.imdbId && target.byImdb.has(source.imdbId)) return target.byImdb.get(source.imdbId);
   if (source.tvdbId && target.byTvdb.has(source.tvdbId)) return target.byTvdb.get(source.tvdbId);
-  return target.all.find((t) => titlesMatch(t.title, source.title));
+  if (hasIds(source)) return undefined;
+  return uniqueTitleMatch(target.all, source.title);
 }
 
 // Each reconcile can be its own round-trip to Plex or Jellyfin - running a
@@ -148,6 +168,35 @@ async function mapWithConcurrency<T>(items: T[], fn: (item: T) => Promise<void>)
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker()));
 }
 
+function shouldSkip(key: string): boolean {
+  const until = retryAfter.get(key);
+  if (until === undefined) return false;
+  if (until > Date.now()) return true;
+  retryAfter.delete(key);
+  return false;
+}
+
+/** Logs the first failure for a key and silences it for a day. */
+function noteFailure(key: string, message: string): void {
+  if (!retryAfter.has(key)) console.error(`${message} (will retry in 24h)`);
+  retryAfter.set(key, Date.now() + RETRY_AFTER_MS);
+}
+
+interface HistoryEpisode {
+  showTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  viewedAt: string;
+  /** The show's key on its own server (Plex grandparentRatingKey, Jellyfin SeriesId) when the history row carries one. */
+  showKey?: string;
+}
+
+type MarkEpisodes = (
+  showServerKey: string,
+  eps: { seasonNumber: number; episodeNumber: number; viewedAt?: string }[],
+  showTitle: string
+) => Promise<void>;
+
 export async function syncWatchedBetweenServers(): Promise<number> {
   const seen = await loadSynced();
   let changed = false;
@@ -157,9 +206,9 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   // A large first-time backlog can take a while even with concurrency - flush
   // progress periodically instead of only at the very end, so a killed or
   // crashed run doesn't lose everything it already reconciled.
-  async function markDirty() {
+  async function markDirty(count = 1) {
     changed = true;
-    sinceFlush += 1;
+    sinceFlush += count;
     if (sinceFlush >= 20) {
       sinceFlush = 0;
       await persistSynced();
@@ -179,8 +228,8 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   const jellyfinMovies = (jellyfinMoviesR.status === 'fulfilled' ? jellyfinMoviesR.value : []).map(fromJellyfin);
   const plexShows = (plexShowsR.status === 'fulfilled' ? plexShowsR.value : []).map(fromPlex);
   const jellyfinShows = (jellyfinShowsR.status === 'fulfilled' ? jellyfinShowsR.value : []).map(fromJellyfin);
-  const plexEps = plexEpsR.status === 'fulfilled' ? plexEpsR.value : [];
-  const jellyfinEps = jellyfinEpsR.status === 'fulfilled' ? jellyfinEpsR.value : [];
+  const plexEps: HistoryEpisode[] = plexEpsR.status === 'fulfilled' ? plexEpsR.value : [];
+  const jellyfinEps: HistoryEpisode[] = jellyfinEpsR.status === 'fulfilled' ? jellyfinEpsR.value : [];
 
   // A failed library listing must not look like an empty library - reconciling
   // against "nothing" would log a spurious not-found error for every watched
@@ -195,6 +244,10 @@ export async function syncWatchedBetweenServers(): Promise<number> {
   const plexShowIdx = buildIndex(plexShows);
   const jellyfinShowIdx = buildIndex(jellyfinShows);
 
+  // Own-server show lookups for history rows: by the server's own key when
+  // the row carries one (never ambiguous), by title only as a fallback.
+  const plexShowsByKey = new Map(plexShows.map((s) => [s.serverKey, s]));
+  const jellyfinShowsByKey = new Map(jellyfinShows.map((s) => [s.serverKey, s]));
   const plexShowsByTitle = new Map(plexShows.map((s) => [norm(s.title), s]));
   const jellyfinShowsByTitle = new Map(jellyfinShows.map((s) => [norm(s.title), s]));
 
@@ -205,10 +258,10 @@ export async function syncWatchedBetweenServers(): Promise<number> {
     direction: string
   ) {
     const key = `movie:${canonical(movie)}`;
-    if (seen.has(key)) return;
+    if (seen.has(key) || shouldSkip(key)) return;
     const match = findMatch(movie, targetIdx);
     if (!match) {
-      console.error(`[watchedSync] failed to sync "${movie.title}" ${direction}: not in the other library`);
+      noteFailure(key, `[watchedSync] cannot sync "${movie.title}" ${direction}: not in the other library`);
       return;
     }
     if (match.watched) {
@@ -223,7 +276,7 @@ export async function syncWatchedBetweenServers(): Promise<number> {
       marks += 1;
       console.log(`[watchedSync] marked "${movie.title}" watched ${direction}`);
     } catch (err) {
-      console.error(`[watchedSync] failed to sync "${movie.title}" ${direction}:`, err instanceof Error ? err.message : err);
+      noteFailure(key, `[watchedSync] failed to sync "${movie.title}" ${direction}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -236,47 +289,73 @@ export async function syncWatchedBetweenServers(): Promise<number> {
     return `ep:${base}:${seasonNumber}:${episodeNumber}`;
   }
 
+  function ownShowFor(ep: HistoryEpisode, byKey: Map<string, LibItem>, byTitle: Map<string, LibItem>): LibItem | undefined {
+    return (ep.showKey && byKey.get(ep.showKey)) || byTitle.get(norm(ep.showTitle));
+  }
+
   const jellyfinEpSet = new Set(
-    jellyfinEps.map((e) => epKey(jellyfinShowsByTitle.get(norm(e.showTitle)), e.showTitle, e.seasonNumber, e.episodeNumber))
+    jellyfinEps.map((e) => epKey(ownShowFor(e, jellyfinShowsByKey, jellyfinShowsByTitle), e.showTitle, e.seasonNumber, e.episodeNumber))
   );
   const plexEpSet = new Set(
-    plexEps.map((e) => epKey(plexShowsByTitle.get(norm(e.showTitle)), e.showTitle, e.seasonNumber, e.episodeNumber))
+    plexEps.map((e) => epKey(ownShowFor(e, plexShowsByKey, plexShowsByTitle), e.showTitle, e.seasonNumber, e.episodeNumber))
   );
 
-  async function reconcileEpisode(
-    ep: { showTitle: string; seasonNumber: number; episodeNumber: number; viewedAt?: string },
-    ownShowsByTitle: Map<string, LibItem>,
+  interface Batch {
+    targetKey: string;
+    showTitle: string;
+    eps: { key: string; seasonNumber: number; episodeNumber: number; viewedAt: string }[];
+  }
+
+  /**
+   * One pass to decide what each history row needs, then one mark call per
+   * target show with every episode it needs. The old shape made a full
+   * episode-list fetch on the target server per episode, so a first-run
+   * backlog of two thousand episodes cost two thousand series fetches.
+   */
+  async function reconcileEpisodes(
+    eps: HistoryEpisode[],
+    ownByKey: Map<string, LibItem>,
+    ownByTitle: Map<string, LibItem>,
     targetEpSet: Set<string>,
     targetShowIdx: LibIndex,
-    // The fourth argument is the original watch date. Jellyfin honours it;
-    // Plex has no way to set one, so its mark function simply ignores it.
-    markTargetEpisodes: (showServerKey: string, eps: { seasonNumber: number; episodeNumber: number }[], showTitle: string, viewedAt?: string) => Promise<void>,
+    markTargetEpisodes: MarkEpisodes,
     direction: string
   ) {
-    const ownShow = ownShowsByTitle.get(norm(ep.showTitle));
-    const key = epKey(ownShow, ep.showTitle, ep.seasonNumber, ep.episodeNumber);
-    if (seen.has(key)) return;
-    if (targetEpSet.has(key)) {
-      seen.add(key);
-      await markDirty();
-      return;
+    const batches = new Map<string, Batch>();
+    for (const ep of eps) {
+      const ownShow = ownShowFor(ep, ownByKey, ownByTitle);
+      const key = epKey(ownShow, ep.showTitle, ep.seasonNumber, ep.episodeNumber);
+      if (seen.has(key) || shouldSkip(key)) continue;
+      if (targetEpSet.has(key)) {
+        seen.add(key);
+        await markDirty();
+        continue;
+      }
+      const targetShow = ownShow ? findMatch(ownShow, targetShowIdx) : uniqueTitleMatch(targetShowIdx.all, ep.showTitle);
+      if (!targetShow) {
+        noteFailure(key, `[watchedSync] cannot sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}: show not in the other library`);
+        continue;
+      }
+      const batch = batches.get(targetShow.serverKey) ?? { targetKey: targetShow.serverKey, showTitle: ep.showTitle, eps: [] };
+      batch.eps.push({ key, seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber, viewedAt: ep.viewedAt });
+      batches.set(targetShow.serverKey, batch);
     }
-    const targetShow = ownShow
-      ? findMatch(ownShow, targetShowIdx)
-      : targetShowIdx.all.find((t) => titlesMatch(t.title, ep.showTitle));
-    if (!targetShow) {
-      console.error(`[watchedSync] failed to sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}: show not in the other library`);
-      return;
-    }
-    try {
-      await markTargetEpisodes(targetShow.serverKey, [{ seasonNumber: ep.seasonNumber, episodeNumber: ep.episodeNumber }], ep.showTitle, ep.viewedAt);
-      seen.add(key);
-      await markDirty();
-      marks += 1;
-      console.log(`[watchedSync] marked "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} watched ${direction}`);
-    } catch (err) {
-      console.error(`[watchedSync] failed to sync "${ep.showTitle}" S${ep.seasonNumber}E${ep.episodeNumber} ${direction}:`, err instanceof Error ? err.message : err);
-    }
+
+    await mapWithConcurrency(Array.from(batches.values()), async (batch) => {
+      try {
+        await markTargetEpisodes(batch.targetKey, batch.eps, batch.showTitle);
+        for (const e of batch.eps) seen.add(e.key);
+        await markDirty(batch.eps.length);
+        marks += batch.eps.length;
+        const list = batch.eps.map((e) => `S${e.seasonNumber}E${e.episodeNumber}`).join(', ');
+        console.log(`[watchedSync] marked "${batch.showTitle}" ${list} watched ${direction}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        for (const e of batch.eps) {
+          noteFailure(e.key, `[watchedSync] failed to sync "${batch.showTitle}" S${e.seasonNumber}E${e.episodeNumber} ${direction}: ${msg}`);
+        }
+      }
+    });
   }
 
   await Promise.all([
@@ -291,14 +370,10 @@ export async function syncWatchedBetweenServers(): Promise<number> {
         )
       : Promise.resolve(),
     jellyfinShowsOk
-      ? mapWithConcurrency(plexEps, (e) =>
-          reconcileEpisode(e, plexShowsByTitle, jellyfinEpSet, jellyfinShowIdx, markJellyfinSeriesEpisodesWatchedById, '(Plex → Jellyfin)')
-        )
+      ? reconcileEpisodes(plexEps, plexShowsByKey, plexShowsByTitle, jellyfinEpSet, jellyfinShowIdx, markJellyfinSeriesEpisodesWatchedById, '(Plex → Jellyfin)')
       : Promise.resolve(),
     plexShowsOk
-      ? mapWithConcurrency(jellyfinEps, (e) =>
-          reconcileEpisode(e, jellyfinShowsByTitle, plexEpSet, plexShowIdx, markPlexShowEpisodesWatchedByKey, '(Jellyfin → Plex)')
-        )
+      ? reconcileEpisodes(jellyfinEps, jellyfinShowsByKey, jellyfinShowsByTitle, plexEpSet, plexShowIdx, markPlexShowEpisodesWatchedByKey, '(Jellyfin → Plex)')
       : Promise.resolve(),
   ]);
 
