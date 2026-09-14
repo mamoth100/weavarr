@@ -20,6 +20,7 @@ interface DownloaderData {
   paused?: boolean;
   slots?: DownloadSlot[];
   error?: string;
+  errors?: Partial<Record<'SABnzbd' | 'NZBGet', string>>;
 }
 
 interface QueueItem {
@@ -105,6 +106,15 @@ function DownloaderSection({ data }: { data: DownloaderData | null }) {
         <p className="text-red-400 text-sm">{data.error}</p>
       ) : (
         <>
+          {data.errors && Object.keys(data.errors).length > 0 && (
+            <div className="mb-3 space-y-1">
+              {Object.entries(data.errors).map(([client, message]) => (
+                <p key={client} className="text-xs text-red-400">
+                  {client} is not answering ({message}). The queue below is from the other client only.
+                </p>
+              ))}
+            </div>
+          )}
           <div className="bg-zinc-900 rounded-lg p-4 ring-1 ring-white/5 mb-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-zinc-400">Speed</span>
