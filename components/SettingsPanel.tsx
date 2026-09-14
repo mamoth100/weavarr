@@ -781,10 +781,14 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
     // live - same reason TraktScore already runs client-side elsewhere in
     // this app). Has to run from the browser, not through /api/settings/test.
     if (group === 'Trakt') {
+      // The saved id never comes back through /api/settings (secret field);
+      // the runtime route the ratings component uses serves it instead.
       const clientId =
-        edits['NEXT_PUBLIC_TRAKT_CLIENT_ID']?.trim() ||
         edits['TRAKT_CLIENT_ID']?.trim() ||
-        settings!.find((s) => s.key === 'NEXT_PUBLIC_TRAKT_CLIENT_ID')?.value ||
+        (await fetch('/api/trakt/client-id', { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => (typeof d?.clientId === 'string' ? d.clientId : ''))
+          .catch(() => '')) ||
         '';
       if (!clientId) {
         setTestStates((prev) => ({ ...prev, Trakt: { status: 'fail', message: 'Client ID required' } }));

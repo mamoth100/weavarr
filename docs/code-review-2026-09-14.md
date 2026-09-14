@@ -101,30 +101,30 @@ web page the user happens to visit (the CSRF middleware exists for that).
 
 ## Medium
 
-- [ ] **Connection test sends saved secrets to any URL.**
+- [x] **Connection test sends saved secrets to any URL.**
       `app/api/settings/test/route.ts:16-23` fills blank secrets from disk and
       sends them to the caller-supplied URL, so a curl from the LAN with
       `RADARR_URL: http://attacker` receives the real Radarr key. Fix: only fall
       back to the saved secret when the URL is blank or unchanged.
-- [ ] **DNS rebinding bypasses the CSRF check.** `middleware.ts:45-64`
+- [x] **DNS rebinding bypasses the CSRF check.** `middleware.ts:45-64`
       compares Origin to Host only; after a rebind both name the attacker's
       domain. Fix: a Host allowlist (IP literal, localhost, `.local`, the host
       of `APP_URL`, forwarded host when `TRUST_PROXY`), 421 otherwise.
-- [ ] **`trakt-debug` route ships.** `app/api/trakt-debug/route.ts` leaks part
+- [x] **`trakt-debug` route ships.** `app/api/trakt-debug/route.ts` leaks part
       of the client id and forwards an unvalidated path to Trakt. Delete it.
-- [ ] **Trakt public client id is a build-time value.** `NEXT_PUBLIC_TRAKT_CLIENT_ID`
+- [x] **Trakt public client id is a build-time value.** `NEXT_PUBLIC_TRAKT_CLIENT_ID`
       is inlined at `next build`; the published image bakes in undefined, so
       the Settings field can never work and Trakt scores never render for
       image users. Fix: serve the id from a small runtime route or a server
       component prop and drop the public setting.
-- [ ] **Hand-picked and unaired episodes can be silently dropped on add.**
+- [x] **Hand-picked and unaired episodes can be silently dropped on add.**
       `lib/sonarr.ts:132-151` gives up after eight tries and still reports
       success and records the picks in the ledger. Fix: report `pendingPicks`
       or throw, and only record once applied.
-- [ ] **Season searches in Get more swallow every error.**
+- [x] **Season searches in Get more swallow every error.**
       `lib/sonarr.ts:1090`. Sonarr going away mid-request returns `ok: true`.
       Remove the catch or collect and throw once.
-- [ ] **No poller has an in-flight guard.** `instrumentation.ts` timers
+- [x] **No poller has an in-flight guard.** `instrumentation.ts` timers
       overlap when a run outlasts its interval; the import poll can send the
       same "ready to watch" ping twice, auto-cleanup can notify twice. Fix: a
       small `runExclusive(name, fn)` used by every job, including the manual
@@ -154,7 +154,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
       `lib/cleanupCandidates.ts:32-50, 110-124`. Two overlapping page loads
       drop each other's entries and reset grace clocks. Fix: module-level
       cache plus a serialized write chain.
-- [ ] **Boot backup plus count-based retention wipes history.** Ten restarts
+- [x] **Boot backup plus count-based retention wipes history.** Ten restarts
       in an afternoon delete every older daily backup
       (`instrumentation.ts:157-166`). Fix: skip the boot run when the newest
       backup is younger than the interval.
@@ -206,7 +206,7 @@ web page the user happens to visit (the CSRF middleware exists for that).
       Use `VACUUM INTO` a temp file and add that.
 - [ ] **Backup download hands out every key** to anyone on the port. By design
       under the no-login model; say so plainly in the README.
-- [ ] **Negative retention count deletes every backup daily.**
+- [x] **Negative retention count deletes every backup daily.**
       `instrumentation.ts:159` uses `Number(x) || 10`; reuse
       `backupRetentionCount()` and validate on save.
 - [ ] **Restart route kills the process outright** outside Docker

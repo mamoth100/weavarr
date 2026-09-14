@@ -129,24 +129,41 @@ export async function addSeriesToSonarr({
   // Hand-picked episodes: Sonarr populates a new series' episode records
   // asynchronously after the add, so poll briefly, then monitor + search
   // exactly those episodes.
+  // Picks are applied after the add, once Sonarr has listed the episodes.
+  // If that never happens within the retry window the add still stands (the
+  // show is in Sonarr) but nothing is monitored, so say so loudly instead
+  // of reporting success and recording picks that were never applied.
+  let picksApplied = !(hasEpisodePicks || unaired);
   if ((hasEpisodePicks || unaired) && added?.id) {
     const wanted = new Set((episodePicks ?? []).map((p) => `${p.seasonNumber}:${p.episodeNumber}`));
-    for (let attempt = 0; attempt < 8; attempt++) {
+    for (let attempt = 0; attempt < 8 && !picksApplied; attempt++) {
       await new Promise((r) => setTimeout(r, 2000));
       const episodes = await getSonarrSeriesEpisodes(added.id).catch(() => []);
       if (episodes.length === 0) continue;
-      const ids = episodes.filter((e) => wanted.has(`${e.seasonNumber}:${e.episodeNumber}`)).map((e) => e.id);
-      if (ids.length > 0) {
-        await monitorSonarrEpisodes(ids, true);
-        await triggerSonarrEpisodeSearch(ids);
+      try {
+        const ids = episodes.filter((e) => wanted.has(`${e.seasonNumber}:${e.episodeNumber}`)).map((e) => e.id);
+        if (ids.length > 0) {
+          await monitorSonarrEpisodes(ids, true);
+          await triggerSonarrEpisodeSearch(ids);
+        }
+        // Unaired episodes only get monitored - there is nothing to search for
+        // until they air, and Sonarr's own feed picks them up then.
+        if (unaired) {
+          const unairedIds = episodes.filter(isSonarrEpisodeUnaired).map((e) => e.id);
+          if (unairedIds.length > 0) await monitorSonarrEpisodes(unairedIds, true);
+        }
+        picksApplied = true;
+      } catch (err) {
+        console.error(`[sonarr] applying picks for "${title}" failed, retrying:`, err instanceof Error ? err.message : err);
       }
-      // Unaired episodes only get monitored - there is nothing to search for
-      // until they air, and Sonarr's own feed picks them up then.
-      if (unaired) {
-        const unairedIds = episodes.filter(isSonarrEpisodeUnaired).map((e) => e.id);
-        if (unairedIds.length > 0) await monitorSonarrEpisodes(unairedIds, true);
-      }
-      break;
+    }
+    if (!picksApplied) {
+      console.error(`[sonarr] "${title}" was added, but Sonarr had not listed its episodes in time; the picked episodes are not monitored`);
+      notifyAllChannels(
+        'Episodes not picked up',
+        `"${title}" was added to Sonarr, but its episode list was not ready in time, so the episodes you picked are not monitored yet. Open the show and use Get more to pick them again.`,
+        'alert'
+      ).catch(() => {});
     }
   }
 
@@ -164,13 +181,15 @@ export async function addSeriesToSonarr({
       title: typeof series.title === 'string' ? series.title : title,
       posterUrl,
       source,
-      seasons: picked || hasEpisodePicks || unaired ? JSON.stringify([...(picked ?? []), ...episodeSummary, ...(unaired ? ['unaired'] : [])]) : monitor,
+      seasons: picked || hasEpisodePicks || unaired
+        ? JSON.stringify([...(picked ?? []), ...(picksApplied ? episodeSummary : []), ...(unaired && picksApplied ? ['unaired'] : []), ...(picksApplied ? [] : ['picks-pending'])])
+        : monitor,
     });
   } catch (err) {
     console.error('[requestLedger] failed to record show request:', err instanceof Error ? err.message : err);
   }
 
-  return { alreadyAdded: false };
+  return { alreadyAdded: false, pendingPicks: !picksApplied };
 }
 
 export interface SonarrQueueItem {
@@ -1093,11 +1112,17 @@ export async function expandSonarrSeries({
     if (ids.length > 0) await monitorSonarrEpisodes(ids, true);
   }
 
-  // 3. Full-season searches (missing episodes only, by design of searchSonarrSeason).
+  // 3. Full-season searches (missing episodes only, by design of
+  //    searchSonarrSeason, which returns quietly when there is nothing to
+  //    search). A real failure is collected and thrown after the ledger
+  //    write below, so the user sees it instead of "ok" with no search.
+  const searchFailures: string[] = [];
   for (const seasonNumber of seasonNumbers) {
-    await searchSonarrSeason(seriesId, seasonNumber).catch(() => {
-      // a season with nothing aired/missing simply has nothing to search
-    });
+    try {
+      await searchSonarrSeason(seriesId, seasonNumber);
+    } catch (err) {
+      searchFailures.push(`season ${seasonNumber}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // A "Get more" that asked for actual content is a request - the ledger
@@ -1109,6 +1134,10 @@ export async function expandSonarrSeries({
       ...(unaired ? ['unaired'] : []),
     ]);
     await recordExistingSeriesRequest(seriesId, summary);
+  }
+
+  if (searchFailures.length > 0) {
+    throw new Error(`Monitoring was updated, but the search failed for ${searchFailures.join('; ')}`);
   }
 }
 
