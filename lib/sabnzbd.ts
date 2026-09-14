@@ -9,6 +9,11 @@ export function sabnzbdEnabled(): boolean {
   return process.env.ENABLE_SABNZBD !== 'false' && Boolean(SAB_URL && SAB_KEY);
 }
 
+/** Base URL and key when SABnzbd is enabled and configured, else null. */
+export function sabnzbdConfig(): { url: string; key: string } | null {
+  return sabnzbdEnabled() ? { url: SAB_URL as string, key: SAB_KEY as string } : null;
+}
+
 export interface SabSlot {
   filename: string;
   status: string;

@@ -37,6 +37,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Big Add Warning Threshold must be a whole number, 1 or higher. To turn the warning off, use the Big Add Warning toggle instead.' }, { status: 400 });
     }
   }
+  const retention = (updates as Record<string, unknown>).BACKUP_RETENTION_COUNT;
+  if (typeof retention === 'string' && retention.trim() !== '') {
+    const n = Number(retention);
+    if (!Number.isInteger(n) || n < 1) {
+      return NextResponse.json({ error: 'Backups to Keep must be a whole number, 1 or higher.' }, { status: 400 });
+    }
+  }
   const graceDays = (updates as Record<string, unknown>).AUTO_CLEANUP_DAYS;
   if (typeof graceDays === 'string' && graceDays.trim() !== '') {
     const n = Number(graceDays);

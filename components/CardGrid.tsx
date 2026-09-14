@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useLibraryStatus } from '@/hooks/useLibraryStatus';
@@ -37,33 +37,11 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
     return Boolean(type === 'tv' ? libraryStatus.shows[doc.id] : libraryStatus.movies[doc.id]);
   }
 
-  // Snapshot the watched/sucks sets ONCE after the initial watchlist load so that
-  // marking items during this session doesn't immediately remove them from view.
-  const [snapshotWatched, setSnapshotWatched] = useState<Set<string>>(new Set());
-  const [snapshotSucks, setSnapshotSucks] = useState<Set<string>>(new Set());
-  const snapped = useRef(false);
-
-  useEffect(() => {
-    if (loaded && !snapped.current) {
-      snapped.current = true;
-      setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
-      setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
-    }
-  }, [loaded, watchedItems, sucksItems]);
-
-  // Keep sucks snapshot live so items disappear immediately when thumbs-downed
-  useEffect(() => {
-    if (snapped.current) {
-      setSnapshotSucks(new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)));
-    }
-  }, [sucksItems]);
-
-  // Keep watched snapshot live so items disappear immediately when marked watched
-  useEffect(() => {
-    if (snapped.current) {
-      setSnapshotWatched(new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)));
-    }
-  }, [watchedItems]);
+  // Live sets: an item marked watched or thumbed down disappears from the
+  // grid at once. (These were once a one-time snapshot, then effects kept
+  // the snapshot live anyway; deriving them says what actually happens.)
+  const snapshotWatched = useMemo(() => new Set(watchedItems.map((i) => `${i.id}:${i.mediaType}`)), [watchedItems]);
+  const snapshotSucks = useMemo(() => new Set(sucksItems.map((i) => `${i.id}:${i.mediaType}`)), [sucksItems]);
 
   // No display cap - the grid grows as InfiniteBrowse appends pages. (The
   // old .slice(0, 20) cap is what forced the server to over-fetch two TMDB
@@ -83,7 +61,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
 
   // Wait until the watchlist has loaded before rendering so the filter is
   // applied on the very first paint - no flash of unfiltered items.
-  if (!snapped.current && !loaded) {
+  if (!loaded) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {Array.from({ length: Math.min(maxItems ?? 20, 20) }).map((_, i) => (

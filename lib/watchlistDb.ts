@@ -7,11 +7,7 @@
  * SQLite is a single file that ships with the app itself, same reason
  * Sonarr/Radarr use it internally.
  */
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'fs';
-import path from 'path';
-
-const DB_PATH = path.join(process.cwd(), 'data', 'weavarr.db');
+import { getDb } from './db';
 
 export type WatchlistTable = 'watched' | 'sucks';
 
@@ -19,39 +15,6 @@ const TIMESTAMP_COLUMN: Record<WatchlistTable, 'added_at' | 'watched_at'> = {
   watched: 'watched_at',
   sucks: 'added_at',
 };
-
-let db: DatabaseSync | null = null;
-
-function getDb(): DatabaseSync {
-  if (db) return db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new DatabaseSync(DB_PATH);
-  db.exec(`
-    -- Favorites was removed as a feature (2026-08-19, user call: it never
-    -- found a job). Dropping the table keeps every deployment's DB free of
-    -- residual artifacts.
-    DROP TABLE IF EXISTS favorites;
-    CREATE TABLE IF NOT EXISTS watched (
-      tmdb_id INTEGER NOT NULL,
-      media_type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      poster_path TEXT,
-      release_date TEXT,
-      watched_at TEXT NOT NULL,
-      PRIMARY KEY (tmdb_id, media_type)
-    );
-    CREATE TABLE IF NOT EXISTS sucks (
-      tmdb_id INTEGER NOT NULL,
-      media_type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      poster_path TEXT,
-      release_date TEXT,
-      added_at TEXT NOT NULL,
-      PRIMARY KEY (tmdb_id, media_type)
-    );
-  `);
-  return db;
-}
 
 export interface WatchlistRowInput {
   tmdb_id: number;

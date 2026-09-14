@@ -16,7 +16,8 @@ function fail(err: unknown): TestResult {
   return { ok: false, message: err instanceof Error ? err.message : String(err) };
 }
 
-async function testRadarr(url?: string, key?: string): Promise<TestResult> {
+/** Radarr and Sonarr share one API shape; the same probe serves both. */
+async function testArr(name: 'Radarr' | 'Sonarr', url?: string, key?: string): Promise<TestResult> {
   if (!url || !key) return { ok: false, message: 'URL and API key required' };
   try {
     const base = url.replace(/\/$/, '');
@@ -28,25 +29,7 @@ async function testRadarr(url?: string, key?: string): Promise<TestResult> {
     const data = await res.json();
     const profilesRes = await fetchWithTimeout(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
     const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
-    return { ok: true, message: `Connected - Radarr v${data.version ?? '?'}`, profiles };
-  } catch (err) {
-    return fail(err);
-  }
-}
-
-async function testSonarr(url?: string, key?: string): Promise<TestResult> {
-  if (!url || !key) return { ok: false, message: 'URL and API key required' };
-  try {
-    const base = url.replace(/\/$/, '');
-    const res = await fetchWithTimeout(`${base}/api/v3/system/status`, {
-      headers: { 'X-Api-Key': key },
-      cache: 'no-store',
-    });
-    if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check URL and key` };
-    const data = await res.json();
-    const profilesRes = await fetchWithTimeout(`${base}/api/v3/qualityprofile`, { headers: { 'X-Api-Key': key }, cache: 'no-store' });
-    const profiles: QualityProfileOption[] = profilesRes.ok ? await profilesRes.json() : [];
-    return { ok: true, message: `Connected - Sonarr v${data.version ?? '?'}`, profiles };
+    return { ok: true, message: `Connected - ${name} v${data.version ?? '?'}`, profiles };
   } catch (err) {
     return fail(err);
   }
@@ -242,9 +225,9 @@ async function testDiscord(url?: string): Promise<TestResult> {
 export async function testGroup(group: string, values: Record<string, string>): Promise<TestResult> {
   switch (group) {
     case 'Radarr':
-      return testRadarr(values.RADARR_URL, values.RADARR_KEY);
+      return testArr('Radarr', values.RADARR_URL, values.RADARR_KEY);
     case 'Sonarr':
-      return testSonarr(values.SONARR_URL, values.SONARR_KEY);
+      return testArr('Sonarr', values.SONARR_URL, values.SONARR_KEY);
     case 'SABnzbd':
       return testSABnzbd(values.SABNZBD_URL, values.SABNZBD_API_KEY);
     case 'NZBGet':

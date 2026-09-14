@@ -42,7 +42,7 @@ export default function PlexSignIn({ onSaved }: { onSaved?: () => void }) {
           return;
         }
         try {
-          const poll = await fetch(`/api/plex/auth/${data.pinId}`, { cache: 'no-store' });
+          const poll = await fetch(`/api/plex/auth/${data.pinId}`, { method: 'POST', cache: 'no-store' });
           const body = await poll.json();
           if (body.status === 'saved') {
             if (pollTimer.current) clearInterval(pollTimer.current);

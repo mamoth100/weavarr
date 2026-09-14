@@ -11,7 +11,15 @@ export async function readableApiError(res: Response, prefix: string): Promise<s
     const text = await res.text();
     try {
       const parsed = JSON.parse(text);
-      detail = parsed.message ?? parsed.error ?? text.slice(0, 160);
+      if (Array.isArray(parsed)) {
+        // Radarr/Sonarr validation failures: [{ propertyName, errorMessage }]
+        const messages = parsed
+          .map((p) => (p && typeof p === 'object' && typeof p.errorMessage === 'string' ? p.errorMessage : null))
+          .filter((m): m is string => Boolean(m));
+        detail = messages.length > 0 ? messages.join('; ') : text.slice(0, 160);
+      } else {
+        detail = parsed.message ?? parsed.error ?? text.slice(0, 160);
+      }
     } catch {
       if (text.trim()) detail = text.slice(0, 160);
     }

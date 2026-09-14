@@ -1,4 +1,6 @@
 import { fetchWithTimeout } from './fetchTimeout';
+import { sonarrConfig } from './sonarr';
+import { radarrConfig } from './radarr';
 
 // A queue item that says "download completed" but never imported is stuck for
 // good after this long: the classic causes (second grab of the same movie
@@ -19,8 +21,11 @@ interface QueueRecord {
 
 async function sweepQueue(name: 'radarr' | 'sonarr', url: string, key: string): Promise<void> {
   const headers = { 'X-Api-Key': key };
-  const res = await fetchWithTimeout(`${url}/api/v3/queue?page=1&pageSize=100`, { headers, cache: 'no-store' });
-  if (!res.ok) return;
+  const res = await fetchWithTimeout(`${url.replace(/\/$/, '')}/api/v3/queue?page=1&pageSize=100`, { headers, cache: 'no-store' });
+  if (!res.ok) {
+    console.error(`[queueJanitor] ${name} queue listing failed: HTTP ${res.status}`);
+    return;
+  }
   const data = await res.json();
   const cutoff = Date.now() - STUCK_HOURS * 60 * 60 * 1000;
 
@@ -30,7 +35,7 @@ async function sweepQueue(name: 'radarr' | 'sonarr', url: string, key: string): 
     if (!r.added || new Date(r.added).getTime() > cutoff) continue;
 
     try {
-      const del = await fetchWithTimeout(`${url}/api/v3/queue/${r.id}?removeFromClient=false&blocklist=false`, {
+      const del = await fetchWithTimeout(`${url.replace(/\/$/, '')}/api/v3/queue/${r.id}?removeFromClient=false&blocklist=false`, {
         method: 'DELETE',
         headers,
         cache: 'no-store',
@@ -47,11 +52,9 @@ async function sweepQueue(name: 'radarr' | 'sonarr', url: string, key: string): 
 /** Hourly maintenance: silently clear queue debris that would otherwise error forever. Actions are visible in the Logs tab, no notifications by design. */
 export async function sweepStuckQueueItems(): Promise<void> {
   const jobs: Promise<void>[] = [];
-  if (process.env.ENABLE_RADARR !== 'false' && process.env.RADARR_URL && process.env.RADARR_KEY) {
-    jobs.push(sweepQueue('radarr', process.env.RADARR_URL, process.env.RADARR_KEY));
-  }
-  if (process.env.ENABLE_SONARR !== 'false' && process.env.SONARR_URL && process.env.SONARR_KEY) {
-    jobs.push(sweepQueue('sonarr', process.env.SONARR_URL, process.env.SONARR_KEY));
-  }
+  const radarr = radarrConfig();
+  const sonarr = sonarrConfig();
+  if (radarr) jobs.push(sweepQueue('radarr', radarr.url, radarr.key));
+  if (sonarr) jobs.push(sweepQueue('sonarr', sonarr.url, sonarr.key));
   await Promise.allSettled(jobs);
 }

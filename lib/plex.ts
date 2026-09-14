@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
-import { titlesMatch } from './titleMatch';
+import { titlesMatch, stripDisambiguator } from './titleMatch';
 
 // Stripped of any trailing slash - otherwise a URL saved as "http://host:32400/"
 // produces double-slash paths (".../hubs/search" -> "..//hubs/search") that 404.
@@ -12,13 +12,6 @@ interface PlexHub {
 }
 
 // Plex's search doesn't fuzzy-match extra tokens - a query like
-// "The 1% Club (US)" returns zero results even though Plex has it stored
-// as just "The 1% Club". Strip the trailing disambiguator Sonarr/Radarr
-// append (country, year) before searching.
-function stripDisambiguator(title: string): string {
-  return title.replace(/\s*\([^)]*\)\s*$/, '').trim();
-}
-
 // Matching is strict equality-after-normalization (see lib/titleMatch.ts) -
 // the old bidirectional substring version here could scrobble/act on the
 // wrong library item ("It" matched anything containing "it").
@@ -73,7 +66,12 @@ export async function plexHasEpisode(showTitle: string, seasonNumber: number, ep
   const episodes: { parentIndex?: number; index?: number; originallyAvailableAt?: string }[] = episodesData.MediaContainer?.Metadata ?? [];
 
   if (episodes.some((ep) => ep.parentIndex === seasonNumber && ep.index === episodeNumber)) return true;
-  return Boolean(airDate) && episodes.some((ep) => ep.originallyAvailableAt === airDate);
+  // Air-date fallback covers a server that numbers the season differently
+  // than TVDB. It only counts an episode filed under some OTHER season, and
+  // only when exactly one aired that day: with the same numbering a
+  // two-episode night would otherwise report E02 ready when only E01 scanned.
+  if (!airDate) return false;
+  return episodes.filter((ep) => ep.originallyAvailableAt === airDate && ep.parentIndex !== seasonNumber).length === 1;
 }
 
 /** Marks a single Plex item (movie or episode) as watched via its ratingKey. */
@@ -225,6 +223,35 @@ export interface PlexLibraryItem extends ProviderIds {
   ratingKey: string;
   title: string;
   watched: boolean;
+  /** ISO time of the last view, null when never watched. Carried across to the other server as the played date. */
+  lastViewedAt: string | null;
+}
+
+const PLEX_PAGE_SIZE = 1000;
+
+/** Walks a section listing page by page. Plex caps any single container, so one fixed-size request silently truncated libraries past that size. "query" is the part after "/all?". */
+async function fetchAllPlexMetadata(sectionKey: string, query: string, what: string): Promise<Record<string, unknown>[]> {
+  const out: Record<string, unknown>[] = [];
+  let start = 0;
+  for (;;) {
+    const res = await fetchWithTimeout(
+      `${PLEX_URL}/library/sections/${sectionKey}/all?${query}&X-Plex-Container-Start=${start}&X-Plex-Container-Size=${PLEX_PAGE_SIZE}&X-Plex-Token=${PLEX_TOKEN}`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' }
+    );
+    if (!res.ok) throw new Error(`Plex ${what} failed: ${res.status}`);
+    const data = await res.json();
+    const container = data.MediaContainer ?? {};
+    const page: Record<string, unknown>[] = container.Metadata ?? [];
+    out.push(...page);
+    start += page.length;
+    const total = Number(container.totalSize ?? container.size ?? 0);
+    if (page.length === 0 || start >= total) break;
+  }
+  return out;
+}
+
+function plexViewedAt(i: Record<string, unknown>): string | null {
+  return typeof i.lastViewedAt === 'number' ? new Date(i.lastViewedAt * 1000).toISOString() : null;
 }
 
 async function getAllPlexItemsWithIds(sectionType: 'movie' | 'show', itemType: 1 | 2): Promise<PlexLibraryItem[]> {
@@ -232,19 +259,14 @@ async function getAllPlexItemsWithIds(sectionType: 'movie' | 'show', itemType: 1
   const sectionKey = await getSectionKey(sectionType);
   if (!sectionKey) return [];
 
-  const res = await fetchWithTimeout(
-    `${PLEX_URL}/library/sections/${sectionKey}/all?type=${itemType}&includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size=2000&X-Plex-Token=${PLEX_TOKEN}`,
-    { headers: { Accept: 'application/json' }, cache: 'no-store' }
-  );
-  if (!res.ok) throw new Error(`Plex library listing failed: ${res.status}`);
-  const data = await res.json();
-  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+  const items = await fetchAllPlexMetadata(sectionKey, `type=${itemType}&includeGuids=1`, 'library listing');
   return items
     .filter((i) => i.title && i.ratingKey)
     .map((i) => ({
       ratingKey: String(i.ratingKey),
       title: i.title as string,
       watched: ((i.viewCount as number) ?? 0) > 0,
+      lastViewedAt: plexViewedAt(i),
       ...extractGuidIds(i.Guid as { id?: string }[] | undefined),
     }));
 }
@@ -270,13 +292,7 @@ export async function getPlexWatchedMovies(): Promise<WatchedMovie[]> {
   const sectionKey = await getSectionKey('movie');
   if (!sectionKey) return [];
 
-  const res = await fetchWithTimeout(
-    `${PLEX_URL}/library/sections/${sectionKey}/all?type=1&viewCount%3E=1&X-Plex-Container-Start=0&X-Plex-Container-Size=1000&X-Plex-Token=${PLEX_TOKEN}`,
-    { headers: { Accept: 'application/json' }, cache: 'no-store' }
-  );
-  if (!res.ok) throw new Error(`Plex watched movies failed: ${res.status}`);
-  const data = await res.json();
-  const items: Record<string, unknown>[] = data.MediaContainer?.Metadata ?? [];
+  const items = await fetchAllPlexMetadata(sectionKey, 'type=1&viewCount%3E=1', 'watched movies');
   return items
     .filter((i) => i.title && i.lastViewedAt)
     .map((i) => ({

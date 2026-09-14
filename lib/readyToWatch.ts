@@ -29,12 +29,11 @@ export interface ReadyToWatchShow {
 
 export type ReadyToWatchItem = ReadyToWatchMovie | ReadyToWatchShow;
 
-// Re-exported so existing importers keep working; the implementation moved to
+// The implementation moved to
 // lib/titleMatch.ts and is now strict equality-after-normalization instead of
 // bidirectional substring containment (which matched wrong-but-similar titles
 // and fed deletes with the wrong id - see titleMatch.ts).
 import { titlesMatch } from './titleMatch';
-export { titlesMatch as titleFuzzyMatch };
 
 export async function getReadyToWatch(): Promise<ReadyToWatchItem[]> {
   const [movies, series, watchedMovies, watchedEpisodes] = await Promise.all([

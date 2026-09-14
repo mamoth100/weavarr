@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic';
  * saved straight into PLEX_TOKEN (same path as a manual settings save, so it
  * gets the usual .env.local backup) and the client is told it's done.
  */
-export async function GET(request: Request, { params }: { params: { pinId: string } }) {
+// POST, not GET: this call writes PLEX_TOKEN, so it belongs with the other
+// state-changing routes the CSRF middleware covers.
+export async function POST(request: Request, { params }: { params: { pinId: string } }) {
   const pinId = Number(params.pinId);
   if (!Number.isInteger(pinId) || pinId <= 0) {
     return NextResponse.json({ error: 'Invalid pin id' }, { status: 400 });

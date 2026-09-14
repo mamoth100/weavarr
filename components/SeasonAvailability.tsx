@@ -1,16 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSeriesState } from '@/hooks/useSeriesState';
 
 interface TmdbSeason {
   season_number: number;
   name: string;
   episode_count: number;
-}
-
-interface SonarrState {
-  seriesId: number | null;
-  episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean }[];
 }
 
 /**
@@ -20,16 +15,8 @@ interface SonarrState {
  * knows the show - availability of a show you don't have is just noise.
  */
 export default function SeasonAvailability({ tmdbId, seasons }: { tmdbId: number; seasons: TmdbSeason[] }) {
-  const [state, setState] = useState<SonarrState | 'none' | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/sonarr/series-state?tmdbId=${tmdbId}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => setState(data && data.seriesId ? data : 'none'))
-      .catch(() => setState('none'));
-  }, [tmdbId]);
-
-  if (state === null || state === 'none') return null;
+  const state = useSeriesState(tmdbId);
+  if (state === null || state.seriesId === null) return null;
 
   const onDiskBySeason = new Map<number, number>();
   for (const e of state.episodes) {

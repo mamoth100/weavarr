@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
 import type { TmdbSeason } from '@/types';
 import { refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
+import { useSeriesState, type SeriesState } from '@/hooks/useSeriesState';
 
 interface QualityProfileOption {
   id: number;
@@ -13,12 +14,6 @@ interface QualityProfileOption {
 interface TmdbSeasonEpisode {
   episode_number: number;
   name: string;
-}
-
-interface SonarrState {
-  seriesId: number | null;
-  monitorFuture: boolean;
-  episodes: { seasonNumber: number; episodeNumber: number; hasFile: boolean; title?: string }[];
 }
 
 interface LookupSeason {
@@ -85,18 +80,12 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
   const seasonsPending = seasonsProp.length === 0 && fetchedSeasons === null;
 
   // --- what Sonarr already has ---
-  const [sonarrState, setSonarrState] = useState<SonarrState | null>(null);
+  // Shared with the monitoring chip and season row on the same page; the
+  // hook only fetches once the modal is open.
+  const sonarrState: SeriesState | null = useSeriesState(tmdbId, open);
   useEffect(() => {
-    if (!open || sonarrState !== null) return;
-    fetch(`/api/sonarr/series-state?tmdbId=${tmdbId}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setSonarrState(data);
-        setMonitorFuture(Boolean(data.monitorFuture));
-      })
-      .catch(() => setSonarrState({ seriesId: null, monitorFuture: false, episodes: [] }));
-  }, [open, tmdbId, sonarrState]);
+    if (open && sonarrState) setMonitorFuture(sonarrState.monitorFuture);
+  }, [open, sonarrState]);
   const owned = Boolean(sonarrState?.seriesId);
   const statePending = sonarrState === null;
 
@@ -244,7 +233,6 @@ export default function RequestShowModal({ open, onClose, title, imdbId, seasons
       setError(null);
       setHighestQuality(false);
       setProfileOverride('');
-      setSonarrState(null);
       setLookupSeasons(null);
       return;
     }

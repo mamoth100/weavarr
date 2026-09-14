@@ -1,4 +1,8 @@
 import { fetchWithTimeout } from './fetchTimeout';
+import { sonarrConfig } from './sonarr';
+import { radarrConfig } from './radarr';
+import { sabnzbdConfig } from './sabnzbd';
+import { nzbgetConfig } from './nzbget';
 /**
  * Per-title download progress, keyed by TMDB id so browse cards and detail
  * pages can match it to what they're showing. Aggregates the Radarr/Sonarr
@@ -38,18 +42,18 @@ interface QueueRecordShape {
 async function fetchClientFractions(): Promise<Map<string, number>> {
   const map = new Map<string, number>();
 
-  const sabOn = process.env.ENABLE_SABNZBD !== 'false' && Boolean(process.env.SABNZBD_URL && process.env.SABNZBD_API_KEY);
-  const nzbgetOn = process.env.ENABLE_NZBGET === 'true' && Boolean(process.env.NZBGET_URL && process.env.NZBGET_USERNAME);
+  const sab = sabnzbdConfig();
+  const nzb = nzbgetConfig();
 
-  const [sab, nzbget] = await Promise.allSettled([
-    sabOn
-      ? fetchWithTimeout(`${process.env.SABNZBD_URL!.replace(/\/$/, '')}/api?mode=queue&output=json&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' }).then((r) => r.json())
+  const [sabResult, nzbget] = await Promise.allSettled([
+    sab
+      ? fetchWithTimeout(`${sab.url}/api?mode=queue&output=json&apikey=${sab.key}`, { cache: 'no-store' }).then((r) => r.json())
       : Promise.resolve(null),
-    nzbgetOn
-      ? fetchWithTimeout(`${process.env.NZBGET_URL!.replace(/\/$/, '')}/jsonrpc`, {
+    nzb
+      ? fetchWithTimeout(`${nzb.url}/jsonrpc`, {
           method: 'POST',
           headers: {
-            Authorization: `Basic ${Buffer.from(`${process.env.NZBGET_USERNAME}:${process.env.NZBGET_PASSWORD}`).toString('base64')}`,
+            Authorization: `Basic ${Buffer.from(`${nzb.username}:${nzb.password}`).toString('base64')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ method: 'listgroups', params: [] }),
@@ -58,8 +62,8 @@ async function fetchClientFractions(): Promise<Map<string, number>> {
       : Promise.resolve(null),
   ]);
 
-  if (sab.status === 'fulfilled' && sab.value) {
-    for (const slot of sab.value.queue?.slots ?? []) {
+  if (sabResult.status === 'fulfilled' && sabResult.value) {
+    for (const slot of sabResult.value.queue?.slots ?? []) {
       const mb = parseFloat(slot.mb);
       const mbleft = parseFloat(slot.mbleft);
       if (slot.nzo_id && mb > 0 && !isNaN(mbleft)) {
@@ -128,10 +132,10 @@ async function fetchQueue(url: string, key: string): Promise<QueueRecordShape[]>
  * its episodes, which is what the pack genuinely is.
  */
 export async function getEpisodeDownloadProgress(): Promise<Record<number, TitleProgress>> {
-  const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
-  if (!sonarrOn) return {};
+  const sonarr = sonarrConfig();
+  if (!sonarr) return {};
   const [records, clientFractions] = await Promise.all([
-    fetchQueue(`${process.env.SONARR_URL!.replace(/\/$/, '')}/api/v3/queue?pageSize=200`, process.env.SONARR_KEY!).catch(() => []),
+    fetchQueue(`${sonarr.url}/api/v3/queue?pageSize=200`, sonarr.key).catch(() => []),
     fetchClientFractions(),
   ]);
   const out: Record<number, TitleProgress> = {};
@@ -149,15 +153,15 @@ export async function getEpisodeDownloadProgress(): Promise<Record<number, Title
 }
 
 export async function getDownloadProgress(): Promise<DownloadProgressMap> {
-  const radarrOn = process.env.ENABLE_RADARR !== 'false' && Boolean(process.env.RADARR_URL && process.env.RADARR_KEY);
-  const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
+  const radarrCfg = radarrConfig();
+  const sonarrCfg = sonarrConfig();
 
   const [radarr, sonarr, clientFractions] = await Promise.all([
-    radarrOn
-      ? fetchQueue(`${process.env.RADARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeMovie=true&pageSize=100`, process.env.RADARR_KEY!).catch(() => [])
+    radarrCfg
+      ? fetchQueue(`${radarrCfg.url}/api/v3/queue?includeMovie=true&pageSize=100`, radarrCfg.key).catch(() => [])
       : Promise.resolve([]),
-    sonarrOn
-      ? fetchQueue(`${process.env.SONARR_URL!.replace(/\/$/, '')}/api/v3/queue?includeSeries=true&pageSize=100`, process.env.SONARR_KEY!).catch(() => [])
+    sonarrCfg
+      ? fetchQueue(`${sonarrCfg.url}/api/v3/queue?includeSeries=true&pageSize=100`, sonarrCfg.key).catch(() => [])
       : Promise.resolve([]),
     fetchClientFractions().catch(() => new Map<string, number>()),
   ]);
