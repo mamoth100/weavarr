@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Local-list companion to InfiniteBrowse: these lists already hold ALL
@@ -16,7 +16,12 @@ import { useEffect, useRef, useState } from 'react';
  */
 export function useInfiniteReveal(total: number, resetKey: unknown, step = 50) {
   const [visible, setVisible] = useState(step);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // A callback ref, not useRef: every caller renders a loading state first,
+  // so on the first commit there is no sentinel. An effect keyed only on
+  // `step` ran once, found nothing, and never looked again, which capped
+  // every list at the first `step` rows for good.
+  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => setSentinel(node), []);
   const totalRef = useRef(total);
   totalRef.current = total;
 
@@ -26,7 +31,6 @@ export function useInfiniteReveal(total: number, resetKey: unknown, step = 50) {
   }, [resetKey, step]);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     function reveal() {
@@ -42,18 +46,19 @@ export function useInfiniteReveal(total: number, resetKey: unknown, step = 50) {
     observer.observe(sentinel);
 
     function check() {
-      const s = sentinelRef.current;
-      if (s && s.getBoundingClientRect().top < window.innerHeight + 600) reveal();
+      if (sentinel && sentinel.getBoundingClientRect().top < window.innerHeight + 600) reveal();
     }
     window.addEventListener('scroll', check, { passive: true });
     window.addEventListener('resize', check);
+    // The sentinel can already be in view on a short list or tall screen.
+    check();
 
     return () => {
       observer.disconnect();
       window.removeEventListener('scroll', check);
       window.removeEventListener('resize', check);
     };
-  }, [step]);
+  }, [sentinel, step]);
 
   return { visible, sentinelRef };
 }

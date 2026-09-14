@@ -5,8 +5,15 @@
 #   docker compose up -d
 #
 # Then open http://<this machine>:6767 and fill in Settings. Everything you
-# save lands in ./config/.env.local next to this file; restart the container
-# (docker compose restart) for new settings to take effect.
+# save lands in ./config/.env.local next to this file; the app restarts
+# itself when you click Restart App.
+#
+# Service URLs: for Radarr, Sonarr, Plex or a downloader running ON THE SAME
+# MACHINE, use http://host.docker.internal:7878 (and so on), not localhost.
+# From inside the container, localhost is the container itself. Services on
+# other machines are just their normal address.
+#
+# Needs Docker Compose v2.24 or newer (docker compose version).
 name: weavarr
 
 services:
@@ -14,9 +21,12 @@ services:
     image: ghcr.io/mamoth100/weavarr:latest
     container_name: weavarr
     restart: unless-stopped
-    # Host networking so URLs like http://localhost:7878 (Radarr on the same
-    # box) work from inside the container. The app listens on port 6767.
-    network_mode: host
+    ports:
+      - "6767:6767"
+    # Makes host.docker.internal resolve to this machine on Linux too
+    # (Docker Desktop on Windows and Mac provides it on its own).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - PORT=6767
     env_file:
@@ -25,6 +35,13 @@ services:
     volumes:
       - data:/app/data
       - ./config:/app/config
+
+    # Linux only, optional: share the host's network instead, so
+    # http://localhost:7878 style URLs work as they would on the host. Docker
+    # Desktop for Windows and Mac ignores this and the app becomes
+    # unreachable, which is why it is not the default. To use it, remove the
+    # "ports" and "extra_hosts" sections above and uncomment the next line.
+    # network_mode: host
 
 volumes:
   data:

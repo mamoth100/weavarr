@@ -1160,7 +1160,7 @@ export default function ReadyToWatchPanel() {
       <MissingMoviesSection onCountChange={setMissingMoviesCount} />
       <StalledShowsSection onCountChange={setStalledCount} />
       <RecentlyWatchedSection onCountChange={setRecentlyWatchedCount} />
-      <LastEpisodeModal aftermath={aftermath} onClose={() => setAftermath(null)} />
+      <LastEpisodeModal key={aftermath?.seriesId ?? 'none'} aftermath={aftermath} onClose={() => setAftermath(null)} />
     </div>
   );
 }
