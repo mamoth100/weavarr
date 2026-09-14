@@ -8,6 +8,7 @@ import AdmZip from 'adm-zip';
 import { readdir, stat, mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { ENV_FILE } from './configDir';
+import { SETTINGS_SCHEMA } from './settings';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
@@ -82,14 +83,42 @@ export async function deleteBackup(filename: string): Promise<void> {
 export async function restoreBackup(filename: string): Promise<void> {
   assertSafeFilename(filename);
   const zip = new AdmZip(path.join(BACKUP_DIR, filename));
-  // The zip stores .env.local at its root, but the live file lives in
-  // CONFIG_DIR (a separate mount in Docker). Route that one entry there and
-  // extract everything else (data/...) relative to the app root as before.
-  for (const entry of zip.getEntries()) {
+  const entries = zip.getEntries();
+
+  // Validate the whole zip before touching anything. Uploads are accepted
+  // from anyone on the LAN, so a zip is untrusted input: an entry named
+  // server.js or .next/anything is a legal path under the app root and would
+  // be executed on the next restart. Only the settings file and the data
+  // folder are ever restored, and the data entries that the backup itself
+  // never includes (posters, backups, env-backups) are refused too.
+  for (const entry of entries) {
+    if (entry.isDirectory) continue; // folder markers are never extracted (see below)
+    const name = entry.entryName.replace(/\\/g, '/');
+    if (name === '.env.local') continue;
+    const parts = name.split('/');
+    const escapes = parts.some((p) => p === '..' || p === '') || path.isAbsolute(name);
+    const underData = parts[0] === 'data' && parts.length > 1 && !EXCLUDED_DATA_ENTRIES.has(parts[1]);
+    if (escapes || !underData) throw new Error(`Backup refused: it contains "${entry.entryName}", which is not a settings or data file`);
+  }
+
+  for (const entry of entries) {
     if (entry.entryName === '.env.local') {
+      // Only known settings keys, one per line. A restored file is
+      // environment for the next boot, so anything else (NODE_OPTIONS, a
+      // value smuggling a newline) must not get through.
+      const allowed = new Set(SETTINGS_SCHEMA.map((f) => f.key));
+      const kept = entry
+        .getData()
+        .toString('utf8')
+        .split(/\r?\n/)
+        .filter((line) => {
+          const eq = line.indexOf('=');
+          if (eq <= 0) return false;
+          return allowed.has(line.slice(0, eq).trim());
+        });
       await mkdir(path.dirname(ENV_FILE), { recursive: true });
-      await writeFile(ENV_FILE, entry.getData());
-    } else {
+      await writeFile(ENV_FILE, kept.join('\n') + '\n', 'utf8');
+    } else if (!entry.isDirectory) {
       zip.extractEntryTo(entry, process.cwd(), true, true);
     }
   }

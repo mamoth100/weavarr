@@ -334,7 +334,12 @@ export async function getProtectedTitle(seriesId: number): Promise<string | null
   const excluded = getExcludedShows();
   if (excluded.size === 0) return null;
   const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}`, { headers: headers(), cache: 'no-store' });
-  if (!res.ok) return null; // series unknown - nothing to protect
+  // 404 is the one answer that means "nothing to protect". Any other failure
+  // (a 503 during a DB lock, a 401 from a rotated key) must block the delete,
+  // not wave it through: this guard is the last line in front of files the
+  // user has said are irreplaceable.
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Could not check the protected list (Sonarr answered ${res.status}) - delete blocked`);
   const detail = await res.json();
   return excluded.has(((detail.title as string) ?? '').trim().toLowerCase()) ? ((detail.title as string) ?? '') : null;
 }
@@ -373,6 +378,7 @@ export async function getSeriesDeleteAftermath(seriesId: number): Promise<Series
  */
 export async function deleteSonarrSeriesFiles(seriesId: number): Promise<number> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  await assertSeriesDeletable(seriesId);
   const info = await getSonarrEpisodeFileInfoMap(seriesId);
   const entries = Array.from(info.values());
   const fileIds = Array.from(new Set(entries.map((v) => v.episodeFileId).filter((id) => id > 0)));
@@ -515,6 +521,8 @@ export async function getSonarrSeriesIdByImdbId(imdbId: string): Promise<number 
 /** Removes the series from Sonarr entirely and deletes its file(s) from disk. */
 export async function deleteSonarrSeries(seriesId: number): Promise<void> {
   if (!SONARR_URL || !SONARR_KEY) throw new Error('Sonarr is not configured');
+  // Asserted here as well as in the routes, so no caller can skip it.
+  await assertSeriesDeletable(seriesId);
   try {
     const res = await fetchWithTimeout(`${SONARR_URL}/api/v3/series/${seriesId}?deleteFiles=true&addImportListExclusion=false`, {
       method: 'DELETE',
@@ -771,6 +779,7 @@ export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
 
 /** Deletes the file for every episode in this season that has one - leaves the series and every other season untouched. */
 export async function deleteSonarrSeasonFiles(seriesId: number, seasonNumber: number): Promise<void> {
+  await assertSeriesDeletable(seriesId);
   const episodes = await getSonarrSeriesEpisodes(seriesId);
   const withFiles = episodes.filter((e) => e.seasonNumber === seasonNumber && e.hasFile && e.episodeFileId);
   await Promise.all(withFiles.map((e) => deleteSonarrEpisodeFile(e.id, e.episodeFileId as number)));
