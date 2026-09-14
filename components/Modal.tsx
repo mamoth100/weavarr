@@ -29,6 +29,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 export default function Modal({ open, onClose, title, children, footer, wide = false }: ModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<Element | null>(null);
+  // Read through a ref so the effect below depends on `open` alone. Callers
+  // pass a fresh onClose arrow on every render; depending on it re-ran the
+  // effect per render, and each teardown handed focus back to the opener,
+  // so focus never settled inside the dialog.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -42,7 +48,7 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
 
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !card) return;
@@ -70,7 +76,7 @@ export default function Modal({ open, onClose, title, children, footer, wide = f
       const opener = openerRef.current;
       if (opener instanceof HTMLElement && document.contains(opener)) opener.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
