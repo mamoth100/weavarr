@@ -58,7 +58,7 @@ knobs, cacheImages, then the public API when integrators appear (§8).
 - [ ] **GAP** (S) `forceIpv4First` + DNS cache controls (`dnsCache.forceMinTtl/forceMaxTtl`) - escape hatches for broken IPv6/DNS setups. Release second wave.
 - [x] **RELEASE #6** `apiRequestTimeout` - shipped 2026-08-19 (see §0).
 - [ ] **GAP** (M) `cacheImages` - proxy + cache TMDB images locally (bandwidth/privacy). We cache Radarr/Sonarr posters but hotlink TMDB. Release second wave.
-- [ ] **GAP** (S) **RELEASE #4** `versionCheck` - "an update is available" notice. We have no update awareness at all.
+- [x] **GAP** (S) **RELEASE #4** `versionCheck` - **SHIPPED 2026-09-12** as the "Update available" sidebar link plus the opt-in Update Available Alerts notification.
 - **DIFF** Per-connection `useSsl`/hostname/port/urlBase (radarr/sonarr/plex/jellyfin) - Seerr splits these into fields; we take full URLs, which already carry scheme/port/path. Covered, arguably better. Nothing to do.
 - **SKIP** `locale` + full UI i18n - roadmap Tier 5 already parks localization.
 
@@ -125,7 +125,7 @@ Theirs: email (full SMTP incl. `secure`/`ignoreTls`/`requireTls`/`allowSelfSigne
 
 ## 7. Jobs & maintenance
 
-- [ ] **GAP** (M) Jobs page: every background job listed with next-run, **editable cron schedule**, run-now and cancel buttons - roadmap Tier 4. Ours run on fixed code intervals, invisible. (Our jobs today: import notifications 2m, connection health 10m, watchlist sync 10m, watched sync 5m, poster sweep 24h, backups 24h.)
+- [x] **GAP** (M) Jobs page - **SHIPPED 2026-09-15** as Settings > Jobs: every background job (enabled or not) with its interval, last outcome and duration, next run, and Run now; outcomes persist across restarts in data/jobs-state.json. No editable schedules (intervals stay in code) and no cancel: nothing here runs long enough to need one.
 - [x] Image cache cleanup - our poster sweep (2026-08-17) covers the equivalent.
 - [x] Logs page - ours aggregates six services; theirs shows only its own. Weavarr advantage.
 - [x] Backup/restore - Weavarr only. Advantage.
