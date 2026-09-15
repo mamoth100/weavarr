@@ -118,7 +118,7 @@ export default function JobsPanel() {
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800/60">
-        <div className="hidden md:grid grid-cols-[1fr_5rem_14rem_7rem_6rem] gap-3 px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+        <div className="hidden lg:grid grid-cols-[minmax(0,1fr)_4.5rem_12rem_6rem_5rem] gap-3 px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wide">
           <span>Job</span>
           <span>Every</span>
           <span>Last run</span>
@@ -140,14 +140,14 @@ export default function JobsPanel() {
             result === 'skipped' ? `Skipped ${relative(j.lastFinishedAt)}` :
             'Not run yet';
           return (
-            <div key={j.name} className="grid grid-cols-1 md:grid-cols-[1fr_5rem_14rem_7rem_6rem] gap-1 md:gap-3 px-4 py-3 md:items-center">
+            <div key={j.name} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_4.5rem_12rem_6rem_5rem] gap-1 lg:gap-3 px-4 py-3 lg:items-center">
               <div className="min-w-0">
                 <p className={`text-sm font-medium ${j.enabled ? '' : 'text-zinc-500'}`}>{j.label}</p>
                 <p className="text-xs text-zinc-500">{j.description}</p>
                 {!j.enabled && j.enableHint && <p className="text-xs text-amber-400/80 mt-0.5">Off. {j.enableHint}</p>}
               </div>
               <span className="text-sm text-zinc-300">
-                <span className="md:hidden text-zinc-500">Every </span>
+                <span className="lg:hidden text-zinc-500">Every </span>
                 {formatEvery(j.everyMs)}
               </span>
               <div className="min-w-0">
@@ -163,10 +163,10 @@ export default function JobsPanel() {
                 )}
               </div>
               <span className="text-sm text-zinc-300">
-                <span className="md:hidden text-zinc-500">Next </span>
+                <span className="lg:hidden text-zinc-500">Next </span>
                 {j.enabled ? relative(j.nextRunAt) : 'off'}
               </span>
-              <div className="md:text-right">
+              <div className="lg:text-right">
                 <button
                   onClick={() => runNow(j.name)}
                   disabled={!j.enabled || j.running || starting === j.name}
