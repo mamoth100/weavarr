@@ -21,6 +21,7 @@ interface QualityProfileOption {
 export { formatBytes } from '@/components/RecentlyWatchedSection';
 import { formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 function isDownloadable(e: Pick<SonarrEpisode, 'hasFile' | 'airDateUtc'>): boolean {
@@ -139,9 +140,7 @@ function SearchEpisodeButton({
       <button
         onClick={handleClick}
         disabled={status === 'loading'}
-        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
-        }`}
+        className={buttonClass({ tone: 'primary', compact: true, error: status === 'error' })}
       >
         {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Download'}
       </button>
@@ -204,7 +203,7 @@ function SeasonActions({
             target="_blank"
             rel="noopener noreferrer"
             title="Sonarr searched and sent this to your downloader if releases were found - check Status for what's actually queued or downloading."
-            className="px-2 py-0.5 rounded text-xs font-medium transition-colors bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black"
+            className={buttonClass({ tone: 'primary', compact: true })}
           >
             Sent to downloader
           </a>
@@ -212,9 +211,7 @@ function SeasonActions({
           <button
             onClick={handleDownloadSeason}
             disabled={downloadStatus !== 'idle' && downloadStatus !== 'error'}
-            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
-              downloadStatus === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-            }`}
+            className={buttonClass({ tone: 'primary', compact: true, error: downloadStatus === 'error' })}
           >
             {downloadStatus === 'loading' ? 'Searching…' : downloadStatus === 'error' ? 'Failed - retry' : 'Download Season'}
           </button>
