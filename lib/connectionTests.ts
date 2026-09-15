@@ -145,7 +145,7 @@ async function testTrakt(clientId?: string): Promise<TestResult> {
   if (!clientId) return { ok: false, message: 'Client ID required' };
   try {
     const res = await fetchWithTimeout('https://api.trakt.tv/movies/popular?limit=1', {
-      headers: { 'Content-Type': 'application/json', 'trakt-api-version': '2', 'trakt-api-key': clientId },
+      headers: { 'trakt-api-version': '2', 'trakt-api-key': clientId.trim(), 'User-Agent': 'Weavarr/1.0' },
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, message: `HTTP ${res.status} - check the Client ID` };
