@@ -21,7 +21,7 @@ export async function POST() {
     if (plexEnabled() && jellyfinEnabled()) {
       // Through the registry when the job is on, so Settings > Jobs records
       // the run; straight to the sync when the scheduled job is off.
-      const registered = listJobs().find((j) => j.name === 'watchedSync' && j.enabled);
+      const registered = (await listJobs()).find((j) => j.name === 'watchedSync' && j.enabled);
       marks = registered ? ((await runJobNow('watchedSync')) as number) : await runExclusive('watchedSync', syncWatchedBetweenServers);
     }
     return NextResponse.json({ refreshed, marks });
