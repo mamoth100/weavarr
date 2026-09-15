@@ -17,8 +17,14 @@ export interface JobDefinition {
   label: string;
   description: string;
   everyMs: number;
-  /** False when the job's setting is off; it is listed but never scheduled or run. */
+  /** False when the job's setting is off at boot; it is listed but never scheduled or run. */
   enabled: boolean;
+  /**
+   * Live check for a job whose switch is read off disk on every run (so it
+   * stays scheduled while off). When it returns false the page shows the job
+   * as off and Run now is withheld, even though the timer keeps ticking.
+   */
+  enabledNow?: () => Promise<boolean>;
   /** What turns it on, shown next to a disabled job. */
   enableHint?: string;
   run: () => Promise<unknown>;
@@ -145,29 +151,38 @@ export async function registerJob(def: JobDefinition): Promise<void> {
   scheduleNext(def, def.everyMs);
 }
 
-export function listJobs(): JobInfo[] {
-  return order.map((name) => {
-    const def = jobs.get(name)!;
-    const state = states.get(name) ?? emptyState();
-    const next = nextRuns.get(name);
-    return {
-      name,
-      label: def.label,
-      description: def.description,
-      everyMs: def.everyMs,
-      enabled: def.enabled,
-      enableHint: def.enableHint ?? null,
-      running: isRunning(name),
-      nextRunAt: def.enabled && next ? new Date(next).toISOString() : null,
-      ...state,
-    };
-  });
+async function isEnabledNow(def: JobDefinition): Promise<boolean> {
+  if (!def.enabled) return false;
+  if (!def.enabledNow) return true;
+  return def.enabledNow().catch(() => def.enabled);
+}
+
+export async function listJobs(): Promise<JobInfo[]> {
+  return Promise.all(
+    order.map(async (name) => {
+      const def = jobs.get(name)!;
+      const state = states.get(name) ?? emptyState();
+      const next = nextRuns.get(name);
+      const enabled = await isEnabledNow(def);
+      return {
+        name,
+        label: def.label,
+        description: def.description,
+        everyMs: def.everyMs,
+        enabled,
+        enableHint: def.enableHint ?? null,
+        running: isRunning(name),
+        nextRunAt: enabled && next ? new Date(next).toISOString() : null,
+        ...state,
+      };
+    })
+  );
 }
 
 /** Starts a job from the Jobs page. Returns the job's own result once it finishes. */
 export async function runJobNow(name: string): Promise<unknown> {
   const def = jobs.get(name);
   if (!def) throw new Error(`Unknown job "${name}"`);
-  if (!def.enabled) throw new Error(`${def.label} is turned off${def.enableHint ? `: ${def.enableHint}` : ''}`);
+  if (!(await isEnabledNow(def))) throw new Error(`${def.label} is turned off${def.enableHint ? `: ${def.enableHint}` : ''}`);
   return execute(def);
 }

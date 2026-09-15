@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const name = typeof body?.name === 'string' ? body.name : '';
-  const job = listJobs().find((j) => j.name === name);
+  const job = (await listJobs()).find((j) => j.name === name);
   if (!job) return NextResponse.json({ error: 'Unknown job' }, { status: 400 });
   if (!job.enabled) {
     return NextResponse.json({ error: `${job.label} is turned off${job.enableHint ? `. ${job.enableHint}` : ''}` }, { status: 400 });

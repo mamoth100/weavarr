@@ -129,12 +129,16 @@ export async function register() {
     // are a no-op file read.
     {
       const { runAutoCleanup } = await import('./lib/autoCleanup');
+      const { getRawEnvValue } = await import('./lib/settings');
       await registerJob({
         name: 'autoCleanup',
         label: 'Auto cleanup',
-        description: 'Deletes watched episodes once the grace period has passed. Does nothing while Auto cleanup is off in Settings.',
+        description: 'Deletes watched episodes once the grace period has passed.',
         everyMs: HOUR,
         enabled: true,
+        // The switch is read off disk every run, so the page reflects it live.
+        enabledNow: async () => (await getRawEnvValue('ENABLE_AUTO_CLEANUP')) === 'true',
+        enableHint: 'Turn on Auto-Delete Watched Episodes under Settings > App Config.',
         run: runAutoCleanup,
       });
     }
