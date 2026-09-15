@@ -36,7 +36,35 @@ export interface TmdbSeason {
   air_date?: string | null;
 }
 
+/** One cast or crew entry on a title. */
+export interface TmdbCredit {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  character?: string;
+  job?: string;
+  department?: string;
+  order?: number;
+}
+
+/** A person page: bio plus every title they were part of, as cards. */
+export interface TmdbPerson {
+  id: number;
+  name: string;
+  biography: string;
+  profile_path: string | null;
+  known_for_department: string | null;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  knownFor: TmdbMovie[];
+  movies: TmdbMovie[];
+  shows: TmdbMovie[];
+}
+
 export interface TmdbDetailResponse extends TmdbMovie {
+  credits?: { cast: TmdbCredit[]; crew: TmdbCredit[] };
+  created_by?: { id: number; name: string; profile_path: string | null }[];
   genres: { id: number; name: string }[];
   keywords: { keywords: TmdbKeyword[] };
   external_ids: { imdb_id: string | null };

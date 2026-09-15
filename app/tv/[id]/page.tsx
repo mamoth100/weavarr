@@ -15,6 +15,7 @@ import DetailActions from '@/components/DetailActions';
 import RequestButton from '@/components/RequestButton';
 import SeasonAvailability from '@/components/SeasonAvailability';
 import BackLink from '@/components/BackLink';
+import CreditsSection from '@/components/CreditsSection';
 import type { TmdbKeyword, WatchProvider } from '@/types';
 
 interface Props {
@@ -298,26 +299,8 @@ export default async function TvPage({ params }: Props) {
               </p>
             )}
 
-            {/* Credits from OMDb */}
-            {omdb && (
-              <div className="mt-5 text-sm space-y-1.5">
-                {omdb.Director && omdb.Director !== 'N/A' && (
-                  <p>
-                    <span className="text-zinc-500">Director</span>{' '}
-                    <span className="text-zinc-200">{omdb.Director}</span>
-                  </p>
-                )}
-                {omdb.Actors && omdb.Actors !== 'N/A' && (
-                  <p>
-                    <span className="text-zinc-500">Featuring</span>{' '}
-                    <span className="text-zinc-200">{omdb.Actors}</span>
-                  </p>
-                )}
-                {omdb.Awards && omdb.Awards !== 'N/A' && (
-                  <p className="text-amber-400 text-xs mt-2">{omdb.Awards}</p>
-                )}
-              </div>
-            )}
+            {/* Cast and crew, every name a link to the person's page */}
+            <CreditsSection credits={detail.credits} createdBy={detail.created_by} omdb={omdb} />
 
             {/* Keywords / tags */}
             {keywords.length > 0 && (

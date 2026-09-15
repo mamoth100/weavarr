@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
-import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders } from '@/types';
+import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders, TmdbPerson, TmdbMovie } from '@/types';
 import type { MediaType } from '@/types';
 
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -95,7 +95,7 @@ export async function discoverMovies({
 
 export async function getDocumentaryDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await tmdbFetch(
-    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos,recommendations`,
+    `${BASE_URL}/movie/${id}?append_to_response=keywords,external_ids,videos,recommendations,credits`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error(`TMDb detail failed: ${res.status}`);
@@ -353,7 +353,7 @@ export async function getTvSeasons(id: number): Promise<TvSeasonsResult> {
 
 export async function getTvDetail(id: number): Promise<TmdbDetailResponse> {
   const res = await tmdbFetch(
-    `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos,recommendations`,
+    `${BASE_URL}/tv/${id}?append_to_response=keywords,external_ids,videos,recommendations,credits`,
     { headers: authHeaders(), next: { revalidate: 3600 } }
   );
   if (!res.ok) throw new Error(`TMDb TV detail failed: ${res.status}`);
@@ -445,4 +445,53 @@ export async function getTvSeasonEpisodes(tvId: number, seasonNumber: number): P
     name: (e.name as string) ?? `Episode ${e.episode_number as number}`,
     air_date: (e.air_date as string) ?? null,
   }));
+}
+
+// Talk shows and news carry hundreds of one-off "Self" appearances that
+// bury a person's real work; they never belong on a filmography.
+const NOISE_TV_GENRES = new Set([10767, 10763]);
+
+/**
+ * A person with their filmography, for /person/[id]. combined_credits mixes
+ * movies and shows, cast and crew; one title can appear several times (an
+ * actor who also produced), so credits collapse to one card per title.
+ */
+export async function getPerson(id: number): Promise<TmdbPerson> {
+  const res = await tmdbFetch(`${BASE_URL}/person/${id}?append_to_response=combined_credits`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`TMDb person failed: ${res.status}`);
+  const data = await res.json();
+  const raw: Record<string, unknown>[] = [...(data.combined_credits?.cast ?? []), ...(data.combined_credits?.crew ?? [])];
+  const seen = new Set<string>();
+  const titles: TmdbMovie[] = [];
+  for (const c of raw) {
+    const mediaType = c.media_type === 'tv' ? 'tv' : c.media_type === 'movie' ? 'movie' : null;
+    if (!mediaType) continue;
+    const key = `${mediaType}:${c.id}`;
+    if (seen.has(key)) continue;
+    const genreIds = (c.genre_ids as number[] | undefined) ?? [];
+    if (mediaType === 'tv' && genreIds.some((g) => NOISE_TV_GENRES.has(g))) continue;
+    // A guest spot as themselves on someone else's show is not their work.
+    const episodes = typeof c.episode_count === 'number' ? c.episode_count : null;
+    if (mediaType === 'tv' && episodes !== null && episodes <= 2 && /self/i.test(String(c.character ?? ''))) continue;
+    seen.add(key);
+    titles.push(mediaType === 'tv' ? (normalizeTvResult(c) as TmdbMovie) : ({ ...c, mediaType: 'movie' } as TmdbMovie));
+  }
+  const byDate = (a: TmdbMovie, b: TmdbMovie) => (b.release_date || '').localeCompare(a.release_date || '');
+  const withPoster = titles.filter((t) => t.poster_path);
+  return {
+    id: data.id,
+    name: data.name,
+    biography: data.biography ?? '',
+    profile_path: data.profile_path ?? null,
+    known_for_department: data.known_for_department ?? null,
+    birthday: data.birthday ?? null,
+    deathday: data.deathday ?? null,
+    place_of_birth: data.place_of_birth ?? null,
+    knownFor: [...withPoster].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 10),
+    movies: titles.filter((t) => t.mediaType === 'movie').sort(byDate),
+    shows: titles.filter((t) => t.mediaType === 'tv').sort(byDate),
+  };
 }
