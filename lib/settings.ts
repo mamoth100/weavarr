@@ -28,7 +28,7 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'ENABLE_OMDB', label: 'Enable OMDb', group: 'OMDb', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'OMDB_API_KEY', label: 'OMDb API Key', group: 'OMDb', secret: true },
   { key: 'ENABLE_TRAKT', label: 'Enable Trakt', group: 'Trakt', secret: false, type: 'boolean', defaultValue: 'true' },
-  { key: 'TRAKT_CLIENT_ID', label: 'Trakt Client ID', group: 'Trakt', secret: true, info: 'From a Trakt API app (trakt.tv/oauth/applications). Ratings are fetched by your browser, so this id is handed to the page; that is how Trakt client ids work, they are not secret.' },
+  { key: 'TRAKT_CLIENT_ID', label: 'Trakt Client ID', group: 'Trakt', secret: true, info: 'From a Trakt API app (trakt.tv/oauth/applications). Only the Client ID is needed; redirect URI and CORS origins on the Trakt app can be anything.' },
   { key: 'ENABLE_RADARR', label: 'Enable Radarr', group: 'Radarr', secret: false, type: 'boolean', defaultValue: 'true' },
   { key: 'RADARR_URL', label: 'Radarr URL', group: 'Radarr', secret: false },
   { key: 'RADARR_KEY', label: 'Radarr API Key', group: 'Radarr', secret: true },

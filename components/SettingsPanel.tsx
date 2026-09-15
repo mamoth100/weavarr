@@ -745,38 +745,6 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   async function handleTest(group: string) {
     setTestStates((prev) => ({ ...prev, [group]: { status: 'testing' } }));
 
-    // Trakt's Cloudflare protection blocks server-side requests (confirmed
-    // live - same reason TraktScore already runs client-side elsewhere in
-    // this app). Has to run from the browser, not through /api/settings/test.
-    if (group === 'Trakt') {
-      // The saved id never comes back through /api/settings (secret field);
-      // the runtime route the ratings component uses serves it instead.
-      const clientId =
-        edits['TRAKT_CLIENT_ID']?.trim() ||
-        (await fetch('/api/trakt/client-id', { cache: 'no-store' })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => (typeof d?.clientId === 'string' ? d.clientId : ''))
-          .catch(() => '')) ||
-        '';
-      if (!clientId) {
-        setTestStates((prev) => ({ ...prev, Trakt: { status: 'fail', message: 'Client ID required' } }));
-        return;
-      }
-      try {
-        const res = await fetch('https://api.trakt.tv/shows/trending?limit=1', {
-          headers: { 'trakt-api-version': '2', 'trakt-api-key': clientId },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status} - check Client ID`);
-        setTestStates((prev) => ({ ...prev, Trakt: { status: 'ok', message: 'Client ID valid' } }));
-      } catch (err) {
-        setTestStates((prev) => ({
-          ...prev,
-          Trakt: { status: 'fail', message: err instanceof Error ? err.message : String(err) },
-        }));
-      }
-      return;
-    }
-
     const groupFields = settings!.filter((s) => s.group === group);
     const values: Record<string, string> = {};
     for (const f of groupFields) {
