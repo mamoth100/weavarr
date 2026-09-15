@@ -146,6 +146,15 @@ export default async function DocumentaryPage({ params }: Props) {
               </div>
             )}
 
+            {detail.belongs_to_collection && (
+              <Link
+                href={`/collection/${detail.belongs_to_collection.id}`}
+                className="inline-flex items-center gap-1.5 mt-3 text-xs px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25 hover:bg-amber-500 hover:text-black transition-colors font-medium"
+              >
+                Part of the {detail.belongs_to_collection.name}
+              </Link>
+            )}
+
             <DetailActions
               id={detail.id}
               mediaType="movie"

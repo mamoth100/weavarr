@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useLibraryStatus } from '@/hooks/useLibraryStatus';
+import { useHiddenGenres } from '@/hooks/useHiddenGenres';
 import DocCard from './DocCard';
 import type { TmdbMovie } from '@/types';
 
@@ -30,6 +31,11 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
   // Opt-in, unlike the always-on watched hiding - owned titles are usually
   // wanted in browse results (that's what the availability badges are for).
   const hideOwned = !isSearching && searchParams.get('owned') === 'hide';
+  // Genres the user never wants to see (Settings > Menu). Applies to every
+  // grid, search included: hiding talk shows and then finding them in
+  // search results would defeat the point.
+  const hiddenGenres = useHiddenGenres();
+  const isHiddenGenre = (doc: TmdbMovie) => hiddenGenres.size > 0 && (doc.genre_ids ?? []).some((g) => hiddenGenres.has(g));
 
   function isOwned(doc: TmdbMovie): boolean {
     if (!libraryStatus) return false;
@@ -51,6 +57,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
     if (hideWatched && snapshotWatched.has(key)) return false;
     if (!showSucks && snapshotSucks.has(key)) return false;
     if (hideOwned && isOwned(doc)) return false;
+    if (isHiddenGenre(doc)) return false;
     return true;
   });
   const filtered = maxItems ? unfiltered.slice(0, maxItems) : unfiltered;
@@ -58,6 +65,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
   const hiddenWatchedCount = hideWatched ? items.filter((d) => snapshotWatched.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenSucksCount = !showSucks ? items.filter((d) => snapshotSucks.has(`${d.id}:${d.mediaType ?? mediaType}`)).length : 0;
   const hiddenOwnedCount = hideOwned ? items.filter(isOwned).length : 0;
+  const hiddenGenreCount = items.filter(isHiddenGenre).length;
 
   // Wait until the watchlist has loaded before rendering so the filter is
   // applied on the very first paint - no flash of unfiltered items.
@@ -77,6 +85,7 @@ export default function CardGrid({ items, mediaType, variant = 'default', quiet 
     hiddenWatchedCount > 0 && `${hiddenWatchedCount} watched hidden`,
     hiddenSucksCount > 0 && `${hiddenSucksCount} not interested hidden`,
     hiddenOwnedCount > 0 && `${hiddenOwnedCount} owned hidden`,
+    hiddenGenreCount > 0 && `${hiddenGenreCount} hidden by genre`,
   ].filter(Boolean).join(' · ');
 
   return (

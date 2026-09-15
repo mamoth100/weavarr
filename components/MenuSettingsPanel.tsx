@@ -57,6 +57,8 @@ function buildWorkingOrder(
 const TAB_CATALOG = MENU_LINK_CATALOG.filter((l) => l.kind === 'tab');
 const PAGE_CATALOG = MENU_LINK_CATALOG.filter((l) => l.kind === 'link');
 const TAB_IDS = new Set(TAB_CATALOG.map((l) => l.id));
+// Real genres only: Discover and All Genres are views, not something to hide.
+const HIDEABLE_GENRES = GENRE_CATALOG.filter((g) => g.id !== DISCOVER_ID && g.id !== ALL_GENRES_ID);
 
 export default function MenuSettingsPanel() {
   const [loaded, setLoaded] = useState(false);
@@ -70,6 +72,8 @@ export default function MenuSettingsPanel() {
   const [originalGenres, setOriginalGenres] = useState<string[]>([]);
   const [originalLinks, setOriginalLinks] = useState<string[]>([]);
   const [originalDiscover, setOriginalDiscover] = useState<string[]>([]);
+  const [hiddenGenres, setHiddenGenres] = useState<string[]>([]);
+  const [originalHidden, setOriginalHidden] = useState<string[]>([]);
   // The add-a-section builder.
   const [builderKind, setBuilderKind] = useState<SectionKind>('trending');
   const [builderType, setBuilderType] = useState<SectionType>('all');
@@ -95,6 +99,9 @@ export default function MenuSettingsPanel() {
         const tabs = [...rawTabs, ...['movies', 'tv'].filter((t) => !rawTabs.includes(t as 'movies' | 'tv'))];
         setLibraryTabs(tabs);
         setOriginalLibraryTabs(tabs);
+        const hidden = parseSavedIds(menuFields.find((f) => f.key === 'HIDDEN_GENRES')?.value, []).filter((id) => HIDEABLE_GENRES.some((g) => g.id === id));
+        setHiddenGenres(hidden);
+        setOriginalHidden(hidden);
         setOriginalGenres(genreIds);
         setOriginalLinks(linkIds);
         setGenreItems(buildWorkingOrder(GENRE_CATALOG, genreIds));
@@ -152,7 +159,8 @@ export default function MenuSettingsPanel() {
   const linksChanged = currentLinkIds.join(',') !== originalLinks.join(',');
   const discoverChanged = currentDiscoverIds.join(',') !== originalDiscover.join(',');
   const libraryTabsChanged = libraryTabs.join(',') !== originalLibraryTabs.join(',');
-  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0) + (discoverChanged ? 1 : 0) + (libraryTabsChanged ? 1 : 0);
+  const hiddenChanged = [...hiddenGenres].sort().join(',') !== [...originalHidden].sort().join(',');
+  const changedCount = (genresChanged ? 1 : 0) + (linksChanged ? 1 : 0) + (discoverChanged ? 1 : 0) + (libraryTabsChanged ? 1 : 0) + (hiddenChanged ? 1 : 0);
 
   // Genres offered in the builder, narrowed by the chosen type - a
   // movies-only Reality row would always be empty (Reality has no TMDB
@@ -178,6 +186,7 @@ export default function MenuSettingsPanel() {
     if (linksChanged) updates.MENU_LINKS = currentLinkIds.join(',');
     if (discoverChanged) updates.DISCOVER_SECTIONS = currentDiscoverIds.join(',');
     if (libraryTabsChanged) updates.LIBRARY_TABS = libraryTabs.join(',');
+    if (hiddenChanged) updates.HIDDEN_GENRES = hiddenGenres.join(',');
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -306,6 +315,31 @@ export default function MenuSettingsPanel() {
             Add section
           </button>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Hidden genres</h2>
+        <p className="text-xs text-zinc-500">
+          Titles in these genres are left out of every grid: browse, search, Discover, recommendations, person pages. A title with several genres is hidden if any of them is ticked. Detail pages still open by link.
+        </p>
+        <ul className="bg-zinc-900 rounded-lg ring-1 ring-white/5 divide-y divide-zinc-800/60">
+          {HIDEABLE_GENRES.map((g) => {
+            const checked = hiddenGenres.includes(g.id);
+            return (
+              <li key={g.id}>
+                <label className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800/50">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => setHiddenGenres((prev) => (checked ? prev.filter((id) => id !== g.id) : [...prev, g.id]))}
+                    className="accent-amber-400"
+                  />
+                  <span className={checked ? 'text-zinc-500 line-through' : ''}>{g.label}</span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap sticky bottom-4">
