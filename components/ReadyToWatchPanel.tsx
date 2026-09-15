@@ -279,6 +279,13 @@ function formatAirDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/** True when the release date is still ahead of today. */
+function isUpcoming(dateStr: string | null): boolean {
+  if (!dateStr) return false;
+  const t = new Date(dateStr).getTime();
+  return Number.isFinite(t) && t > Date.now();
+}
+
 function SearchMissingButton({
   episode,
   searching,
@@ -731,7 +738,11 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
                       <p className="text-sm font-medium truncate">
                         {m.title} <span className="text-zinc-500">({m.year})</span>
                       </p>
-                      {m.releaseDate && <p className="text-xs text-zinc-500">released {formatAirDate(m.releaseDate)}</p>}
+                      {m.releaseDate && (
+                        <p className="text-xs text-zinc-500">
+                          {isUpcoming(m.releaseDate) ? 'releases' : 'released'} {formatAirDate(m.releaseDate)}
+                        </p>
+                      )}
                     </div>
                   </Link>
                 ) : (
@@ -741,16 +752,30 @@ function MissingMoviesSection({ onCountChange }: { onCountChange: (count: number
                   <p className="text-sm font-medium truncate">
                     {m.title} <span className="text-zinc-500">({m.year})</span>
                   </p>
-                  {m.releaseDate && <p className="text-xs text-zinc-500">released {formatAirDate(m.releaseDate)}</p>}
+                  {m.releaseDate && (
+                        <p className="text-xs text-zinc-500">
+                          {isUpcoming(m.releaseDate) ? 'releases' : 'released'} {formatAirDate(m.releaseDate)}
+                        </p>
+                      )}
                 </div>
                 </>
                 )}
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <SearchMissingMovieButton
-                    movie={m}
-                    searching={searchingIds.has(m.movieId)}
-                    onSearchStarted={() => markSearching(m.movieId)}
-                  />
+                  {isUpcoming(m.releaseDate) ? (
+                    // Nothing to search for yet: Radarr grabs it on its own once it is out.
+                    <span
+                      title="Not released yet. Radarr picks it up automatically once it is out."
+                      className="px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-sky-500/15 text-sky-400 ring-sky-500/25"
+                    >
+                      Upcoming
+                    </span>
+                  ) : (
+                    <SearchMissingMovieButton
+                      movie={m}
+                      searching={searchingIds.has(m.movieId)}
+                      onSearchStarted={() => markSearching(m.movieId)}
+                    />
+                  )}
                   <MissingMovieDeleteButton movieId={m.movieId} onDeleted={() => handleDeleted(m.movieId)} />
                 </div>
               </div>
