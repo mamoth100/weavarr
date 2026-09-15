@@ -101,7 +101,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 - [ ] **GAP** (M) Custom discover sliders (user-defined TMDB keyword/genre/studio lists, reorderable, can be marked built from the sliders API) - the power version of our menu-genre customization.
 - [x] **(M) Discover section customization** - **SHIPPED 2026-08-19**: Settings > Menu > Discover sections. Drag-to-reorder rows with remove, plus a kind + media type + genre builder ("Trending Documentaries" is three dropdowns). Ordered kind.type.genre specs in DISCOVER_SECTIONS; unscoped rows keep real TMDB endpoints, genre-scoped rows use discover popularity sort, coming-soon rows take a genre natively, see-alls deep-link everywhere. This largely absorbs the custom-sliders item above - what remains there is keyword/studio/network scoping.
 - [ ] **GAP** (S) `discoverRegion` + `originalLanguage` + `streamingRegion` filters - region-aware discovery; we filter English/all only.
-- [ ] **GAP** (M) Person pages (actor/director filmography) - roadmap Tier 2.
+- [x] **GAP** (M) Person pages - **SHIPPED 2026-09-15**: detail pages show TMDB cast (photo, role) and director/writer/creator lines, each a link to /person/[id]: photo, bio, Known for, then every movie and show as the normal cards with badges and request buttons. Talk/news appearances and one-off "Self" guest spots filtered out.
 - [ ] **GAP** (M) Collections page + request-whole-collection - roadmap Tier 2.
 - [x] "Where to watch" providers - audit error: this already existed (stream + rent logos, JustWatch attribution).
 - [x] Trailers (2026-08-18) - existed as an external YouTube link; now embeds in-app in the shared Modal.
