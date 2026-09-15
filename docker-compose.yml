@@ -12,6 +12,13 @@ services:
     image: ghcr.io/mamoth100/weavarr:latest
     container_name: weavarr
     restart: unless-stopped
+    # Keep the container log to 50 MB (three files). Without a cap Docker
+    # keeps every line forever; one container here reached 1.3 GB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     # Radarr/Sonarr/Plex/etc URLs in the settings commonly point at
     # "localhost" (the same box). Host networking makes that resolve
     # correctly from inside the container too - default bridge networking
