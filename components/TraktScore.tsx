@@ -32,40 +32,29 @@ export default function TraktScore({ imdbId }: { imdbId: string }) {
         return;
       }
 
-      const headers = {
-        'Content-Type': 'application/json',
-        'trakt-api-version': '2',
-        'trakt-api-key': clientId,
-      };
+      // No Content-Type on a GET: it is pointless and forces a preflight.
+      const headers = { 'trakt-api-version': '2', 'trakt-api-key': clientId };
 
       try {
-        const [ratingsRes, statsRes] = await Promise.all([
-          fetch(`https://api.trakt.tv/movies/${imdbId}/ratings`, { headers }),
-          fetch(`https://api.trakt.tv/movies/${imdbId}/stats`, { headers }),
-        ]);
-        if (ratingsRes.ok) {
-          const ratings = await ratingsRes.json();
-          const stats = statsRes.ok ? await statsRes.json() : null;
-          if (!cancelled) setData({ rating: ratings.rating, votes: ratings.votes, watchers: stats?.watchers ?? null });
-        } else {
-          // Not a movie id, or not found as one: resolve through search so
-          // shows and specials get their rating too.
-          const searchRes = await fetch(`https://api.trakt.tv/search/imdb/${imdbId}`, { headers });
-          if (searchRes.ok) {
-            const results = await searchRes.json();
-            const first = results[0];
-            const type = first?.type === 'show' ? 'shows' : 'movies';
-            const slug = (first?.movie ?? first?.show)?.ids?.slug;
-            if (slug) {
-              const [r2, s2] = await Promise.all([
-                fetch(`https://api.trakt.tv/${type}/${slug}/ratings`, { headers }),
-                fetch(`https://api.trakt.tv/${type}/${slug}/stats`, { headers }),
-              ]);
-              if (r2.ok) {
-                const ratings = await r2.json();
-                const stats = s2.ok ? await s2.json() : null;
-                if (!cancelled) setData({ rating: ratings.rating, votes: ratings.votes, watchers: stats?.watchers ?? null });
-              }
+        // Resolve the IMDb id through search first. Trakt only sends CORS
+        // headers on a successful reply, so guessing the movies endpoint for
+        // a show came back as a 404 with no CORS header, which the browser
+        // reports as a blocked request and the rating never rendered.
+        const searchRes = await fetch(`https://api.trakt.tv/search/imdb/${imdbId}?type=movie,show`, { headers });
+        if (searchRes.ok) {
+          const results: { type?: string; movie?: { ids?: { slug?: string } }; show?: { ids?: { slug?: string } } }[] = await searchRes.json();
+          const first = results.find((r) => r.type === 'movie' || r.type === 'show');
+          const type = first?.type === 'show' ? 'shows' : 'movies';
+          const slug = (first?.movie ?? first?.show)?.ids?.slug;
+          if (slug) {
+            const [ratingsRes, statsRes] = await Promise.all([
+              fetch(`https://api.trakt.tv/${type}/${slug}/ratings`, { headers }),
+              fetch(`https://api.trakt.tv/${type}/${slug}/stats`, { headers }),
+            ]);
+            if (ratingsRes.ok) {
+              const ratings = await ratingsRes.json();
+              const stats = statsRes.ok ? await statsRes.json() : null;
+              if (!cancelled) setData({ rating: ratings.rating, votes: ratings.votes, watchers: stats?.watchers ?? null });
             }
           }
         }
