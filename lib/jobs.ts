@@ -52,19 +52,28 @@ export interface JobInfo extends JobState {
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'jobs-state.json');
 
-const jobs = new Map<string, JobDefinition>();
-const states = new Map<string, JobState>();
-const nextRuns = new Map<string, number>();
-const order: string[] = [];
-let persisted: Record<string, JobState> | null = null;
+// Kept on globalThis: Next.js bundles instrumentation.ts and the API routes
+// separately, and each bundle gets its own copy of a module's top-level
+// state. The routes would otherwise see an empty registry while the timers
+// run happily in the other copy (which is exactly what happened first).
+interface Registry {
+  jobs: Map<string, JobDefinition>;
+  states: Map<string, JobState>;
+  nextRuns: Map<string, number>;
+  order: string[];
+  persisted: Record<string, JobState> | null;
+}
+const g = globalThis as unknown as { __weavarrJobs?: Registry };
+const registry: Registry = g.__weavarrJobs ?? (g.__weavarrJobs = { jobs: new Map(), states: new Map(), nextRuns: new Map(), order: [], persisted: null });
+const { jobs, states, nextRuns, order } = registry;
 
 function emptyState(): JobState {
   return { lastStartedAt: null, lastFinishedAt: null, lastDurationMs: null, lastResult: null, lastMessage: null, runs: 0 };
 }
 
 async function loadPersisted(): Promise<void> {
-  if (persisted) return;
-  persisted = await readJsonState<Record<string, JobState>>(STATE_FILE, {});
+  if (registry.persisted) return;
+  registry.persisted = await readJsonState<Record<string, JobState>>(STATE_FILE, {});
 }
 
 async function persist(): Promise<void> {
@@ -128,7 +137,7 @@ export async function registerJob(def: JobDefinition): Promise<void> {
   await loadPersisted();
   jobs.set(def.name, def);
   if (!order.includes(def.name)) order.push(def.name);
-  states.set(def.name, persisted?.[def.name] ?? emptyState());
+  states.set(def.name, registry.persisted?.[def.name] ?? emptyState());
   if (!def.enabled) return;
   // The boot run is not awaited: a slow first sync must not hold up the
   // registration of every job behind it.

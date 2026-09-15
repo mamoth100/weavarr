@@ -1,4 +1,8 @@
-const inFlight = new Map<string, Promise<unknown>>();
+// On globalThis for the same reason as lib/jobs.ts: the instrumentation
+// bundle and the API route bundles each get their own module copy, and a
+// manual run from a route must join a timer run from the other copy.
+const g = globalThis as unknown as { __weavarrInFlight?: Map<string, Promise<unknown>> };
+const inFlight: Map<string, Promise<unknown>> = g.__weavarrInFlight ?? (g.__weavarrInFlight = new Map());
 
 /**
  * Runs `fn` unless a run under the same name is still pending, in which case
