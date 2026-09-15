@@ -21,6 +21,13 @@ services:
     image: ghcr.io/mamoth100/weavarr:latest
     container_name: weavarr
     restart: unless-stopped
+    # Keep the container log to 50 MB (three files). Without a cap Docker
+    # keeps every line forever; one container here reached 1.3 GB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
     ports:
       - "6767:6767"
     # Makes host.docker.internal resolve to this machine on Linux too
