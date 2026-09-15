@@ -167,14 +167,15 @@ export default function JobsPanel() {
                 {j.enabled ? relative(j.nextRunAt) : 'off'}
               </span>
               <div className="lg:text-right">
-                <button
-                  onClick={() => runNow(j.name)}
-                  disabled={!j.enabled || j.running || starting === j.name}
-                  className={buttonClass({ tone: 'primary' })}
-                  title={j.enabled ? undefined : j.enableHint ?? 'This job is turned off'}
-                >
-                  {j.running ? 'Running…' : 'Run now'}
-                </button>
+                {j.enabled && (
+                  <button
+                    onClick={() => runNow(j.name)}
+                    disabled={j.running || starting === j.name}
+                    className={buttonClass({ tone: 'primary' })}
+                  >
+                    {j.running ? 'Running…' : 'Run now'}
+                  </button>
+                )}
               </div>
             </div>
           );
