@@ -466,6 +466,7 @@ export async function getPerson(id: number): Promise<TmdbPerson> {
   const raw: Record<string, unknown>[] = [...(data.combined_credits?.cast ?? []), ...(data.combined_credits?.crew ?? [])];
   const seen = new Set<string>();
   const titles: TmdbMovie[] = [];
+  const involvement = new Map<string, number>();
   for (const c of raw) {
     const mediaType = c.media_type === 'tv' ? 'tv' : c.media_type === 'movie' ? 'movie' : null;
     if (!mediaType) continue;
@@ -478,6 +479,12 @@ export async function getPerson(id: number): Promise<TmdbPerson> {
     if (mediaType === 'tv' && episodes !== null && episodes <= 2 && /self/i.test(String(c.character ?? ''))) continue;
     seen.add(key);
     titles.push(mediaType === 'tv' ? (normalizeTvResult(c) as TmdbMovie) : ({ ...c, mediaType: 'movie' } as TmdbMovie));
+    // How much of the title was theirs: a series regular over a guest spot, a
+    // lead over the tenth name. Only "Known for" uses this; the full lists
+    // keep everything.
+    const order = typeof c.order === 'number' ? c.order : 0;
+    const share = mediaType === 'tv' ? Math.min(episodes ?? 1, 30) / 30 : 1 / (1 + order / 4);
+    involvement.set(key, Math.max(involvement.get(key) ?? 0, share));
   }
   const byDate = (a: TmdbMovie, b: TmdbMovie) => (b.release_date || '').localeCompare(a.release_date || '');
   const withPoster = titles.filter((t) => t.poster_path);
@@ -490,7 +497,9 @@ export async function getPerson(id: number): Promise<TmdbPerson> {
     birthday: data.birthday ?? null,
     deathday: data.deathday ?? null,
     place_of_birth: data.place_of_birth ?? null,
-    knownFor: [...withPoster].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)).slice(0, 10),
+    knownFor: [...withPoster]
+      .sort((a, b) => (b.popularity ?? 0) * (involvement.get(`${b.mediaType}:${b.id}`) ?? 0) - (a.popularity ?? 0) * (involvement.get(`${a.mediaType}:${a.id}`) ?? 0))
+      .slice(0, 10),
     movies: titles.filter((t) => t.mediaType === 'movie').sort(byDate),
     shows: titles.filter((t) => t.mediaType === 'tv').sort(byDate),
   };
