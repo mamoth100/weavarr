@@ -193,17 +193,25 @@ docker compose up -d
 # (same uptimes before and after).
 ```
 
-## Standard deploy procedure (updated 2026-08-19)
+## Standard deploy procedure (updated 2026-09-15)
+
+Push to main. GitHub Actions builds the image for arm64 and amd64 and
+publishes ghcr.io/mamoth100/weavarr:latest (about two minutes; check with
+`gh run list --limit 1`). Then on the Pi:
 
 ```bash
 ssh -i ~/.ssh/media01 mamoth@10.0.0.254
-cd /home/mamoth/DocuView
+cd /home/mamoth/weavarr
 git pull --ff-only
-GIT_SHA=$(git rev-parse --short HEAD) docker compose build
+docker compose pull
 docker compose up -d
 ```
 
-The GIT_SHA prefix matters: it stamps the image with the commit it was
-built from, which drives the Version display and the update check on
-Settings > Status. Building without it still works, but Status shows
-"unknown" and the update check stays silent.
+The Pi no longer builds the image. Local builds left a Docker build cache
+that grew by hundreds of megabytes per deploy (11 GB by 2026-09-15). The
+published image carries GIT_SHA from the workflow, so the Version display
+and the update check on Settings > Status keep working.
+
+Container logs rotate at 50 MB (three files each) via
+/etc/docker/daemon.json on the Pi, set 2026-09-15 after Radarr's log
+reached 1.3 GB.
