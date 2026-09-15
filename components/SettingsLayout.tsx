@@ -5,6 +5,7 @@ import SettingsPanel, { CONNECTION_SECTIONS } from '@/components/SettingsPanel';
 import MenuSettingsPanel from '@/components/MenuSettingsPanel';
 import BackupPanel from '@/components/BackupPanel';
 import LogsPanel from '@/components/LogsPanel';
+import JobsPanel from '@/components/JobsPanel';
 import SystemStatusPanel from '@/components/SystemStatusPanel';
 
 const SECTIONS = [
@@ -13,6 +14,7 @@ const SECTIONS = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'menu', label: 'Menu' },
   { id: 'backup', label: 'Backup/Restore' },
+  { id: 'jobs', label: 'Jobs' },
   { id: 'logs', label: 'Logs' },
   { id: 'status', label: 'Status' },
 ] as const;
@@ -59,6 +61,8 @@ export default function SettingsLayout() {
           <MenuSettingsPanel />
         ) : section === 'backup' ? (
           <BackupPanel />
+        ) : section === 'jobs' ? (
+          <JobsPanel />
         ) : section === 'logs' ? (
           <LogsPanel />
         ) : (
