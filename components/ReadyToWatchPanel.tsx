@@ -6,6 +6,7 @@ import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import { useDismissable } from '@/hooks/useDismissable';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 const PAGE_SIZE = 50;
@@ -114,9 +115,7 @@ function ShowDeleteDropdown({
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={status === 'loading'}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
-        }`}
+        className={buttonClass({ tone: 'danger', error: status === 'error' })}
       >
         {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed - retry' : 'Delete episodes ▾'}
       </button>
@@ -196,9 +195,7 @@ function MovieWatchedButton({
       <button
         onClick={handleClick}
         disabled={disabled || status === 'loading'}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
-        }`}
+        className={buttonClass({ tone: 'success', error: status === 'error' })}
       >
         {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Watched'}
       </button>
@@ -242,9 +239,7 @@ function ShowWatchedDropdown({
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={status === 'loading'}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-green-600 hover:text-white'
-        }`}
+        className={buttonClass({ tone: 'success', error: status === 'error' })}
       >
         {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Mark watched ▾'}
       </button>
@@ -320,9 +315,7 @@ function SearchMissingButton({
     <button
       onClick={handleClick}
       disabled={status === 'loading'}
-      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
-        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
-      }`}
+      className={buttonClass({ tone: 'primary', compact: true, error: status === 'error' })}
     >
       {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search Again'}
     </button>
@@ -354,9 +347,7 @@ function SearchAllButton({ seriesId, episodeIds, onStarted }: { seriesId: number
     <button
       onClick={handleClick}
       disabled={status === 'loading' || episodeIds.length === 0}
-      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-amber-500 hover:text-black'
-      }`}
+      className={buttonClass({ tone: 'primary', error: status === 'error' })}
     >
       {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search all'}
     </button>
@@ -646,9 +637,7 @@ function SearchMissingMovieButton({
     <button
       onClick={handleClick}
       disabled={status === 'loading'}
-      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-60 ${
-        status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-400 hover:bg-amber-500 hover:text-black'
-      }`}
+      className={buttonClass({ tone: 'primary', error: status === 'error' })}
     >
       {status === 'loading' ? 'Searching…' : status === 'error' ? 'Failed - retry' : 'Search Again'}
     </button>
@@ -657,61 +646,22 @@ function SearchMissingMovieButton({
 
 /** Gives up on a missing movie by removing it from Radarr entirely - unlike a missing episode there's no partial series to preserve, so full removal (same as the regular movie Delete button) is the only sensible "stop asking" action. */
 function MissingMovieDeleteButton({ movieId, onDeleted }: { movieId: number; onDeleted: () => void }) {
-  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleConfirm() {
-    setStatus('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/radarr/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ movieId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Delete failed');
-      onDeleted();
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  if (status === 'confirm' || status === 'loading') {
-    return (
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs text-zinc-400">Delete?</span>
-        <button
-          onClick={handleConfirm}
-          disabled={status === 'loading'}
-          className="text-xs font-medium text-red-400 hover:text-red-300 disabled:opacity-60"
-        >
-          {status === 'loading' ? '…' : 'Yes'}
-        </button>
-        <button
-          onClick={() => setStatus('idle')}
-          disabled={status === 'loading'}
-          className="text-xs font-medium text-zinc-400 hover:text-zinc-200 disabled:opacity-60"
-        >
-          No
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <button
-        onClick={() => setStatus('confirm')}
-        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-red-600 hover:text-white'
-        }`}
-      >
-        {status === 'error' ? 'Failed - retry' : 'Delete'}
-      </button>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
+    <ConfirmButton
+      label="Delete"
+      confirmLabel="Really delete?"
+      busyLabel="Deleting…"
+      onSuccess={onDeleted}
+      action={async () => {
+        const res = await fetch('/api/radarr/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movieId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Delete failed');
+      }}
+    />
   );
 }
 

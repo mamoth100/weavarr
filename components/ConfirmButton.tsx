@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { buttonClass, armedButtonClass } from '@/components/buttonClass';
 
 const ARM_TIMEOUT_MS = 5000;
 
@@ -64,28 +65,27 @@ export default function ConfirmButton({
     }
   }
 
-  const size = compact ? 'px-2 py-0.5 rounded' : 'px-2.5 py-1 rounded-md';
   // Danger reads as danger before it is armed: outlined red rather than the
   // same grey pill as every harmless action beside it.
-  const idleBase = intent === 'danger' ? 'bg-transparent text-red-400 ring-1 ring-red-500/40' : 'bg-zinc-800 text-zinc-300';
-  const idleHover = intent === 'danger' ? 'hover:bg-red-600 hover:text-white hover:ring-red-600' : 'hover:bg-amber-500 hover:text-black';
+  const idle = buttonClass({ tone: intent === 'danger' ? 'danger' : 'primary', compact });
+  const armed = armedButtonClass(compact);
 
   return (
     <div>
       {status === 'idle' ? (
-        <button onClick={arm} className={`${size} text-xs font-medium transition-colors ${idleBase} ${idleHover}`}>
+        <button onClick={arm} className={idle}>
           {label}
         </button>
       ) : status === 'armed' ? (
-        <button onClick={run} className={`${size} text-xs font-medium bg-red-600 text-white hover:bg-red-500`}>
+        <button onClick={run} className={armed}>
           {confirmLabel}
         </button>
       ) : status === 'busy' ? (
-        <button disabled className={`${size} text-xs font-medium bg-red-600 text-white opacity-60`}>
+        <button disabled className={armed}>
           {busyLabel}
         </button>
       ) : (
-        <button onClick={arm} className={`${size} text-xs font-medium bg-red-600 text-white hover:bg-red-500`}>
+        <button onClick={arm} className={armed}>
           Failed - retry
         </button>
       )}

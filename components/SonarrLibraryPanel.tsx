@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SonarrEpisodeManager from '@/components/SonarrEpisodeManager';
 import { Poster, formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import { buttonClass } from '@/components/buttonClass';
 import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import { useDownloadProgress } from '@/hooks/useDownloadProgress';
 import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
@@ -175,7 +176,7 @@ export default function SonarrLibraryPanel() {
                 {show.tmdbId && (
                   <Link
                     href={`/tv/${show.tmdbId}`}
-                    className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                    className={buttonClass()}
                   >
                     Details
                   </Link>

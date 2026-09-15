@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ConfirmButton from '@/components/ConfirmButton';
+import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
 export interface RecentlyWatchedMovie {
@@ -139,9 +140,7 @@ function ClearButton({ itemKey, onCleared }: { itemKey: string; onCleared: () =>
       <button
         onClick={handleClick}
         disabled={status === 'loading'}
-        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-60 ${
-          status === 'error' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-        }`}
+        className={buttonClass({ error: status === 'error' })}
       >
         {status === 'loading' ? 'Clearing…' : status === 'error' ? 'Failed - retry' : 'Clear'}
       </button>
