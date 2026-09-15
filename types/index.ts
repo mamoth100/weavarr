@@ -62,7 +62,18 @@ export interface TmdbPerson {
   shows: TmdbMovie[];
 }
 
+/** A film series, for /collection/[id]. */
+export interface TmdbCollection {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  parts: TmdbMovie[];
+}
+
 export interface TmdbDetailResponse extends TmdbMovie {
+  belongs_to_collection?: { id: number; name: string; poster_path: string | null; backdrop_path: string | null } | null;
   credits?: { cast: TmdbCredit[]; crew: TmdbCredit[] };
   created_by?: { id: number; name: string; profile_path: string | null }[];
   genres: { id: number; name: string }[];

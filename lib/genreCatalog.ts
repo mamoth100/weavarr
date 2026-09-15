@@ -62,6 +62,23 @@ export function getGenre(id: string | undefined, fallback: GenreDef = ALL_GENRE)
  * "28|12" OR-string ids. Null when no catalog genre covers it (chip renders
  * as plain text instead of a link).
  */
+/** Every TMDB genre id (movie and tv) behind a set of catalog ids, for the hidden-genre filter. */
+export function tmdbGenreIdsFor(catalogIds: string[]): number[] {
+  const out = new Set<number>();
+  for (const id of catalogIds) {
+    const g = GENRE_CATALOG.find((c) => c.id === id);
+    if (!g) continue;
+    for (const raw of [g.movieGenreId, g.tvGenreId]) {
+      if (raw === undefined || raw === ALL_GENRES_ID) continue;
+      for (const part of String(raw).split('|')) {
+        const n = Number(part);
+        if (Number.isFinite(n)) out.add(n);
+      }
+    }
+  }
+  return Array.from(out);
+}
+
 export function catalogGenreForTmdbId(tmdbGenreId: number, mediaType: 'movie' | 'tv'): GenreDef | null {
   for (const genre of GENRE_CATALOG) {
     if (genre.id === ALL_GENRES_ID) continue;

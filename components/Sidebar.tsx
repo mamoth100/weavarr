@@ -15,6 +15,8 @@ function defaultConfig(): MenuConfig {
     genres: GENRE_CATALOG.filter((g) => DEFAULT_GENRE_IDS.includes(g.id)),
     links: MENU_LINK_CATALOG.filter((l) => DEFAULT_LINK_IDS.includes(l.id)),
     libraryTabs: ['movies', 'tv'],
+    hiddenGenres: [],
+    hiddenGenreIds: [],
   };
 }
 

@@ -1,5 +1,5 @@
 import { fetchWithTimeout } from './fetchTimeout';
-import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders, TmdbPerson, TmdbMovie } from '@/types';
+import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders, TmdbPerson, TmdbMovie, TmdbCollection } from '@/types';
 import type { MediaType } from '@/types';
 
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -502,5 +502,23 @@ export async function getPerson(id: number): Promise<TmdbPerson> {
       .slice(0, 10),
     movies: titles.filter((t) => t.mediaType === 'movie').sort(byDate),
     shows: titles.filter((t) => t.mediaType === 'tv').sort(byDate),
+  };
+}
+
+/** A film series with its movies in release order, for /collection/[id]. */
+export async function getCollection(id: number): Promise<TmdbCollection> {
+  const res = await tmdbFetch(`${BASE_URL}/collection/${id}`, { headers: authHeaders(), next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error(`TMDb collection failed: ${res.status}`);
+  const data = await res.json();
+  const parts = ((data.parts ?? []) as Record<string, unknown>[])
+    .map((p) => ({ ...p, mediaType: 'movie' as const }) as TmdbMovie)
+    .sort((a, b) => (a.release_date || '9999').localeCompare(b.release_date || '9999'));
+  return {
+    id: data.id,
+    name: data.name,
+    overview: data.overview ?? '',
+    poster_path: data.poster_path ?? null,
+    backdrop_path: data.backdrop_path ?? null,
+    parts,
   };
 }
