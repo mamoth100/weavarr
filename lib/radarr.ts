@@ -86,7 +86,7 @@ export async function addMovieToRadarr(tmdbId: number, highestQuality = false, p
     notifyAllChannels(
       'Quality profile mismatch',
       `Radarr has no profile named "${preferredName}" - "${movie.title}" was added using "${profile.name}" instead.`,
-      'alert'
+      'failure'
     ).catch(() => {});
   }
 
@@ -303,7 +303,7 @@ export async function deleteRadarrMovie(movieId: number): Promise<void> {
     if (!res.ok && res.status !== 404) throw new Error(await readableApiError(res, 'Radarr movie delete failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    notifyAllChannels('Delete failed', `Radarr movie ${movieId}: ${message}`, 'alert').catch(() => {});
+    notifyAllChannels('Delete failed', `Radarr movie ${movieId}: ${message}`, 'failure').catch(() => {});
     throw err;
   }
   await deleteCachedPoster('radarr', movieId);

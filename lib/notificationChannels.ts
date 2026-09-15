@@ -4,15 +4,25 @@
  * don't need to know which channels exist or how many are on.
  *
  * Every notification belongs to a category so a channel can opt out of one
- * without opting out of the other - e.g. Discord for casual "ready to watch"
- * pings, Pushover for "something actually broke" alerts you want on your phone.
+ * without opting out of the others - e.g. Discord for casual "ready to watch"
+ * pings, Pushover for "something actually broke" alerts you want on your phone,
+ * and nobody woken up for an update notice.
  */
 import { sendPushoverNotification } from './pushover';
 import { sendWebhookNotification } from './webhookNotify';
 import { sendDiscordNotification } from './discordNotify';
 import { sendWebpushNotification, subscriptionCount } from './webpush';
 
-export type NotificationCategory = 'import' | 'alert';
+export type NotificationCategory = 'import' | 'cleanup' | 'failure' | 'connection' | 'update';
+
+/** Settings key suffix per category: PUSHOVER_NOTIFY_IMPORTS and so on. */
+export const CATEGORY_KEY: Record<NotificationCategory, string> = {
+  import: 'IMPORTS',
+  cleanup: 'CLEANUP',
+  failure: 'ALERTS',
+  connection: 'CONNECTION',
+  update: 'UPDATES',
+};
 
 /** Defaults on (unset !== 'false') unlike Webhook/Discord below - Pushover was the original channel, added before either of those existed or before this toggle did, so existing setups shouldn't go silent just because a toggle now exists. */
 export function pushoverEnabled(): boolean {
@@ -35,10 +45,9 @@ export function webpushEnabled(): boolean {
   }
 }
 
-/** Both category toggles default to on (unset !== 'false') so existing channel setups keep receiving everything until someone deliberately narrows it. */
-function categoryEnabled(envPrefix: string, category: NotificationCategory): boolean {
-  const key = category === 'import' ? `${envPrefix}_NOTIFY_IMPORTS` : `${envPrefix}_NOTIFY_ALERTS`;
-  return process.env[key] !== 'false';
+/** Every category toggle defaults to on (unset !== 'false') so existing channel setups keep receiving everything until someone deliberately narrows it. */
+export function categoryEnabled(envPrefix: string, category: NotificationCategory): boolean {
+  return process.env[`${envPrefix}_NOTIFY_${CATEGORY_KEY[category]}`] !== 'false';
 }
 
 export interface NotificationLink {
