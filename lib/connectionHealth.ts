@@ -92,7 +92,7 @@ export async function checkConnectionHealth(): Promise<void> {
       notifyAllChannels(
         'Connection dropped',
         `${group.name} is unreachable: ${result.message}`,
-        'alert',
+        'connection',
         '/status'
       ).catch(() => {});
     }

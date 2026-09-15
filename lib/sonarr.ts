@@ -96,7 +96,7 @@ export async function addSeriesToSonarr({
     notifyAllChannels(
       'Quality profile mismatch',
       `Sonarr has no profile named "${preferredName}" - "${series.title}" was added using "${profile.name}" instead.`,
-      'alert'
+      'failure'
     ).catch(() => {});
   }
 
@@ -171,7 +171,7 @@ export async function addSeriesToSonarr({
       notifyAllChannels(
         'Episodes not picked up',
         `"${title}" was added to Sonarr, but its episode list was not ready in time, so the episodes you picked are not monitored yet. Open the show and use Get more to pick them again.`,
-        'alert'
+        'failure'
       ).catch(() => {});
     }
   }
@@ -597,7 +597,7 @@ export async function deleteSonarrSeries(seriesId: number): Promise<void> {
     invalidateSonarrSeriesMemo();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    notifyAllChannels('Delete failed', `Sonarr series ${seriesId}: ${message}`, 'alert').catch(() => {});
+    notifyAllChannels('Delete failed', `Sonarr series ${seriesId}: ${message}`, 'failure').catch(() => {});
     throw err;
   }
   await deleteCachedPoster('sonarr', seriesId);
@@ -818,7 +818,7 @@ export async function deleteSonarrEpisodeFile(episodeId: number, episodeFileId: 
     if (!monitorRes.ok) throw new Error(await readableApiError(monitorRes, 'Sonarr unmonitor failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'alert').catch(() => {});
+    notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'failure').catch(() => {});
     throw err;
   }
 }
@@ -835,7 +835,7 @@ export async function unmonitorSonarrEpisode(episodeId: number): Promise<void> {
     if (!res.ok) throw new Error(await readableApiError(res, 'Sonarr unmonitor failed'));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'alert').catch(() => {});
+    notifyAllChannels('Delete failed', `Sonarr episode ${episodeId}: ${message}`, 'failure').catch(() => {});
     throw err;
   }
 }

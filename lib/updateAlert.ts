@@ -21,7 +21,7 @@ export async function checkForUpdateAndAlert(): Promise<void> {
   await notifyAllChannels(
     'Update available',
     `A newer Weavarr build is out (${latest}, running ${localCommit()}). Pull and rebuild to update.`,
-    'alert',
+    'update',
     '/settings'
   );
   await writeJsonAtomic(STATE_FILE, { lastNotified: latest });

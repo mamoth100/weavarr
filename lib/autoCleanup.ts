@@ -128,7 +128,7 @@ export async function runAutoCleanup(): Promise<void> {
   const more = deleted.length > 6 ? ` and ${deleted.length - 6} more` : '';
   const noun = deleted.length === 1 ? 'watched episode' : 'watched episodes';
   try {
-    await notifyAllChannels('Auto-cleanup', `Deleted ${deleted.length} ${noun}: ${shown}${more}.`, 'import', '/watch');
+    await notifyAllChannels('Auto-cleanup', `Deleted ${deleted.length} ${noun}: ${shown}${more}.`, 'cleanup', '/watch');
   } catch (err) {
     console.error('[autoCleanup] notification failed:', err instanceof Error ? err.message : err);
   }
