@@ -480,7 +480,7 @@ function ShowListEditor({ value, onChange, disabled }: { value: string; onChange
 // Auto-tested on load when configured, so the status dots and profile
 // dropdowns are live without clicking Test. Never the notification groups:
 // their Test sends a real message.
-const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb'];
+const AUTO_TEST_GROUPS = ['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt'];
 
 // What "configured" means per service - the fields that have to be set for
 // it to work at all. Drives the status dots and the setup card.
