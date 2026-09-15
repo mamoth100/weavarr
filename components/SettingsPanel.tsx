@@ -622,7 +622,11 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   const { restartStatus, restartError, restart: handleRestart, reset: resetRestart } = useRestartApp(() => setNeedsRestart(false));
   const [testStates, setTestStates] = useState<Record<string, TestState>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(SECTION_ORDER));
-  const autoTestedRef = useRef(false);
+  // Services already auto-tested by this instance. Per service, not a single
+  // flag: the Connections and App Config tabs share one component instance,
+  // so a flag set while App Config was showing (which tests nothing) left
+  // the Connections dots grey until a page refresh.
+  const autoTestedRef = useRef(new Set<string>());
 
   function expandSection(section: string, scroll = false) {
     setCollapsedSections((prev) => {
@@ -670,17 +674,20 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
   // Quality-profile dropdowns need a live profile list from the service itself -
   // if Radarr/Sonarr are already configured, silently re-run their Test so the
   // dropdowns aren't stuck greyed out every time this page loads.
+  const renderKey = renderSections.join(',');
   useEffect(() => {
-    if (!settings || autoTestedRef.current) return;
-    autoTestedRef.current = true;
+    if (!settings) return;
     for (const group of AUTO_TEST_GROUPS) {
+      if (autoTestedRef.current.has(group)) continue;
       // Only auto-test services this instance actually renders - the App
       // Config / Notifications tabs shouldn't fire Radarr/Sonarr probes.
       if (!renderSections.includes(GROUP_TO_SECTION[group] ?? 'Misc')) continue;
-      if (groupConfigState(settings, group) === 'set') handleTest(group);
+      if (groupConfigState(settings, group) !== 'set') continue;
+      autoTestedRef.current.add(group);
+      handleTest(group);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]);
+  }, [settings, renderKey]);
 
   if (error) {
     return <p className="text-red-400 text-sm">Failed to load settings: {error}</p>;
