@@ -42,6 +42,27 @@ higher.
 
 ## Install
 
+One command does everything, including installing Docker if it is missing.
+The script is short and plain; read it first if you like.
+
+Linux or Raspberry Pi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mamoth100/weavarr/main/install.sh | bash
+```
+
+Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/mamoth100/weavarr/main/install.ps1 | iex
+```
+
+If Docker Desktop was not installed, the Windows script installs it and
+stops; open Docker Desktop once to let it finish, then run the same command
+again. The script installs into a `weavarr` folder in your home directory.
+
+### By hand
+
 Linux, Raspberry Pi or Mac:
 
 ```bash
@@ -76,6 +97,11 @@ On Linux you can instead uncomment `network_mode: host` in the compose file
 networking, so leave the default there.
 
 ## Update
+
+Run the same install command again. It sees the existing install, pulls the
+new image, restarts Weavarr and removes the old image.
+
+### By hand
 
 Linux, Raspberry Pi or Mac:
 

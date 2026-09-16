@@ -1,4 +1,6 @@
-# Ready-to-run compose file for anyone using the published image.
+# Ready-to-run compose file for anyone using the published image. The
+# install scripts (install.sh, install.ps1) download this file for you; by
+# hand:
 #
 #   mkdir weavarr && cd weavarr
 #   curl -fsSLo docker-compose.yml https://raw.githubusercontent.com/mamoth100/weavarr/main/docker-compose.pull.yml
