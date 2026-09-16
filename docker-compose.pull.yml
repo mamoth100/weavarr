@@ -8,6 +8,11 @@
 # save lands in ./config/.env.local next to this file; the app restarts
 # itself when you click Restart App.
 #
+# To update (the prune drops the image you just replaced; Docker otherwise
+# keeps every old one, about 300 MB each):
+#
+#   cd weavarr && docker compose pull && docker compose up -d && docker image prune -f
+#
 # Service URLs: for Radarr, Sonarr, Plex or a downloader running ON THE SAME
 # MACHINE, use http://host.docker.internal:7878 (and so on), not localhost.
 # From inside the container, localhost is the container itself. Services on

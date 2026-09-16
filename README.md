@@ -33,8 +33,14 @@ networking, so leave the default there.
 ## Update
 
 ```bash
-cd weavarr && docker compose pull && docker compose up -d
+cd weavarr && docker compose pull && docker compose up -d && docker image prune -f
 ```
+
+The last step removes the image you just replaced. Docker keeps every old
+image until something deletes it, and each one is about 300 MB, so twenty
+updates without the prune would leave 6 GB of dead weight behind. The
+prune only removes images nothing is using, so your other containers are
+not affected.
 
 Settings live in `./config/.env.local`. The database and caches live in a
 Docker volume. Neither is touched by an update.

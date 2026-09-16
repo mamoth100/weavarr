@@ -8,7 +8,7 @@ services:
     # The image GitHub builds on every push to main. Building on the Pi
     # instead left a build cache that grew by hundreds of megabytes per
     # deploy; pulling takes seconds and leaves nothing behind. Deploy:
-    #   cd /home/mamoth/weavarr && docker compose pull && docker compose up -d
+    #   cd /home/mamoth/weavarr && docker compose pull && docker compose up -d && docker image prune -f
     image: ghcr.io/mamoth100/weavarr:latest
     container_name: weavarr
     restart: unless-stopped
