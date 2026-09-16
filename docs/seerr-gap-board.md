@@ -93,7 +93,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 
 - [x] Requests ledger (shipped 2026-08-18) - permanent record of every request (clicks and watchlist auto-adds, source-tagged) in weavarr.db, with status derived LIVE at view time (downloading % / searching-day-N / available / removed) instead of Seerr's stored-status-plus-sync-jobs model. The "removed" tombstone answers the Chappelle question forever. /requests page + menu entry.
 - [ ] **GAP** (M) Issues system (audio/video/subtitle/other + comments + notifications) - roadmap Tier 5 called it marginal solo; still a gap.
-- [ ] **GAP** (S) Blocklist media (`hideBlocklisted`, `blocklistedTags`, auto-blocklist by tag job) - our "Not interested" covers the manual case; tag-based auto-blocklist ("talk-show", "reality") is a genuinely nice discovery filter.
+- [x] **GAP** (S) Blocklist by genre - **SHIPPED 2026-09-15** as Settings > Menu > Hidden genres: ticked genres are left out of every grid (browse, search, Discover, recommendations, person and collection pages) with a "N hidden by genre" note. Manual per-title blocking stays "Not interested".
 
 ## 5. Discovery
 
@@ -102,7 +102,7 @@ purpose - that entire Seerr subsystem is out of scope, permanently.
 - [x] **(M) Discover section customization** - **SHIPPED 2026-08-19**: Settings > Menu > Discover sections. Drag-to-reorder rows with remove, plus a kind + media type + genre builder ("Trending Documentaries" is three dropdowns). Ordered kind.type.genre specs in DISCOVER_SECTIONS; unscoped rows keep real TMDB endpoints, genre-scoped rows use discover popularity sort, coming-soon rows take a genre natively, see-alls deep-link everywhere. This largely absorbs the custom-sliders item above - what remains there is keyword/studio/network scoping.
 - [ ] **GAP** (S) `discoverRegion` + `originalLanguage` + `streamingRegion` filters - region-aware discovery; we filter English/all only.
 - [x] **GAP** (M) Person pages - **SHIPPED 2026-09-15**: detail pages show TMDB cast (photo, role) and director/writer/creator lines, each a link to /person/[id]: photo, bio, Known for, then every movie and show as the normal cards with badges and request buttons. Talk/news appearances and one-off "Self" guest spots filtered out.
-- [ ] **GAP** (M) Collections page + request-whole-collection - roadmap Tier 2.
+- [x] **GAP** (M) Collections - **SHIPPED 2026-09-15**: a movie in a TMDB collection shows a "Part of the X Collection" link to /collection/[id], every film in release order as cards, with Request all (adds the missing ones to Radarr one by one, two-click confirm).
 - [x] "Where to watch" providers - audit error: this already existed (stream + rent logos, JustWatch attribution).
 - [x] Trailers (2026-08-18) - existed as an external YouTube link; now embeds in-app in the shared Modal.
 - [x] "More Like This" rows (shipped 2026-08-18) - TMDB recommendations as full cards (badges/request pills/progress all live there too).
