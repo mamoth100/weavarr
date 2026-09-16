@@ -205,7 +205,13 @@ cd /home/mamoth/weavarr
 git pull --ff-only
 docker compose pull
 docker compose up -d
+docker image prune -f
 ```
+
+The prune drops the previous image, which `docker compose pull` leaves
+behind as a dangling 318 MB layer set; seventeen deploys in a day cost
+1.4 GB before this was noticed. A 04:10 cron on the Pi runs the same
+prune daily as a backstop.
 
 The Pi no longer builds the image. Local builds left a Docker build cache
 that grew by hundreds of megabytes per deploy (11 GB by 2026-09-15). The
