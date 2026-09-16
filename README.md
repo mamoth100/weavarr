@@ -7,12 +7,38 @@ Docker runs.
 
 ## Before you start
 
-You need Docker. That is the only thing to install first.
+You need Docker. That is the only thing to install first. If you already
+run Sonarr or Radarr in Docker, you have it; skip to Install.
 
-- **Windows or Mac:** install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and start it. On Windows it uses WSL 2, which its installer sets up for you.
-- **Linux or Raspberry Pi:** install [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin, which the official install steps include.
+Linux or Raspberry Pi, in a terminal:
 
-Any Docker from 2024 on is new enough. To check, run `docker compose version`; it should say v2.24 or higher.
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+```
+
+Then log out and back in so the second line takes effect.
+
+Windows, in PowerShell:
+
+```powershell
+winget install Docker.DockerDesktop
+```
+
+Then open Docker Desktop from the Start menu once and let it finish setting
+up. It turns on WSL 2 if needed and may ask you to sign out and back in.
+
+Mac, in Terminal:
+
+```bash
+brew install --cask docker-desktop
+```
+
+Then open Docker Desktop from Applications once. If you do not use Homebrew,
+download Docker Desktop from docker.com instead.
+
+To check it worked, run `docker compose version`. It should print v2.24 or
+higher.
 
 ## Install
 
