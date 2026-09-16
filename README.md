@@ -5,7 +5,18 @@ Jellyfin. Browse and request from TMDB, see what is downloaded but unwatched,
 and clear out what has been watched. One user, no accounts, runs anywhere
 Docker runs.
 
+## Before you start
+
+You need Docker. That is the only thing to install first.
+
+- **Windows or Mac:** install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and start it. On Windows it uses WSL 2, which its installer sets up for you.
+- **Linux or Raspberry Pi:** install [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin, which the official install steps include.
+
+Any Docker from 2024 on is new enough. To check, run `docker compose version`; it should say v2.24 or higher.
+
 ## Install
+
+Linux, Raspberry Pi or Mac:
 
 ```bash
 mkdir weavarr && cd weavarr
@@ -13,10 +24,18 @@ curl -fsSLo docker-compose.yml https://raw.githubusercontent.com/mamoth100/weava
 docker compose up -d
 ```
 
-Open `http://<this machine>:6767` and fill in Settings. The Get started card
-walks through what to connect. Save, then click Restart App.
+Windows, in PowerShell:
 
-Needs Docker Compose v2.24 or newer.
+```powershell
+mkdir weavarr; cd weavarr
+Invoke-WebRequest https://raw.githubusercontent.com/mamoth100/weavarr/main/docker-compose.pull.yml -OutFile docker-compose.yml
+docker compose up -d
+```
+
+Open `http://<this machine>:6767` and fill in Settings. The Get started card
+walks through what to connect: Radarr or Sonarr for requests, and Plex or
+Jellyfin if you want the watched and cleanup features. Save, then click
+Restart App.
 
 ## Service addresses
 
@@ -32,8 +51,16 @@ networking, so leave the default there.
 
 ## Update
 
+Linux, Raspberry Pi or Mac:
+
 ```bash
 cd weavarr && docker compose pull && docker compose up -d && docker image prune -f
+```
+
+Windows, in PowerShell:
+
+```powershell
+cd weavarr; docker compose pull; docker compose up -d; docker image prune -f
 ```
 
 The last step removes the image you just replaced. Docker keeps every old
