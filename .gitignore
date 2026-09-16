@@ -17,12 +17,6 @@ Thumbs.db
 # Runtime state — not source, shouldn't be committed
 /data/
 
-# Claude Code local session config — personal, not shared
-.claude/settings.local.json
-# Launch entries hold absolute machine-specific paths — same personal-config
-# class as settings.local.json, so they stay untracked too.
-.claude/launch.json
-
 # TypeScript incremental build artifact
 tsconfig.tsbuildinfo
 

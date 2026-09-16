@@ -7,5 +7,4 @@ data
 *.log
 tsconfig.tsbuildinfo
 docs
-.claude
 config
