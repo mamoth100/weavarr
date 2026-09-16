@@ -17,7 +17,7 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 ```
 
-Then log out and back in so the second line takes effect.
+Then log out and back in to apply the sudo settings.
 
 Windows, in PowerShell:
 
