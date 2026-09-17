@@ -86,15 +86,21 @@ Restart App.
 
 ## Service addresses
 
-Inside the container, `localhost` is the container itself. For a service
-running on the same machine, use `http://host.docker.internal:<port>`, for
-example `http://host.docker.internal:8989` for Sonarr. Services on other
-machines use their normal address.
+When Settings asks for the address of Sonarr, Radarr, Plex or your
+downloader, there is one rule to know.
 
-On Linux you can instead uncomment `network_mode: host` in the compose file
-(and remove the `ports` and `extra_hosts` sections) to keep using
-`localhost` addresses. Docker Desktop on Windows and Mac ignores host
-networking, so leave the default there.
+- **Service on another machine:** type its normal address, for example
+  `http://192.168.1.20:8989`.
+- **Service on the same machine as Weavarr:** type
+  `http://host.docker.internal:8989`, not `http://localhost:8989`.
+  Inside Docker, localhost means Weavarr's own container, not your computer.
+
+Only the port changes per service: Radarr 7878, Sonarr 8989, Plex 32400,
+Jellyfin 8096, SABnzbd 8080, NZBGet 6789.
+
+Linux only, optional: if you would rather keep typing localhost, open
+`docker-compose.yml`, uncomment the `network_mode: host` line and delete the
+`ports` and `extra_hosts` blocks. This does not work on Windows or Mac.
 
 ## Update
 
