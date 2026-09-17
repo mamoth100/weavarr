@@ -7,9 +7,6 @@ node_modules/
 .env.local
 .env*.local
 
-# Netlify
-.netlify/
-
 # OS
 .DS_Store
 Thumbs.db
