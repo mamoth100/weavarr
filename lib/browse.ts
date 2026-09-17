@@ -4,7 +4,7 @@
  * subsequent pages from - both MUST interpret filters identically or page 2
  * would show different results than page 1's view of the world.
  */
-import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, enrichWithLanguage, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv } from '@/lib/tmdb';
+import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, enrichWithLanguage, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv, searchTitlesThroughPeople } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import { ALL_GENRE, DISCOVER_ID, getGenre, type GenreDef } from '@/lib/genreCatalog';
 import { getMenuConfig } from '@/lib/settings';
@@ -135,14 +135,40 @@ export async function dropMislabeledForeign(results: TmdbMovie[], language: stri
  * currently-airing "Among Friends" above the sitcom Friends itself, which
  * is never what someone typing an exact title means.
  */
+/**
+ * Exact title matches first, newest of those on top. Everything else by
+ * popularity with a recency weight: a title from the last year counts
+ * triple, one from five or more years ago counts as is. A search for a
+ * name should land on what came out recently, not on a 1995 film that
+ * happens to have collected more votes.
+ */
 function rankSearchResults(results: TmdbMovie[], query: string): TmdbMovie[] {
   const q = query.toLowerCase().trim();
+  const now = Date.now();
+  const year = 365.25 * 24 * 3600 * 1000;
+  const weight = (m: TmdbMovie) => {
+    const t = m.release_date ? new Date(m.release_date).getTime() : NaN;
+    if (!Number.isFinite(t)) return 1;
+    const age = Math.max(0, (now - t) / year);
+    return 1 + 2 * Math.max(0, 1 - age / 5);
+  };
+  const score = (m: TmdbMovie) => (m.popularity ?? 0) * weight(m);
   return [...results].sort((a, b) => {
     const aExact = (a.title ?? '').toLowerCase().trim() === q ? 1 : 0;
     const bExact = (b.title ?? '').toLowerCase().trim() === q ? 1 : 0;
     if (aExact !== bExact) return bExact - aExact;
-    return (b.popularity ?? 0) - (a.popularity ?? 0);
+    if (aExact && bExact) return (b.release_date ?? '').localeCompare(a.release_date ?? '');
+    return score(b) - score(a);
   });
+}
+
+/** Adds titles found through people's credits that TMDB's title search left out. First page only; later pages are pure TMDB. */
+async function withPeopleTitles(results: TmdbMovie[], query: string, page: number): Promise<TmdbMovie[]> {
+  if (page !== 1) return results;
+  const extra = await searchTitlesThroughPeople(query).catch(() => [] as TmdbMovie[]);
+  if (extra.length === 0) return results;
+  const seen = new Set(results.map((r) => `${r.mediaType ?? 'movie'}:${r.id}`));
+  return [...results, ...extra.filter((e) => !seen.has(`${e.mediaType ?? 'movie'}:${e.id}`))];
 }
 
 /** One page of browse results for the given filters - the infinite-scroll unit. */
@@ -168,7 +194,7 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
         wantTv ? searchTv(query, page) : Promise.resolve(EMPTY_PAGE),
       ]);
       return {
-        results: rankSearchResults([...movieData.results, ...tvData.results], query),
+        results: rankSearchResults(await withPeopleTitles([...movieData.results, ...tvData.results], query, page), query),
         totalPages: Math.max(movieData.total_pages, tvData.total_pages),
         totalResults: movieData.total_results + tvData.total_results,
       };
@@ -229,7 +255,7 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
     // it was a show (searching "friends" listed every Friends-titled movie
     // above the sitcom) - rank instead.
     return {
-      results: rankSearchResults([...movieData.results, ...tvData.results], query),
+      results: rankSearchResults(await withPeopleTitles([...movieData.results, ...tvData.results], query, page), query),
       totalPages: Math.max(movieData.total_pages, tvData.total_pages),
       totalResults: movieData.total_results + tvData.total_results,
     };
@@ -285,7 +311,7 @@ export async function fetchBrowsePage(args: BrowseArgs, page: number): Promise<B
     const [movieData, tvData] = await Promise.all([searchMovies(query, page), searchTv(query, page)]);
     // Same exact-match + popularity ranking as global search.
     return {
-      results: rankSearchResults([...movieData.results, ...tvData.results], query),
+      results: rankSearchResults(await withPeopleTitles([...movieData.results, ...tvData.results], query, page), query),
       totalPages: Math.max(movieData.total_pages, tvData.total_pages),
       totalResults: movieData.total_results + tvData.total_results,
     };

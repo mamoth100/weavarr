@@ -522,3 +522,47 @@ export async function getCollection(id: number): Promise<TmdbCollection> {
     parts,
   };
 }
+
+/**
+ * Titles whose name contains the query, found through the credits of people
+ * whose name matches it. TMDB's title search misses some entries outright:
+ * "TYSON", a 2026 Netflix documentary, never appears for "tyson" even
+ * though Mike Tyson's own credits list it. Only titles that carry the query
+ * in their name are taken, so a search for a surname does not dump a whole
+ * filmography into the results.
+ */
+export async function searchTitlesThroughPeople(query: string): Promise<TmdbMovie[]> {
+  const q = query.trim().toLowerCase();
+  if (q.length < 3) return [];
+  const res = await tmdbFetch(`${BASE_URL}/search/person?query=${encodeURIComponent(query)}&include_adult=false`, {
+    headers: authHeaders(),
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) return [];
+  const people = ((await res.json()).results ?? []) as { id: number; name?: string; popularity?: number }[];
+  const matching = people.filter((p) => (p.name ?? '').toLowerCase().includes(q)).slice(0, 3);
+  const out: TmdbMovie[] = [];
+  const seen = new Set<string>();
+  for (const person of matching) {
+    const cr = await tmdbFetch(`${BASE_URL}/person/${person.id}/combined_credits`, { headers: authHeaders(), next: { revalidate: 3600 } });
+    if (!cr.ok) continue;
+    const data = await cr.json();
+    for (const c of [...(data.cast ?? []), ...(data.crew ?? [])] as Record<string, unknown>[]) {
+      const mediaType = c.media_type === 'tv' ? 'tv' : c.media_type === 'movie' ? 'movie' : null;
+      if (!mediaType) continue;
+      const title = String(c.title ?? c.name ?? '');
+      if (!title.toLowerCase().includes(q)) continue;
+      // Credits are full of decades-old fight broadcasts with no artwork; a
+      // title earns a place only with a poster or a date in the last three
+      // years (or ahead), which is what a search that missed it needs.
+      const date = String(c.release_date ?? c.first_air_date ?? '');
+      const recent = date >= new Date(Date.now() - 3 * 365.25 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      if (!c.poster_path && !recent) continue;
+      const key = `${mediaType}:${c.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(mediaType === 'tv' ? (normalizeTvResult(c) as TmdbMovie) : ({ ...c, mediaType: 'movie' } as TmdbMovie));
+    }
+  }
+  return out;
+}
