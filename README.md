@@ -102,6 +102,18 @@ as normal.
 Run the same install command again. It sees the existing install, pulls the
 new image, restarts Weavarr and removes the old image.
 
+Linux or Raspberry Pi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mamoth100/weavarr/main/install.sh | bash
+```
+
+Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/mamoth100/weavarr/main/install.ps1 | iex
+```
+
 ### By hand
 
 Linux, Raspberry Pi or Mac:
@@ -124,9 +136,3 @@ not affected.
 
 Settings live in `./config/.env.local`. The database and caches live in a
 Docker volume. Neither is touched by an update.
-
-## Access
-
-There is no login. Anyone who can reach port 6767 can use the app and,
-through Settings and Backup, read the keys you configured. Keep it on your
-LAN, or put an authenticating reverse proxy in front of it.
