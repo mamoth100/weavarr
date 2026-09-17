@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { existsSync } from 'fs';
 import { testGroup } from '@/lib/connectionTests';
 import { getRawEnvValue, SETTINGS_SCHEMA } from '@/lib/settings';
 
@@ -37,6 +38,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: 'The URL changed. Enter the key or token again to test it against the new address.' });
     }
     const result = await testGroup(group, effective);
+    // The most common first-run mistake: a localhost address typed into an
+    // app that runs in its own container. Say so at the moment it fails,
+    // rather than leaving people to guess from "connection refused".
+    if (!result.ok && urlField && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(effective[urlField.key] ?? '') && existsSync('/.dockerenv')) {
+      result.message = `${result.message}. Inside Docker, localhost is Weavarr's own container. Use this machine's IP address instead, for example http://192.168.1.20:8989.`;
+    }
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : String(err) });

@@ -87,20 +87,15 @@ Restart App.
 ## Service addresses
 
 When Settings asks for the address of Sonarr, Radarr, Plex or your
-downloader, there is one rule to know.
+downloader, use the IP address of the machine it runs on, even when that is
+the same machine as Weavarr. For example `http://192.168.1.20:8989` for
+Sonarr. Only the port changes per service: Radarr 7878, Sonarr 8989, Plex
+32400, Jellyfin 8096, SABnzbd 8080, NZBGet 6789.
 
-- **Service on another machine:** type its normal address, for example
-  `http://192.168.1.20:8989`.
-- **Service on the same machine as Weavarr:** type
-  `http://host.docker.internal:8989`, not `http://localhost:8989`.
-  Inside Docker, localhost means Weavarr's own container, not your computer.
-
-Only the port changes per service: Radarr 7878, Sonarr 8989, Plex 32400,
-Jellyfin 8096, SABnzbd 8080, NZBGet 6789.
-
-Linux only, optional: if you would rather keep typing localhost, open
-`docker-compose.yml`, uncomment the `network_mode: host` line and delete the
-`ports` and `extra_hosts` blocks. This does not work on Windows or Mac.
+Do not use `localhost`. Inside Docker, localhost means Weavarr's own
+container, so the connection test fails. The one exception is Linux with
+`network_mode: host` turned on in the compose file, where localhost works
+as normal.
 
 ## Update
 
