@@ -7,8 +7,9 @@ Docker runs.
 
 ## Before you start
 
-You need Docker. That is the only thing to install first. If you already
-run Sonarr or Radarr in Docker, you have it; skip to Install.
+Weavarr runs in Docker, and that is the only supported way to run it, so
+Docker is the one thing to install first. If you already run Sonarr or
+Radarr in Docker, you have it; skip to Install.
 
 Linux or Raspberry Pi, in a terminal:
 
