@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useWatchlist } from '@/hooks/useWatchlist';
-import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
+import { TMDB_IMAGE_BASE } from '@/lib/tmdbImage';
 import RequestButton from './RequestButton';
 import type { TmdbMovie } from '@/types';
 import type { WatchlistItem } from '@/lib/watchlist';

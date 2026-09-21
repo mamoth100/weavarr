@@ -12,6 +12,14 @@ import { sendPushoverNotification } from './pushover';
 import { sendWebhookNotification } from './webhookNotify';
 import { sendDiscordNotification } from './discordNotify';
 import { sendWebpushNotification, subscriptionCount } from './webpush';
+import {
+  emailEnabled, sendEmailNotification,
+  telegramEnabled, sendTelegramNotification,
+  ntfyEnabled, sendNtfyNotification,
+  gotifyEnabled, sendGotifyNotification,
+  slackEnabled, sendSlackNotification,
+  pushbulletEnabled, sendPushbulletNotification,
+} from './moreChannels';
 
 export type NotificationCategory = 'import' | 'cleanup' | 'failure' | 'connection' | 'update';
 
@@ -71,6 +79,12 @@ export async function notifyAllChannels(title: string, message: string, category
   if (webhookNotifyEnabled() && categoryEnabled('WEBHOOK', category)) attempts.push(sendWebhookNotification(title, message, link));
   if (discordNotifyEnabled() && categoryEnabled('DISCORD', category)) attempts.push(sendDiscordNotification(title, message, link));
   if (webpushEnabled() && categoryEnabled('WEBPUSH', category)) attempts.push(sendWebpushNotification(title, message, link));
+  if (emailEnabled() && categoryEnabled('EMAIL', category)) attempts.push(sendEmailNotification(title, message, link));
+  if (telegramEnabled() && categoryEnabled('TELEGRAM', category)) attempts.push(sendTelegramNotification(title, message, link));
+  if (ntfyEnabled() && categoryEnabled('NTFY', category)) attempts.push(sendNtfyNotification(title, message, link));
+  if (gotifyEnabled() && categoryEnabled('GOTIFY', category)) attempts.push(sendGotifyNotification(title, message, link));
+  if (slackEnabled() && categoryEnabled('SLACK', category)) attempts.push(sendSlackNotification(title, message, link));
+  if (pushbulletEnabled() && categoryEnabled('PUSHBULLET', category)) attempts.push(sendPushbulletNotification(title, message, link));
   if (attempts.length === 0) throw new Error(`No notification channel is enabled for "${category}"`);
 
   const results = await Promise.allSettled(attempts);

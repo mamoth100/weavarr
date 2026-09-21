@@ -1,6 +1,18 @@
 #!/bin/sh
 set -e
 
+# The image optimizer's cache (every TMDB poster and backdrop the app has
+# shown) lives inside the container by default and would be refetched after
+# each update. Point it into the data volume instead. Best effort: without
+# write access the app still works, it just caches in the container.
+link_image_cache() {
+  mkdir -p /app/data/image-cache /app/.next/cache 2>/dev/null || return 0
+  [ -L /app/.next/cache/images ] && return 0
+  rm -rf /app/.next/cache/images 2>/dev/null || return 0
+  ln -s /app/data/image-cache /app/.next/cache/images 2>/dev/null || true
+}
+link_image_cache
+
 # Not root (compose "user:", rootless Docker, or a hardened runtime): nothing
 # to fix up, just run. su-exec would fail here, so it is not attempted.
 if [ "$(id -u)" != "0" ]; then
@@ -27,6 +39,6 @@ fi
 # so it gets a recursive chown (covers a pre-existing .env.local); data only
 # the folder itself, since a poster cache can hold thousands of files.
 chown -R weavarr:nodejs /app/config 2>/dev/null || true
-chown weavarr:nodejs /app/data 2>/dev/null || true
+chown weavarr:nodejs /app/data /app/data/image-cache /app/.next/cache 2>/dev/null || true
 
 exec su-exec weavarr:nodejs "$@"

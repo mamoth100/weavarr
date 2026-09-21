@@ -1,3 +1,4 @@
+import { getRegionSettings } from '@/lib/regionSettings';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -33,6 +34,7 @@ export default async function DocumentaryPage({ params }: Props) {
   }
 
   const imdbId = detail.external_ids?.imdb_id ?? null;
+  const { streamingRegionLabel } = await getRegionSettings();
 
   // Fetch external data in parallel (Trakt loaded client-side to avoid Cloudflare block)
   const [omdb, watchProviders, radarrMovieId] = await Promise.all([
@@ -269,7 +271,7 @@ export default async function DocumentaryPage({ params }: Props) {
                   </div>
                 )}
                 <p className="text-xs text-zinc-700 mt-2">
-                  Availability data via JustWatch · US only
+                  Availability data via JustWatch · {streamingRegionLabel} only
                 </p>
               </div>
             )}

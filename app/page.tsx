@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { ALL_GENRES_ID } from '@/lib/genreCatalog';
 import { parseBrowseParams, fetchBrowsePage, type SpecialView } from '@/lib/browse';
+import { getRegionSettings } from '@/lib/regionSettings';
 import FilterBar from '@/components/FilterBar';
 import InfiniteBrowse from '@/components/InfiniteBrowse';
 import DiscoverHome from '@/components/DiscoverHome';
@@ -18,7 +19,7 @@ interface PageProps {
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const args = await parseBrowseParams(searchParams);
+  const [args, regionSettings] = await Promise.all([parseBrowseParams(searchParams), getRegionSettings()]);
   const { isUpcoming, isGlobalSearch, isDiscover, specialView, activeGenre, upcomingGenre, defaultGenre, query, sort } = args;
 
   // The Discover landing is sections, not a grid - no filter bar, no
@@ -86,6 +87,7 @@ export default async function Home({ searchParams }: PageProps) {
             currentDecade={searchParams.decade ?? ''}
             currentQuery={query}
             currentLang={searchParams.lang ?? 'en'}
+            langLabel={regionSettings.discoverLanguageLabel}
             currentYear={searchParams.year ?? ''}
             defaultGenreId={defaultGenre.id}
             currentUpcomingGenre={searchParams.upcomingGenre ?? ''}

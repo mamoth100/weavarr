@@ -14,6 +14,11 @@ const nextConfig = {
     },
   },
   images: {
+    // TMDB artwork is fetched once by the server and served from its own
+    // disk cache after that (the entrypoint keeps that cache in the data
+    // volume). An image path on TMDB never changes content, so a month is
+    // safe; a new poster is a new path.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: 'https',

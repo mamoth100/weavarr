@@ -3,6 +3,7 @@ import path from 'path';
 import { GENRE_CATALOG, DEFAULT_GENRE_IDS, tmdbGenreIdsFor, type GenreDef } from '@/lib/genreCatalog';
 import { MENU_LINK_CATALOG, DEFAULT_LINK_IDS, type MenuLinkDef } from '@/lib/menuLinks';
 import { ENV_FILE } from './configDir';
+import { LANGUAGES, REGIONS } from './regionOptions';
 
 const BACKUP_DIR = path.join(process.cwd(), 'data', 'env-backups');
 
@@ -11,11 +12,25 @@ export interface SettingField {
   label: string;
   group: string;
   secret: boolean; // if true, never echo the actual value back to the client
-  type?: 'boolean' | 'profile' | 'showlist'; // 'boolean' renders a toggle; 'profile' renders a quality-profile dropdown populated by testing the service; 'showlist' renders removable show chips with Sonarr-library suggestions
+  type?: 'boolean' | 'profile' | 'showlist' | 'select'; // 'boolean' renders a toggle; 'profile' renders a quality-profile dropdown populated by testing the service; 'showlist' renders removable show chips with Sonarr-library suggestions; 'select' renders a dropdown of `options`
+  /** For select fields only - the choices, first one being what an unset value means. */
+  options?: { value: string; label: string }[];
   /** For boolean fields only - what an unset env var actually evaluates to at runtime (must match the corresponding lib/*.ts check exactly), so the Enable/Disable dropdown reflects real behavior instead of always defaulting to "Disable" when nothing's been explicitly saved yet. */
   defaultValue?: 'true' | 'false';
   /** Per-field explainer, rendered as a "?" tooltip on the field's row. Keeps labels short - the what goes in the label, the why/how here. */
   info?: string;
+}
+
+/** The five per-category toggles every notification channel carries. */
+function categoryToggles(prefix: string, group: string): SettingField[] {
+  const row = (suffix: string, label: string, info: string): SettingField => ({ key: `${prefix}_NOTIFY_${suffix}`, label, group, secret: false, type: 'boolean', defaultValue: 'true', info });
+  return [
+    row('IMPORTS', 'Ready to Watch', 'A title finished downloading and is in your media server.'),
+    row('CLEANUP', 'Auto-Delete Summaries', 'What Auto-Delete removed on each run.'),
+    row('ALERTS', 'Failures', 'A delete that failed, a quality profile that did not exist, episodes Sonarr did not pick up.'),
+    row('CONNECTION', 'Connection Drops', 'A configured service stopped answering. Needs Connection Drop Alerts on under App Config.'),
+    row('UPDATES', 'Update Available', 'A newer Weavarr build is published. Needs Update Available Alerts on under App Config.'),
+  ];
 }
 
 export const SETTINGS_SCHEMA: SettingField[] = [
@@ -83,6 +98,37 @@ export const SETTINGS_SCHEMA: SettingField[] = [
   { key: 'DISCORD_NOTIFY_ALERTS', label: 'Failures', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true', info: 'A delete that failed, a quality profile that did not exist, episodes Sonarr did not pick up.' },
   { key: 'DISCORD_NOTIFY_CONNECTION', label: 'Connection Drops', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true', info: 'A configured service stopped answering. Needs Connection Drop Alerts on under App Config.' },
   { key: 'DISCORD_NOTIFY_UPDATES', label: 'Update Available', group: 'Discord', secret: false, type: 'boolean', defaultValue: 'true', info: 'A newer Weavarr build is published. Needs Update Available Alerts on under App Config.' },
+  { key: 'ENABLE_EMAIL_NOTIFY', label: 'Enable Email Notifications', group: 'Email', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'SMTP_HOST', label: 'SMTP Server', group: 'Email', secret: false, info: 'Your mail provider\'s outgoing server, like smtp.gmail.com. Gmail and most others want an app password below, not your normal one.' },
+  { key: 'SMTP_PORT', label: 'SMTP Port', group: 'Email', secret: false, info: 'Usually 587. Use 465 together with Implicit TLS. Leave blank and it picks the one that matches.' },
+  { key: 'SMTP_SECURE', label: 'Implicit TLS (port 465)', group: 'Email', secret: false, type: 'boolean', defaultValue: 'false', info: 'Off is right for port 587, which still encrypts by upgrading the connection. Turn it on only for servers that expect TLS from the first byte, which is port 465.' },
+  { key: 'SMTP_USER', label: 'SMTP Username', group: 'Email', secret: false, info: 'Leave blank for a server that takes mail without a login.' },
+  { key: 'SMTP_PASSWORD', label: 'SMTP Password', group: 'Email', secret: true },
+  { key: 'EMAIL_FROM', label: 'From Address', group: 'Email', secret: false },
+  { key: 'EMAIL_TO', label: 'To Address', group: 'Email', secret: false, info: 'Where notifications go. Separate several addresses with commas.' },
+  ...categoryToggles('EMAIL', 'Email'),
+  { key: 'ENABLE_TELEGRAM_NOTIFY', label: 'Enable Telegram Notifications', group: 'Telegram', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'TELEGRAM_BOT_TOKEN', label: 'Bot Token', group: 'Telegram', secret: true, info: 'Message @BotFather in Telegram, send /newbot, and it hands you this token.' },
+  { key: 'TELEGRAM_CHAT_ID', label: 'Chat ID', group: 'Telegram', secret: false, info: 'Who the bot writes to. Send your new bot any message first, then message @userinfobot to get your id. A group id starts with a minus sign.' },
+  ...categoryToggles('TELEGRAM', 'Telegram'),
+  { key: 'ENABLE_NTFY_NOTIFY', label: 'Enable ntfy Notifications', group: 'ntfy', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'NTFY_URL', label: 'ntfy Server', group: 'ntfy', secret: false, info: 'Leave blank for the public https://ntfy.sh. Set it to your own server\'s address if you host one.' },
+  { key: 'NTFY_TOPIC', label: 'Topic', group: 'ntfy', secret: true, info: 'The topic your phone subscribes to in the ntfy app. On the public server anyone who knows the topic can read it, so pick something unguessable.' },
+  { key: 'NTFY_TOKEN', label: 'Access Token', group: 'ntfy', secret: true, info: 'Only for a server or topic that requires a login. Leave blank otherwise.' },
+  ...categoryToggles('NTFY', 'ntfy'),
+  { key: 'ENABLE_GOTIFY_NOTIFY', label: 'Enable Gotify Notifications', group: 'Gotify', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'GOTIFY_URL', label: 'Gotify URL', group: 'Gotify', secret: false },
+  { key: 'GOTIFY_TOKEN', label: 'Application Token', group: 'Gotify', secret: true, info: 'In Gotify, open Apps, create an application, and copy its token.' },
+  ...categoryToggles('GOTIFY', 'Gotify'),
+  { key: 'ENABLE_SLACK_NOTIFY', label: 'Enable Slack Notifications', group: 'Slack', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'SLACK_WEBHOOK_URL', label: 'Slack Webhook URL', group: 'Slack', secret: true, info: 'An Incoming Webhook URL from a Slack app (api.slack.com/apps, then Incoming Webhooks). It posts to the channel you picked there.' },
+  ...categoryToggles('SLACK', 'Slack'),
+  { key: 'ENABLE_PUSHBULLET_NOTIFY', label: 'Enable Pushbullet Notifications', group: 'Pushbullet', secret: false, type: 'boolean', defaultValue: 'false' },
+  { key: 'PUSHBULLET_TOKEN', label: 'Access Token', group: 'Pushbullet', secret: true, info: 'From pushbullet.com, under Settings, then Account, then Create Access Token.' },
+  ...categoryToggles('PUSHBULLET', 'Pushbullet'),
+  { key: 'DISCOVER_REGION', label: 'Discover Region', group: 'Region', secret: false, type: 'select', options: REGIONS, info: 'The country browse is built around. Popular Movies is that country\'s list, and Upcoming movies go by when they arrive there. Applies immediately, no restart needed.' },
+  { key: 'DISCOVER_LANGUAGE', label: 'Discover Language', group: 'Region', secret: false, type: 'select', options: LANGUAGES, info: 'Browse shows titles originally made in this language unless you switch the filter to All languages. Applies immediately, no restart needed.' },
+  { key: 'STREAMING_REGION', label: 'Streaming Region', group: 'Region', secret: false, type: 'select', options: REGIONS, info: 'Which country\'s streaming services the Where to Watch row on a title page lists. Applies immediately, no restart needed.' },
   { key: 'ENABLE_IMPORT_NOTIFICATIONS', label: 'Import Notifications', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Watches the media server for requested titles actually landing in the library and sends a "ready to watch" ping through your notification channels (checked every 2 minutes).' },
   { key: 'IMPORT_NOTIFY_UNAIRED', label: 'Include Unaired Count in "Ready to Watch" Pings', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'true', info: 'When an episode\'s "ready to watch" ping goes out, add how many episodes of that show haven\'t aired yet, like "2 unaired episodes remain". Counts every episode Sonarr has a future air date for, any season. Great if you binge shows so that you know if you need to wait for all of them to air. Applies immediately, no restart needed.' },
   { key: 'ENABLE_CONNECTION_ALERTS', label: 'Connection Drop Alerts', group: 'App Behavior', secret: false, type: 'boolean', defaultValue: 'false', info: 'Sends an alert when a connected service (Radarr, Sonarr, Plex…) stops responding to the 10-minute health check.' },
@@ -200,7 +246,8 @@ export interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null; // only populated for non-secret fields
-  type?: 'boolean' | 'profile' | 'showlist';
+  type?: 'boolean' | 'profile' | 'showlist' | 'select';
+  options?: { value: string; label: string }[];
   defaultValue?: 'true' | 'false';
   info?: string;
 }
@@ -223,6 +270,7 @@ export async function getSettingsStatus(): Promise<SettingStatus[]> {
       isSet: raw !== null && raw !== '',
       value: field.secret ? null : raw,
       type: field.type,
+      options: field.options,
       defaultValue: field.defaultValue,
       info: field.info,
     };

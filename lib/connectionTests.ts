@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from './fetchTimeout';
 import { jellyfinHeaders } from './jellyfinAuth';
+import { emailConfigFromEnv, sendEmail, sendGotify, sendNtfy, sendPushbullet, sendSlack, sendTelegram } from './moreChannels';
 export interface QualityProfileOption {
   id: number;
   name: string;
@@ -222,6 +223,20 @@ async function testDiscord(url?: string): Promise<TestResult> {
   }
 }
 
+const TEST_TITLE = 'Weavarr test';
+const TEST_MESSAGE = 'This is a test notification from Weavarr.';
+
+/** The newer channels have no "check the key" endpoint worth a separate call; sending the test message is the check. */
+async function testBySending(missing: string | null, where: string, send: () => Promise<void>): Promise<TestResult> {
+  if (missing) return { ok: false, message: missing };
+  try {
+    await send();
+    return { ok: true, message: `Test notification sent. Check ${where}.` };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 export async function testGroup(group: string, values: Record<string, string>): Promise<TestResult> {
   switch (group) {
     case 'Radarr':
@@ -259,6 +274,23 @@ export async function testGroup(group: string, values: Record<string, string>): 
     }
     case 'Discord':
       return testDiscord(values.DISCORD_WEBHOOK_URL);
+    case 'Email': {
+      const cfg = emailConfigFromEnv(values);
+      return testBySending(cfg ? null : 'SMTP server, From address and To address required', 'your inbox', () => sendEmail(cfg!, TEST_TITLE, TEST_MESSAGE));
+    }
+    case 'Telegram':
+      return testBySending(values.TELEGRAM_BOT_TOKEN && values.TELEGRAM_CHAT_ID ? null : 'Bot token and chat ID required', 'Telegram', () =>
+        sendTelegram(values.TELEGRAM_BOT_TOKEN, values.TELEGRAM_CHAT_ID, TEST_TITLE, TEST_MESSAGE));
+    case 'ntfy':
+      return testBySending(values.NTFY_TOPIC ? null : 'Topic required', 'the ntfy app', () =>
+        sendNtfy(values.NTFY_URL ?? '', values.NTFY_TOPIC, values.NTFY_TOKEN || undefined, TEST_TITLE, TEST_MESSAGE));
+    case 'Gotify':
+      return testBySending(values.GOTIFY_URL && values.GOTIFY_TOKEN ? null : 'URL and application token required', 'Gotify', () =>
+        sendGotify(values.GOTIFY_URL, values.GOTIFY_TOKEN, TEST_TITLE, TEST_MESSAGE));
+    case 'Slack':
+      return testBySending(values.SLACK_WEBHOOK_URL ? null : 'Slack webhook URL required', 'Slack', () => sendSlack(values.SLACK_WEBHOOK_URL, TEST_TITLE, TEST_MESSAGE));
+    case 'Pushbullet':
+      return testBySending(values.PUSHBULLET_TOKEN ? null : 'Access token required', 'Pushbullet', () => sendPushbullet(values.PUSHBULLET_TOKEN, TEST_TITLE, TEST_MESSAGE));
     default:
       return { ok: false, message: 'No test available for this group' };
   }

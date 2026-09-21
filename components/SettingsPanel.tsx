@@ -15,7 +15,8 @@ interface SettingStatus {
   secret: boolean;
   isSet: boolean;
   value: string | null;
-  type?: 'boolean' | 'profile' | 'showlist';
+  type?: 'boolean' | 'profile' | 'showlist' | 'select';
+  options?: { value: string; label: string }[];
   defaultValue?: 'true' | 'false';
   info?: string;
 }
@@ -28,7 +29,7 @@ interface QualityProfileOption {
 // Webpush is deliberately absent: its Test lives inside WebpushDeviceButton
 // and only renders once this device is actually subscribed - a Test button
 // next to a feature that can't work yet just produces confusing errors.
-const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord']);
+const TESTABLE_GROUPS = new Set(['Radarr', 'Sonarr', 'SABnzbd', 'NZBGet', 'Plex', 'Jellyfin', 'TMDB', 'OMDb', 'Trakt', 'Pushover', 'Webhook', 'Discord', 'Email', 'Telegram', 'ntfy', 'Gotify', 'Slack', 'Pushbullet']);
 
 // What a group is for, shown as a "?" tooltip in the group header. The link
 // points at where to get a key/token, for groups that need one from an
@@ -497,6 +498,12 @@ const GROUP_REQUIRED_KEYS: Record<string, string[]> = {
   Pushover: ['PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'],
   Webhook: ['WEBHOOK_NOTIFY_URL'],
   Discord: ['DISCORD_WEBHOOK_URL'],
+  Email: ['SMTP_HOST', 'EMAIL_FROM', 'EMAIL_TO'],
+  Telegram: ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'],
+  ntfy: ['NTFY_TOPIC'],
+  Gotify: ['GOTIFY_URL', 'GOTIFY_TOKEN'],
+  Slack: ['SLACK_WEBHOOK_URL'],
+  Pushbullet: ['PUSHBULLET_TOKEN'],
 };
 const GROUP_ENABLE_KEY: Record<string, string> = {
   OMDb: 'ENABLE_OMDB',
@@ -510,6 +517,12 @@ const GROUP_ENABLE_KEY: Record<string, string> = {
   Pushover: 'ENABLE_PUSHOVER',
   Webhook: 'ENABLE_WEBHOOK_NOTIFY',
   Discord: 'ENABLE_DISCORD_NOTIFY',
+  Email: 'ENABLE_EMAIL_NOTIFY',
+  Telegram: 'ENABLE_TELEGRAM_NOTIFY',
+  ntfy: 'ENABLE_NTFY_NOTIFY',
+  Gotify: 'ENABLE_GOTIFY_NOTIFY',
+  Slack: 'ENABLE_SLACK_NOTIFY',
+  Pushbullet: 'ENABLE_PUSHBULLET_NOTIFY',
 };
 
 type ConfigState = 'off' | 'unset' | 'set';
@@ -579,6 +592,13 @@ const GROUP_TO_SECTION: Record<string, string> = {
   Webhook: 'Notifications',
   Discord: 'Notifications',
   Webpush: 'Notifications',
+  Email: 'Notifications',
+  Telegram: 'Notifications',
+  ntfy: 'Notifications',
+  Gotify: 'Notifications',
+  Slack: 'Notifications',
+  Pushbullet: 'Notifications',
+  Region: 'App Config',
   // All app-level knobs in one section: identity/links, network posture,
   // and behavior toggles. 'Misc' stays in SECTION_ORDER only as the
   // fallback bucket for any group without a mapping.
@@ -1011,6 +1031,20 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
                                     }
                                   }}
                                 />
+                              ) : s.type === 'select' ? (
+                                <div className="flex-1">
+                                  <select
+                                    value={edits[s.key] ?? s.value ?? s.options?.[0]?.value ?? ''}
+                                    onChange={(e) => setEdits((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                                    className="w-full bg-zinc-800 text-white text-sm rounded-lg px-3 py-1.5 border border-zinc-700 focus:outline-none focus:border-amber-500"
+                                  >
+                                    {(s.options ?? []).map((o) => (
+                                      <option key={o.value} value={o.value}>
+                                        {o.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
                               ) : s.type === 'profile' ? (
                                 (() => {
                                   const profileOptions = testState.profiles ?? [];

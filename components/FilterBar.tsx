@@ -12,6 +12,8 @@ interface Props {
   currentDecade: string;
   currentQuery: string;
   currentLang: string;
+  /** Name of the Discover Language setting, for the default chip. */
+  langLabel: string;
   currentYear: string;
   defaultGenreId: string;
   currentUpcomingGenre: string;
@@ -31,6 +33,7 @@ export default function FilterBar({
   currentDecade,
   currentQuery,
   currentLang,
+  langLabel,
   currentYear,
   defaultGenreId,
   currentUpcomingGenre,
@@ -222,7 +225,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                English only
+                {langLabel} only
               </button>
               <button
                 onClick={() => navigate({ lang: 'all' }, 'lang-all')}
@@ -456,7 +459,7 @@ export default function FilterBar({
                     : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                English only
+                {langLabel} only
               </button>
               <button
                 onClick={() => navigate({ lang: 'all' }, 'lang-all')}

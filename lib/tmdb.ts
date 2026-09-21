@@ -1,3 +1,4 @@
+import { getRegionSettings } from './regionSettings';
 import { fetchWithTimeout } from './fetchTimeout';
 import type { TmdbDetailResponse, TmdbDiscoverResponse, WatchProviders, TmdbPerson, TmdbMovie, TmdbCollection } from '@/types';
 import type { MediaType } from '@/types';
@@ -26,7 +27,7 @@ async function tmdbFetch(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
-export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+export { TMDB_IMAGE_BASE } from './tmdbImage';
 
 /** Fetch the primary spoken language for a single movie/TV item. Cached 24h. */
 async function fetchSpokenLanguage(id: number, mediaType: 'movie' | 'tv'): Promise<string | null> {
@@ -56,7 +57,7 @@ export async function discoverMovies({
   minVotes = 50,
   dateGte,
   dateLte,
-  language = 'en',
+  language: languageArg,
   genre = 99,
 }: {
   page?: number;
@@ -76,6 +77,7 @@ export async function discoverMovies({
   });
   if (genre !== 'all') params.set('with_genres', String(genre));
 
+  const language = languageArg ?? (await getRegionSettings()).discoverLanguage;
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) {
     // | = OR logic: matches any of the keyword IDs
@@ -171,7 +173,8 @@ export async function getTrendingWeek(page = 1, media: 'all' | 'movie' | 'tv' = 
 }
 
 export async function getPopularMovies(page = 1): Promise<TmdbDiscoverResponse> {
-  const res = await tmdbFetch(`${BASE_URL}/movie/popular?page=${page}`, {
+  const { discoverRegion } = await getRegionSettings();
+  const res = await tmdbFetch(`${BASE_URL}/movie/popular?page=${page}&region=${discoverRegion}`, {
     headers: authHeaders(),
     next: { revalidate: 3600 },
   });
@@ -199,8 +202,9 @@ export async function getPopularTv(page = 1): Promise<TmdbDiscoverResponse> {
 export async function getWatchProviders(
   id: number,
   mediaType: MediaType = 'movie',
-  country = 'US'
+  countryArg?: string
 ): Promise<WatchProviders | null> {
+  const country = countryArg ?? (await getRegionSettings()).streamingRegion;
   const res = await tmdbFetch(`${BASE_URL}/${mediaType}/${id}/watch/providers`, {
     headers: authHeaders(),
     next: { revalidate: 86400 },
@@ -214,7 +218,7 @@ export async function getWatchProviders(
 export async function discoverUpcoming({
   page = 1,
   genre = 'all',
-  language = 'en',
+  language: languageArg,
   keywordIds = [],
 }: {
   page?: number;
@@ -233,8 +237,24 @@ export async function discoverUpcoming({
     include_adult: 'false',
   });
   if (genre !== 'all') params.set('with_genres', String(genre));
+  const { discoverLanguage, discoverRegion } = await getRegionSettings();
+  const language = languageArg ?? discoverLanguage;
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
+  // Outside the US, "upcoming" means arriving in that country: a film that
+  // opened in the States last month can still be weeks away in Australia.
+  // With a region, release_date filters read that country's dates. The floor
+  // on the original date keeps decades-old re-releases out. The US default
+  // keeps the original query untouched.
+  if (discoverRegion !== 'US') {
+    const yearAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString().slice(0, 10);
+    params.set('region', discoverRegion);
+    params.set('release_date.gte', today);
+    params.set('release_date.lte', sixMonths);
+    params.set('with_release_type', '2|3|4|6');
+    params.set('primary_release_date.gte', yearAgo);
+    params.delete('primary_release_date.lte');
+  }
 
   const res = await tmdbFetch(`${BASE_URL}/discover/movie?${params}`, {
     headers: authHeaders(),
@@ -247,7 +267,7 @@ export async function discoverUpcoming({
 export async function discoverUpcomingTv({
   page = 1,
   genre = 'all',
-  language = 'en',
+  language: languageArg,
   keywordIds = [],
 }: {
   page?: number;
@@ -266,6 +286,7 @@ export async function discoverUpcomingTv({
     include_adult: 'false',
   });
   if (genre !== 'all') params.set('with_genres', String(genre));
+  const language = languageArg ?? (await getRegionSettings()).discoverLanguage;
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
 
@@ -284,7 +305,7 @@ export async function discoverTv({
   minVotes = 50,
   dateGte,
   dateLte,
-  language = 'en',
+  language: languageArg,
   genre = 10764,
   keywordIds = [],
 }: {
@@ -310,6 +331,7 @@ export async function discoverTv({
   });
   if (genre !== 'all') params.set('with_genres', String(genre));
 
+  const language = languageArg ?? (await getRegionSettings()).discoverLanguage;
   if (language) params.set('with_original_language', language);
   if (keywordIds.length > 0) params.set('with_keywords', keywordIds.join('|'));
   if (dateGte) params.set('first_air_date.gte', dateGte);

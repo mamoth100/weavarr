@@ -4,6 +4,7 @@
  * subsequent pages from - both MUST interpret filters identically or page 2
  * would show different results than page 1's view of the world.
  */
+import { getRegionSettings } from '@/lib/regionSettings';
 import { discoverMovies, discoverTv, discoverUpcoming, discoverUpcomingTv, enrichWithLanguage, getPopularMovies, getPopularTv, getTrendingWeek, searchMovies, searchTv, searchTitlesThroughPeople } from '@/lib/tmdb';
 import { SUBGENRES, SORT_OPTIONS, DECADES } from '@/lib/subgenres';
 import { ALL_GENRE, DISCOVER_ID, getGenre, type GenreDef } from '@/lib/genreCatalog';
@@ -84,7 +85,7 @@ export async function parseBrowseParams(params: BrowseParamsInput): Promise<Brow
   const specialFiltersActive = Boolean(query || params.subgenres || sortValid || params.decade || params.year || params.lang);
 
   const decade = DECADES.find((d) => d.value === params.decade);
-  const language = params.lang === 'all' ? '' : 'en';
+  const language = params.lang === 'all' ? '' : (await getRegionSettings()).discoverLanguage;
   const yearParam = params.year?.match(/^\d{4}$/) ? params.year : null;
   const dateGte = yearParam ? `${yearParam}-01-01` : decade?.gte;
   const dateLte = yearParam ? `${yearParam}-12-31` : decade?.lte;

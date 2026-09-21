@@ -21,20 +21,28 @@ export async function POST(request: Request) {
     // is what makes "Test" work without retyping keys, but with a different
     // URL in the request it would hand the real key to whatever address the
     // caller typed, and anyone on the LAN can call this route.
-    const urlField = fieldsInGroup.find((f) => /_URL$/.test(f.key) && !f.secret);
+    // For email the address a saved password would travel to is the SMTP server.
+    const urlField = fieldsInGroup.find((f) => (/_URL$/.test(f.key) || f.key === 'SMTP_HOST') && !f.secret);
     let urlChanged = false;
     if (urlField) {
       const typed = (effective[urlField.key] ?? '').trim().replace(/\/$/, '');
       const saved = ((await getRawEnvValue(urlField.key)) ?? '').trim().replace(/\/$/, '');
-      urlChanged = typed !== '' && saved !== '' && typed !== saved;
+      // A blank saved address counts too: ntfy's blank means the public
+      // server, and a saved token must not follow a newly typed address.
+      urlChanged = typed !== '' && typed !== saved;
     }
+    let withheld = false;
     for (const field of fieldsInGroup) {
       if (effective[field.key]) continue;
-      if (field.secret && urlChanged) continue;
       const raw = await getRawEnvValue(field.key);
-      if (raw) effective[field.key] = raw;
+      if (!raw) continue;
+      if (field.secret && urlChanged) {
+        withheld = true;
+        continue;
+      }
+      effective[field.key] = raw;
     }
-    if (urlChanged && fieldsInGroup.some((f) => f.secret && !effective[f.key])) {
+    if (withheld) {
       return NextResponse.json({ ok: false, message: 'The URL changed. Enter the key or token again to test it against the new address.' });
     }
     const result = await testGroup(group, effective);

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { TMDB_IMAGE_BASE } from '@/lib/tmdb';
+import { TMDB_IMAGE_BASE } from '@/lib/tmdbImage';
 import { useEffect, useRef, useState } from 'react';
 import ScoreBadge from './ScoreBadge';
 import CardActions from './CardActions';

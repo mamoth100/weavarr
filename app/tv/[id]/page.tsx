@@ -1,3 +1,4 @@
+import { getRegionSettings } from '@/lib/regionSettings';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -34,6 +35,7 @@ export default async function TvPage({ params }: Props) {
   }
 
   const imdbId = detail.external_ids?.imdb_id ?? null;
+  const { streamingRegionLabel } = await getRegionSettings();
 
   const [omdb, watchProviders, sonarrSeriesId] = await Promise.all([
     imdbId ? getOmdbData(imdbId) : null,
@@ -287,7 +289,7 @@ export default async function TvPage({ params }: Props) {
                   </div>
                 )}
                 <p className="text-xs text-zinc-700 mt-2">
-                  Availability data via JustWatch · US only
+                  Availability data via JustWatch · {streamingRegionLabel} only
                 </p>
               </div>
             )}

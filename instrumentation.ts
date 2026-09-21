@@ -204,5 +204,17 @@ export async function register() {
         },
       });
     }
+
+    {
+      const { sweepImageCache } = await import('./lib/imageCacheSweep');
+      await registerJob({
+        name: 'imageCacheSweep',
+        label: 'Image cache sweep',
+        description: 'Posters and backdrops from TMDB are kept on disk so they load from here, not from TMDB. This removes the ones nobody has looked at in about two months.',
+        everyMs: DAY,
+        enabled: true,
+        run: sweepImageCache,
+      });
+    }
   }
 }

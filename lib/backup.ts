@@ -18,7 +18,7 @@ const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 // backups/ is this feature's own output - never include itself.
 // env-backups/ is the pre-existing per-save snapshot lib/settings.ts
 // already keeps - a separate, older mechanism, not part of this one.
-const EXCLUDED_DATA_ENTRIES = new Set(['posters', 'backups', 'env-backups']);
+const EXCLUDED_DATA_ENTRIES = new Set(['image-cache', 'posters', 'backups', 'env-backups']);
 
 export interface BackupInfo {
   filename: string;
