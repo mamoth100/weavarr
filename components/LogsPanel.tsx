@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Modal from '@/components/Modal';
+import { buttonClass } from '@/components/buttonClass';
 
 /** The Plex chip's payoff: Plex is the one connected service with no way to read its logs, and the chip owes users an explanation. */
 function PlexExcuseModal({ onClose }: { onClose: () => void }) {
@@ -104,6 +105,27 @@ export default function LogsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<'all' | 'warn' | 'error'>('all');
   const [sourceFilter, setSourceFilter] = useState<LogSource | 'all'>('all');
+  const [bundleState, setBundleState] = useState<'idle' | 'building' | 'failed'>('idle');
+
+  // Fetched rather than a plain link: the server runs a connection test per
+  // service while building it, so the button needs a "working on it" state.
+  const downloadBundle = async () => {
+    setBundleState('building');
+    try {
+      const res = await fetch('/api/support-bundle', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const name = res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'weavarr-support.zip';
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBundleState('idle');
+    } catch {
+      setBundleState('failed');
+    }
+  };
 
   // SAB's full log is a multi-megabyte fetch on its side, so it's only
   // requested while the SABnzbd chip is selected - the always-on feed
@@ -144,6 +166,23 @@ export default function LogsPanel() {
           newest first). SABnzbd&apos;s always-on feed carries only its warnings and errors - select its chip to
           load the full log (minus its very chatty debug lines).
         </p>
+      </div>
+
+      <div className="bg-zinc-900 rounded-lg ring-1 ring-white/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold">Support bundle</h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            One zip with the version, your settings, which services answer, the jobs, and recent logs from Weavarr and
+            every connected service. Passwords, keys and tokens are left out. Attach it when asking for help.
+          </p>
+        </div>
+        <button
+          onClick={downloadBundle}
+          disabled={bundleState === 'building'}
+          className={`${buttonClass({ tone: 'primary', error: bundleState === 'failed' })} flex-shrink-0`}
+        >
+          {bundleState === 'building' ? 'Building…' : bundleState === 'failed' ? 'Failed - retry' : 'Download support bundle'}
+        </button>
       </div>
 
       <section className="space-y-3">

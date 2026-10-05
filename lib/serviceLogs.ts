@@ -33,16 +33,17 @@ export interface SourceStatus {
   error?: string;
 }
 
-const MAX_PER_SOURCE = 100;
+/** Entries per service. The Logs tab asks for the default; the support bundle asks for more. */
+const DEFAULT_PER_SOURCE = 100;
 const MAX_MESSAGE = 2000;
 
 function stripSlash(url: string | undefined): string | undefined {
   return url?.replace(/\/$/, '');
 }
 
-async function fetchArrLog(url: string, key: string, source: 'radarr' | 'sonarr'): Promise<ServiceLogEntry[]> {
+async function fetchArrLog(url: string, key: string, source: 'radarr' | 'sonarr', limit: number): Promise<ServiceLogEntry[]> {
   const res = await fetchWithTimeout(
-    `${url}/api/v3/log?page=1&pageSize=${MAX_PER_SOURCE}&sortKey=time&sortDirection=descending`,
+    `${url}/api/v3/log?page=1&pageSize=${limit}&sortKey=time&sortDirection=descending`,
     { headers: { 'X-Api-Key': key }, cache: 'no-store' }
   );
   if (!res.ok) throw new Error(`log fetch failed: ${res.status}`);
@@ -59,13 +60,13 @@ async function fetchArrLog(url: string, key: string, source: 'radarr' | 'sonarr'
     }));
 }
 
-async function fetchNzbgetLog(): Promise<ServiceLogEntry[]> {
+async function fetchNzbgetLog(limit: number): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.NZBGET_URL);
   const auth = `Basic ${Buffer.from(`${process.env.NZBGET_USERNAME}:${process.env.NZBGET_PASSWORD}`).toString('base64')}`;
   const res = await fetchWithTimeout(`${url}/jsonrpc`, {
     method: 'POST',
     headers: { Authorization: auth, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method: 'log', params: [0, MAX_PER_SOURCE] }),
+    body: JSON.stringify({ method: 'log', params: [0, limit] }),
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`log fetch failed: ${res.status}`);
@@ -110,7 +111,7 @@ const SAB_LINE = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+::(\w+)::(?:\[.+?\]\
  * are dropped: SAB logs every incoming API poll at that level, which would
  * bury everything real.
  */
-async function fetchSabnzbdFullLog(): Promise<ServiceLogEntry[]> {
+async function fetchSabnzbdFullLog(limit: number): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.SABNZBD_URL);
   const res = await fetchWithTimeout(`${url}/api?mode=showlog&apikey=${process.env.SABNZBD_API_KEY}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`showlog fetch failed: ${res.status}`);
@@ -130,7 +131,7 @@ async function fetchSabnzbdFullLog(): Promise<ServiceLogEntry[]> {
       message: message.slice(0, MAX_MESSAGE),
     });
   }
-  return entries.slice(-MAX_PER_SOURCE);
+  return entries.slice(-limit);
 }
 
 // Jellyfin log lines look like:
@@ -139,7 +140,7 @@ async function fetchSabnzbdFullLog(): Promise<ServiceLogEntry[]> {
 // to the entry they belong to.
 const JELLYFIN_LINE = /^\[([0-9-]+ [0-9:.]+ [+-][0-9:]+)\] \[(\w+)\](?: \[\d+\])? (.*)$/;
 
-async function fetchJellyfinLog(): Promise<ServiceLogEntry[]> {
+async function fetchJellyfinLog(limit: number): Promise<ServiceLogEntry[]> {
   const url = stripSlash(process.env.JELLYFIN_URL);
   const headers = jellyfinHeaders(process.env.JELLYFIN_API_KEY as string);
   const listRes = await fetchWithTimeout(`${url}/System/Logs`, { headers, cache: 'no-store' });
@@ -174,12 +175,12 @@ async function fetchJellyfinLog(): Promise<ServiceLogEntry[]> {
       last.message = `${last.message}\n${line}`.slice(0, MAX_MESSAGE);
     }
   }
-  return entries.slice(-MAX_PER_SOURCE);
+  return entries.slice(-limit);
 }
 
-function weavarrLog(): ServiceLogEntry[] {
+function weavarrLog(limit: number): ServiceLogEntry[] {
   return getLogs()
-    .slice(0, MAX_PER_SOURCE)
+    .slice(0, limit)
     .map((l) => ({ ts: l.ts, level: l.level, source: 'weavarr' as const, message: l.message }));
 }
 
@@ -192,20 +193,20 @@ function weavarrLog(): ServiceLogEntry[] {
  * Plex is actually in use. `sabFull` swaps SAB's always-cheap warnings feed
  * for its heavyweight full log - pass it only on demand.
  */
-export async function getAggregatedLogs(sabFull = false): Promise<{ logs: ServiceLogEntry[]; sources: SourceStatus[]; plexConfigured: boolean }> {
+export async function getAggregatedLogs(sabFull = false, limit = DEFAULT_PER_SOURCE): Promise<{ logs: ServiceLogEntry[]; sources: SourceStatus[]; plexConfigured: boolean }> {
   const radarrOn = process.env.ENABLE_RADARR !== 'false' && Boolean(process.env.RADARR_URL && process.env.RADARR_KEY);
   const sonarrOn = process.env.ENABLE_SONARR !== 'false' && Boolean(process.env.SONARR_URL && process.env.SONARR_KEY);
   const sabOn = process.env.ENABLE_SABNZBD !== 'false' && Boolean(process.env.SABNZBD_URL && process.env.SABNZBD_API_KEY);
   const nzbgetOn = process.env.ENABLE_NZBGET === 'true' && Boolean(process.env.NZBGET_URL && process.env.NZBGET_USERNAME);
 
   const jobs: { id: LogSource; run: () => Promise<ServiceLogEntry[]> }[] = [
-    { id: 'weavarr', run: async () => weavarrLog() },
+    { id: 'weavarr', run: async () => weavarrLog(limit) },
   ];
-  if (radarrOn) jobs.push({ id: 'radarr', run: () => fetchArrLog(stripSlash(process.env.RADARR_URL)!, process.env.RADARR_KEY!, 'radarr') });
-  if (sonarrOn) jobs.push({ id: 'sonarr', run: () => fetchArrLog(stripSlash(process.env.SONARR_URL)!, process.env.SONARR_KEY!, 'sonarr') });
-  if (sabOn) jobs.push({ id: 'sabnzbd', run: sabFull ? fetchSabnzbdFullLog : fetchSabnzbdLog });
-  if (nzbgetOn) jobs.push({ id: 'nzbget', run: fetchNzbgetLog });
-  if (jellyfinEnabled()) jobs.push({ id: 'jellyfin', run: fetchJellyfinLog });
+  if (radarrOn) jobs.push({ id: 'radarr', run: () => fetchArrLog(stripSlash(process.env.RADARR_URL)!, process.env.RADARR_KEY!, 'radarr', limit) });
+  if (sonarrOn) jobs.push({ id: 'sonarr', run: () => fetchArrLog(stripSlash(process.env.SONARR_URL)!, process.env.SONARR_KEY!, 'sonarr', limit) });
+  if (sabOn) jobs.push({ id: 'sabnzbd', run: sabFull ? () => fetchSabnzbdFullLog(limit) : fetchSabnzbdLog });
+  if (nzbgetOn) jobs.push({ id: 'nzbget', run: () => fetchNzbgetLog(limit) });
+  if (jellyfinEnabled()) jobs.push({ id: 'jellyfin', run: () => fetchJellyfinLog(limit) });
 
   const results = await Promise.allSettled(jobs.map((j) => j.run()));
   const logs: ServiceLogEntry[] = [];
