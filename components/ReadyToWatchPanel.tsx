@@ -6,7 +6,7 @@ import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import { useDismissable } from '@/hooks/useDismissable';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
-import ReplaceFileButton from '@/components/ReplaceFileButton';
+import ReplaceFileButton, { ReplaceFileModal } from '@/components/ReplaceFileButton';
 import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
@@ -66,6 +66,47 @@ function MovieDeleteButton({ item, onDeleted }: { item: ReadyToWatchItem; onDele
         if (!res.ok) throw new Error(data.error ?? 'Delete failed');
       }}
     />
+  );
+}
+
+/** Same shape as the delete dropdown: pick the episode, then the replace modal takes over. */
+function ShowReplaceDropdown({ item, onEpisodeReplaced }: { item: ReadyToWatchItem; onEpisodeReplaced: (seasonNumber: number, episodeNumber: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<{ seasonNumber: number; episodeNumber: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useDismissable(open, containerRef, () => setOpen(false));
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button onClick={() => setOpen((o) => !o)} className={buttonClass({ tone: 'primary' })} title="Swap an episode's file for another release">
+        Different version ▾
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+          {(item.unwatchedEpisodes ?? []).map((e) => (
+            <button
+              key={`${e.seasonNumber}-${e.episodeNumber}`}
+              onClick={() => {
+                setOpen(false);
+                setPicked({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber });
+              }}
+              className="block w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+            >
+              {formatEpisode(e)}
+            </button>
+          ))}
+        </div>
+      )}
+      {picked && (
+        <ReplaceFileModal
+          target={{ type: 'tv', seriesId: item.id, seasonNumber: picked.seasonNumber, episodeNumber: picked.episodeNumber }}
+          title={`${item.title} ${formatEpisode(picked)}`}
+          open
+          onClose={() => setPicked(null)}
+          onReplaced={() => onEpisodeReplaced(picked.seasonNumber, picked.episodeNumber)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -959,7 +1000,10 @@ function ReadyToWatchRow({
                 Protected
               </span>
             ) : (
-              <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} onAftermath={onAftermath} />
+              <>
+                <ShowReplaceDropdown item={item} onEpisodeReplaced={onEpisodeDeleted} />
+                <ShowDeleteDropdown item={item} onEpisodeDeleted={onEpisodeDeleted} onAftermath={onAftermath} />
+              </>
             )}
           </>
         )}
