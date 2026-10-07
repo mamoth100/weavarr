@@ -82,7 +82,7 @@ function ShowReplaceDropdown({ item, onEpisodeReplaced }: { item: ReadyToWatchIt
         Different version ▾
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+        <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
           {(item.unwatchedEpisodes ?? []).map((e) => (
             <button
               key={`${e.seasonNumber}-${e.episodeNumber}`}
@@ -163,7 +163,7 @@ function ShowDeleteDropdown({
         {status === 'loading' ? 'Deleting…' : status === 'error' ? 'Failed - retry' : 'Delete episodes ▾'}
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+        <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 z-10 min-w-[160px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
           {(item.unwatchedEpisodes ?? []).map((e) => {
             const isConfirming = confirming?.seasonNumber === e.seasonNumber && confirming?.episodeNumber === e.episodeNumber;
             if (isConfirming) {
@@ -287,7 +287,7 @@ function ShowWatchedDropdown({
         {status === 'loading' ? 'Marking…' : status === 'error' ? 'Failed - retry' : 'Mark watched ▾'}
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
+        <div className="absolute left-0 sm:left-auto sm:right-0 mt-1 z-10 min-w-[110px] max-h-56 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg">
           {(item.unwatchedEpisodes ?? []).map((e) => (
             <button
               key={`${e.seasonNumber}-${e.episodeNumber}`}
@@ -947,7 +947,7 @@ function ReadyToWatchRow({
   );
 
   return (
-    <div className="flex items-center justify-between bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-zinc-900 rounded-lg p-3 ring-1 ring-white/5">
       <div className="flex items-center gap-3 min-w-0">
         {detailHref ? (
           <Link href={detailHref} className="flex-shrink-0 hover:opacity-80 transition-opacity">
@@ -976,7 +976,7 @@ function ReadyToWatchRow({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
         {item.type === 'movie' ? (
           <>
             <MovieWatchedButton item={item} onWatched={onWatched} disabled={movieDeleted} />
