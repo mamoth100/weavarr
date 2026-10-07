@@ -6,6 +6,7 @@ import { useInfiniteReveal } from '@/hooks/useInfiniteReveal';
 import { useDismissable } from '@/hooks/useDismissable';
 import RecentlyWatchedSection, { Poster, formatBytes, formatEpisode } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import ReplaceFileButton from '@/components/ReplaceFileButton';
 import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
@@ -941,7 +942,10 @@ function ReadyToWatchRow({
             {movieDeleted ? (
               <span className="text-xs font-medium text-zinc-500">Deleted</span>
             ) : (
-              <MovieDeleteButton item={item} onDeleted={() => setMovieDeleted(true)} />
+              <>
+                <ReplaceFileButton target={{ type: 'movie', movieId: item.id }} title={item.title} onReplaced={() => setMovieDeleted(true)} />
+                <MovieDeleteButton item={item} onDeleted={() => setMovieDeleted(true)} />
+              </>
             )}
           </>
         ) : (

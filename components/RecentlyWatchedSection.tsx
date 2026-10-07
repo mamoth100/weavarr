@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ConfirmButton from '@/components/ConfirmButton';
+import ReplaceFileButton from '@/components/ReplaceFileButton';
 import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
@@ -231,6 +232,13 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
                         <ClearButton
                           itemKey={item.key}
                           onCleared={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
+                        />
+                        <ReplaceFileButton
+                          target={item.type === 'movie'
+                            ? { type: 'movie', movieId: item.id }
+                            : { type: 'tv', seriesId: item.seriesId, seasonNumber: item.seasonNumber, episodeNumber: item.episodeNumber }}
+                          title={item.type === 'movie' ? item.title : `${item.title} S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')}`}
+                          onReplaced={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
                         />
                         <RecentlyWatchedDeleteButton
                           item={item}

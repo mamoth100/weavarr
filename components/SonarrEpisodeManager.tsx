@@ -21,6 +21,7 @@ interface QualityProfileOption {
 export { formatBytes } from '@/components/RecentlyWatchedSection';
 import { formatBytes } from '@/components/RecentlyWatchedSection';
 import ConfirmButton from '@/components/ConfirmButton';
+import ReplaceFileButton from '@/components/ReplaceFileButton';
 import { buttonClass } from '@/components/buttonClass';
 import LastEpisodeModal, { type DeleteAftermath } from '@/components/LastEpisodeModal';
 
@@ -401,6 +402,14 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
                   {e.hasFile ? (
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs text-zinc-500">{formatBytes(e.sizeOnDisk)}</span>
+                      {!isProtected && (
+                        <ReplaceFileButton
+                          compact
+                          target={{ type: 'tv', seriesId, seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber }}
+                          title={`S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')} ${e.title}`}
+                          onReplaced={() => markDeleted(e.id)}
+                        />
+                      )}
                       {!isProtected && (
                         <DeleteEpisodeButton
                           seriesId={seriesId}

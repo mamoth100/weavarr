@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TmdbSeason } from '@/types';
 import ConfirmButton from '@/components/ConfirmButton';
+import ReplaceFileButton from '@/components/ReplaceFileButton';
 import RequestShowModal from '@/components/RequestShowModal';
 import { useDownloadProgress, refreshDownloadProgressSoon } from '@/hooks/useDownloadProgress';
 import { invalidateLibraryStatus } from '@/hooks/useLibraryStatus';
@@ -293,7 +294,10 @@ export default function RequestButton({ id, mediaType, title, poster_path, relea
   if (mediaType === 'movie' && radarrMovieId) {
     return (
       <div>
-        <DeleteMovieButton movieId={radarrMovieId} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ReplaceFileButton target={{ type: 'movie', movieId: radarrMovieId }} title={title} />
+          <DeleteMovieButton movieId={radarrMovieId} />
+        </div>
         <DetailDownloadProgress id={id} mediaType="movie" />
       </div>
     );
