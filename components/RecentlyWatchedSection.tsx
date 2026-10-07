@@ -223,12 +223,12 @@ export default function RecentlyWatchedSection({ onCountChange }: { onCountChang
                         {item.reason}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-2 mt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-1">
                       <p className="text-xs text-zinc-500">
                         Watched {timeAgo(item.watchedAt)}
                         {item.type === 'movie' && ` · ${formatBytes(item.sizeOnDisk)}`}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <ClearButton
                           itemKey={item.key}
                           onCleared={() => setItems((prev) => (prev ?? []).filter((i) => i.key !== item.key))}
