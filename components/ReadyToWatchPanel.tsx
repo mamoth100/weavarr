@@ -90,9 +90,10 @@ function ShowReplaceDropdown({ item, onEpisodeReplaced }: { item: ReadyToWatchIt
                 setOpen(false);
                 setPicked({ seasonNumber: e.seasonNumber, episodeNumber: e.episodeNumber });
               }}
-              className="block w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              className="block w-full max-w-[16rem] truncate text-left px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white"
             >
               {formatEpisode(e)}
+              {e.title ? <span className="text-zinc-500"> · {e.title}</span> : null}
             </button>
           ))}
         </div>
