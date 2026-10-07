@@ -1127,7 +1127,8 @@ export default function SettingsPanel({ sections }: { sections?: string[] } = {}
         );
       })}
 
-      <div className="flex items-center gap-3 flex-wrap sticky bottom-4">
+      {/* Sticky so Save is always reachable; the backdrop keeps it from floating over the fields beneath it, which it did on a phone. */}
+      <div className="flex items-center gap-3 flex-wrap sticky bottom-0 z-10 -mx-4 px-4 py-3 bg-zinc-950/95 backdrop-blur border-t border-zinc-800">
         <button
           onClick={handleSave}
           disabled={saveStatus === 'saving' || changedCount === 0}
