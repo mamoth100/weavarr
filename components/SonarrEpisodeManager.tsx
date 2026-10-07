@@ -194,7 +194,7 @@ function SeasonActions({
   }
 
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
+    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
       {hasDownloadable && (
         downloadStatus === 'done' ? (
           // We only know the search was triggered, not whether Sonarr actually
@@ -357,7 +357,7 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
         const onDisk = seasonEpisodes.filter((e) => e.hasFile).length;
         return (
           <div key={seasonNumber}>
-            <div className="flex items-center justify-between mb-1 gap-2">
+            <div className="flex flex-wrap items-center justify-between mb-1 gap-x-2 gap-y-1">
               {/* Collapsed by default - a thirty-season show was a five-minute scroll. */}
               <button
                 type="button"
@@ -392,15 +392,15 @@ export default function SonarrEpisodeManager({ seriesId }: { seriesId: number })
             {isExpanded && (
             <div className="space-y-1">
               {seasonEpisodes.map((e) => (
-                <div key={e.id} className="flex items-center justify-between bg-zinc-800/40 rounded px-2.5 py-1.5">
-                  <p className="text-xs text-zinc-300 truncate pr-2">
+                <div key={e.id} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 bg-zinc-800/40 rounded px-2.5 py-1.5">
+                  <p className="text-xs text-zinc-300 truncate min-w-0 flex-1 basis-40">
                     <span className="text-zinc-500">
                       S{String(e.seasonNumber).padStart(2, '0')}E{String(e.episodeNumber).padStart(2, '0')}
                     </span>{' '}
                     {e.title}
                   </p>
                   {e.hasFile ? (
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                       <span className="text-xs text-zinc-500">{formatBytes(e.sizeOnDisk)}</span>
                       {!isProtected && (
                         <ReplaceFileButton

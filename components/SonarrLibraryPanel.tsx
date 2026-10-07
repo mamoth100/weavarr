@@ -142,10 +142,10 @@ export default function SonarrLibraryPanel() {
       <div className="space-y-2">
         {paged.map((show) => (
           <div key={show.id} className="bg-zinc-900 rounded-lg ring-1 ring-white/5 overflow-hidden">
-            <div className="flex items-center justify-between p-3">
+            <div className="flex flex-wrap items-center justify-between p-3 gap-x-3 gap-y-2">
               <button
                 onClick={() => setExpanded((prev) => (prev === show.id ? null : show.id))}
-                className="flex items-center gap-3 text-left min-w-0"
+                className="flex items-center gap-3 text-left min-w-0 flex-1 basis-56"
               >
                 <span className={`text-zinc-500 text-xs transition-transform ${expanded === show.id ? 'rotate-90' : ''}`}>▶</span>
                 <Poster id={show.id} hasPoster={Boolean(show.posterPath)} title={show.title} service="sonarr" />
@@ -171,7 +171,7 @@ export default function SonarrLibraryPanel() {
                   </p>
                 </div>
               </button>
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-3 shrink-0 ml-auto">
                 {/* Tapping the title expands episodes (load-bearing) - detail-page navigation gets its own link instead. */}
                 {show.tmdbId && (
                   <Link
